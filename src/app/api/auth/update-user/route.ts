@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { id, nombre, email, password, rol, dni } = body;
+    const { id, nombre, email, password, rol, dni, salario_monto, salario_tipo } = body;
 
     if (!id || !nombre || !email || !rol) {
       return NextResponse.json({ error: 'Faltan campos requeridos' }, { status: 400 });
@@ -39,6 +39,8 @@ export async function POST(request: Request) {
         nombre: nombre.trim(),
         rol: rol,
         dni: dni ? dni.trim() : null,
+        salario_monto: salario_monto || null,
+        salario_tipo: salario_tipo || null,
       },
     };
 
@@ -60,6 +62,8 @@ export async function POST(request: Request) {
       email: email.trim().toLowerCase(),
       rol: rol,
       dni: dni ? dni.trim() : null,
+      salario_monto: salario_monto || null,
+      salario_tipo: salario_tipo || null,
     }).eq('id', id);
 
     return NextResponse.json({

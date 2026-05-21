@@ -22,6 +22,8 @@ export default function PersonalPage() {
   // Form states
   const [nombre, setNombre] = useState('');
   const [dni, setDni] = useState('');
+  const [salarioMonto, setSalarioMonto] = useState('');
+  const [salarioTipo, setSalarioTipo] = useState('mensual');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [rol, setRol] = useState('mozo');
@@ -63,8 +65,8 @@ export default function PersonalPage() {
     try {
       const endpoint = editingId ? '/api/auth/update-user' : '/api/auth/create-user';
       const bodyPayload = editingId 
-        ? { id: editingId, nombre, email, password, rol, dni }
-        : { nombre, email, password, rol, dni };
+        ? { id: editingId, nombre, email, password, rol, dni, salario_monto: salarioMonto ? parseFloat(salarioMonto) : null, salario_tipo: salarioTipo }
+        : { nombre, email, password, rol, dni, salario_monto: salarioMonto ? parseFloat(salarioMonto) : null, salario_tipo: salarioTipo };
 
       const res = await fetch(endpoint, {
         method: 'POST',
@@ -84,6 +86,8 @@ export default function PersonalPage() {
       setEditingId(null);
       setNombre('');
       setDni('');
+      setSalarioMonto('');
+      setSalarioTipo('mensual');
       setEmail('');
       setPassword('');
       setRol('mozo');
@@ -99,6 +103,8 @@ export default function PersonalPage() {
     setEditingId(p.id);
     setNombre(p.nombre);
     setDni(p.dni || '');
+    setSalarioMonto(p.salario_monto?.toString() || '');
+    setSalarioTipo(p.salario_tipo || 'mensual');
     setEmail(p.email);
     setRol(p.rol);
     setPassword(''); // leave blank unless changing
@@ -110,6 +116,8 @@ export default function PersonalPage() {
     setEditingId(null);
     setNombre('');
     setDni('');
+    setSalarioMonto('');
+    setSalarioTipo('mensual');
     setEmail('');
     setPassword('');
     setRol('mozo');
@@ -199,6 +207,32 @@ export default function PersonalPage() {
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Monto de Salario (Opcional)</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={salarioMonto}
+                onChange={(e) => setSalarioMonto(e.target.value)}
+                placeholder="Ej. 1025.50"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Salario</label>
+              <select
+                value={salarioTipo}
+                onChange={(e) => setSalarioTipo(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              >
+                <option value="diario">Diario</option>
+                <option value="semanal">Semanal</option>
+                <option value="mensual">Mensual</option>
+              </select>
+            </div>
             
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
@@ -286,7 +320,14 @@ export default function PersonalPage() {
                   <div>
                     <h3 className="font-bold text-gray-900 text-lg leading-tight">{p.nombre}</h3>
                     <p className="text-sm text-gray-500 mt-0.5">{p.email}</p>
-                    {p.dni && <p className="text-xs text-gray-400 mt-0.5">DNI: {p.dni}</p>}
+                    <div className="flex flex-wrap gap-2 mt-1">
+                      {p.dni && <p className="text-xs text-gray-400">DNI: {p.dni}</p>}
+                      {p.salario_monto !== null && p.salario_monto !== undefined && (
+                        <p className="text-xs font-semibold text-emerald-600">
+                          S/ {p.salario_monto} <span className="font-normal">({p.salario_tipo})</span>
+                        </p>
+                      )}
+                    </div>
                   </div>
                 </div>
                 <div className="flex flex-col gap-1">

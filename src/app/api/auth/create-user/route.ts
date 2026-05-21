@@ -22,7 +22,7 @@ export async function POST(request: Request) {
     }
 
     const body = await request.json();
-    const { nombre, email, password, rol, dni } = body;
+    const { nombre, email, password, rol, dni, salario_monto, salario_tipo } = body;
 
     if (!nombre?.trim() || !email?.trim() || !password || !rol) {
       return NextResponse.json(
@@ -48,6 +48,8 @@ export async function POST(request: Request) {
         nombre: nombre.trim(),
         rol: rol,
         dni: dni ? dni.trim() : null,
+        salario_monto: salario_monto || null,
+        salario_tipo: salario_tipo || null,
       },
     });
 
@@ -64,6 +66,8 @@ export async function POST(request: Request) {
         email: email.trim().toLowerCase(),
         rol: rol,
         dni: dni ? dni.trim() : null,
+        salario_monto: salario_monto || null,
+        salario_tipo: salario_tipo || null,
       });
     }
 
