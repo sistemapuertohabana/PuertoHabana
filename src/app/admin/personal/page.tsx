@@ -22,11 +22,12 @@ export default function PersonalPage() {
 
   // Form states
   const [nombre, setNombre] = useState('');
-  const [dni, setDni] = useState('');
+
   const [salarioMonto, setSalarioMonto] = useState('');
   const [salarioTipo, setSalarioTipo] = useState('mensual');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+
   const [rol, setRol] = useState('mozo');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
@@ -254,6 +255,17 @@ export default function PersonalPage() {
               </select>
             </div>
             
+
+
+
+
+
+
+
+
+
+
+            
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
               <input
@@ -288,11 +300,11 @@ export default function PersonalPage() {
                 onChange={(e) => setRol(e.target.value)}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
               >
-                <option value="mozo">Mozo (Atención en mesas)</option>
-                <option value="cocina">Cocinero (Preparación principal)</option>
-                <option value="ayudante_cocina">Ayudante de Cocina</option>
-                <option value="lavaplato">Lavaplatos</option>
                 <option value="admin">Administrador (Control total)</option>
+                <option value="mozo">Mozo (Atención en mesas)</option>
+                <option value="cocina">Cocina (Ver comandas)</option>
+                <option value="ayudante">Ayudante de cocina</option>
+                <option value="lavaplato">Lavaplatos</option>
               </select>
             </div>
 
