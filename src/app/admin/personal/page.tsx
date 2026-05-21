@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
 import { fetchProfiles } from '@/lib/db/admin';
 import type { ProfileRow } from '@/lib/database.types';
+import { createClient } from '@/lib/supabase/client';
 
 const rolLabels: Record<string, string> = {
   admin: 'Administrador',
@@ -55,6 +56,25 @@ export default function PersonalPage() {
 
   useEffect(() => {
     loadProfiles();
+
+    const supabase = createClient();
+    const channel = supabase
+      .channel('realtime_profiles')
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'profiles' },
+        () => {
+          // Refrescar silenciosamente sin mostrar el spinner
+          fetchProfiles()
+            .then(setPersonal)
+            .catch(console.error);
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
