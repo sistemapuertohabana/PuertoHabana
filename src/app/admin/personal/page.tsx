@@ -22,6 +22,7 @@ export default function PersonalPage() {
 
   // Form states
   const [nombre, setNombre] = useState('');
+  const [dni, setDni] = useState('');
 
   const [salarioMonto, setSalarioMonto] = useState('');
   const [salarioTipo, setSalarioTipo] = useState('mensual');
