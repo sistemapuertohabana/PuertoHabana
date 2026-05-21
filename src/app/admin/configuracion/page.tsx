@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { MapPin, Phone, Mail, Save, User, Moon, Layout, Palette } from 'lucide-react';
+import { fetchConfig, saveConfig } from '@/lib/db/admin';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -28,7 +29,8 @@ export default function ConfiguracionPage() {
     fotoPerfil: '',
   });
 
-  const [colorMode, setColorMode] = useState<ColorMode>('claro');
+  const colorMode = 'claro' as any;
+  const setColorMode = (mode: ColorMode) => {};
   const [sidebarDesign, setSidebarDesign] = useState<SidebarDesign>('normal');
   const [navbarStyle, setNavbarStyle] = useState<NavbarStyle>('original');
   const [saved, setSaved] = useState(false);
@@ -36,28 +38,44 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     setMounted(true);
-    const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
     const savedSidebarDesign = localStorage.getItem('sidebarDesign') as SidebarDesign;
     const savedNavbarStyle = localStorage.getItem('navbarStyle') as NavbarStyle;
     const savedFotoPerfil = localStorage.getItem('fotoPerfil');
-    
-    if (savedColorMode) setColorMode(savedColorMode);
     if (savedSidebarDesign) setSidebarDesign(savedSidebarDesign);
     if (savedNavbarStyle) setNavbarStyle(savedNavbarStyle);
-    if (savedFotoPerfil) setConfig(prev => ({ ...prev, fotoPerfil: savedFotoPerfil }));
+    if (savedFotoPerfil) setConfig((prev) => ({ ...prev, fotoPerfil: savedFotoPerfil }));
+
+    fetchConfig().then((d) => {
+      setConfig((prev) => ({
+        ...prev,
+        nombreEmpresa: d.nombre ?? prev.nombreEmpresa,
+        direccion: d.direccion ?? prev.direccion,
+        telefono: d.telefono ?? prev.telefono,
+        email: d.email ?? prev.email,
+      }));
+    });
   }, []);
 
   useEffect(() => {
-    localStorage.setItem('colorMode', colorMode);
+    localStorage.setItem('colorMode', 'claro');
     localStorage.setItem('sidebarDesign', sidebarDesign);
     localStorage.setItem('fotoPerfil', config.fotoPerfil);
-  }, [colorMode, sidebarDesign, config.fotoPerfil]);
+    document.documentElement.classList.remove('dark');
+  }, [sidebarDesign, config.fotoPerfil]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     localStorage.setItem('colorMode', colorMode);
     localStorage.setItem('sidebarDesign', sidebarDesign);
     localStorage.setItem('navbarStyle', navbarStyle);
     localStorage.setItem('fotoPerfil', config.fotoPerfil);
+    await saveConfig({
+      nombre: config.nombreEmpresa,
+      tipo: 'Cevichería',
+      ruc: process.env.NEXT_PUBLIC_NEGOCIO_RUC ?? '',
+      direccion: config.direccion,
+      telefono: config.telefono,
+      email: config.email,
+    });
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
   };
@@ -170,41 +188,7 @@ export default function ConfiguracionPage() {
             </div>
           </div>
 
-          <div className={`border-t pt-8 ${colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-100'}`}>
-            <h3 className={`text-lg font-medium mb-6 flex items-center gap-2 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
-              <Moon size={20} />
-              Modo de Color
-            </h3>
-            
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <button
-                onClick={() => setColorMode('claro')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
-                  colorMode === 'claro'
-                    ? 'border-black bg-gray-50'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-white border-2 border-gray-300"></div>
-                  <span className={`font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>Claro</span>
-                </div>
-              </button>
-              <button
-                onClick={() => setColorMode('oscuro')}
-                className={`p-4 rounded-lg border-2 transition-colors ${
-                  colorMode === 'oscuro'
-                    ? 'border-white bg-black'
-                    : 'border-gray-200 hover:border-gray-300'
-                }`}
-              >
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-full bg-black border-2 border-gray-700"></div>
-                  <span className={`font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>Oscuro (Negro Puro)</span>
-                </div>
-              </button>
-            </div>
-          </div>
+          {/* Modo de Color eliminado */}
 
           <div className={`border-t pt-8 ${colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-100'}`}>
             <h3 className={`text-lg font-medium mb-6 flex items-center gap-2 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>

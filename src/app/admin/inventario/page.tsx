@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus, Utensils, Wine, Package } from 'lucide-react';
+import { fetchAllProductos, upsertProducto, deleteProducto } from '@/lib/db/productos';
 
 type ColorMode = 'claro' | 'oscuro';
 
@@ -34,13 +35,39 @@ type ActiveSection = 'comida' | 'bebidas' | 'tapers' | 'nuevo-plato';
 
 export default function InventarioPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>('comida');
-  const [colorMode, setColorMode] = useState<ColorMode>('claro');
+  const colorMode = 'claro' as any;
+  const setColorMode = (mode: ColorMode) => {};
   const [mounted, setMounted] = useState(false);
+
+  const loadProductos = async () => {
+    const prods = await fetchAllProductos();
+    setComida(
+      prods
+        .filter((p) => p.categoria === 'comida' && p.activo)
+        .map((p) => ({
+          id: p.id,
+          nombre: p.nombre,
+          categoria: 'Platos',
+          precio: Number(p.precio),
+          cantidad: p.stock ?? 0,
+        }))
+    );
+    setBebidas(
+      prods
+        .filter((p) => p.categoria === 'bebidas' && p.activo)
+        .map((p) => ({
+          id: p.id,
+          nombre: p.nombre,
+          categoria: 'Bebidas',
+          precio: Number(p.precio),
+          cantidad: p.stock ?? 0,
+        }))
+    );
+  };
 
   useEffect(() => {
     setMounted(true);
-    const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
-    if (savedColorMode) setColorMode(savedColorMode);
+    loadProductos();
   }, []);
 
   // Estados para Comida
@@ -119,47 +146,38 @@ export default function InventarioPage() {
     setShowModal(true);
   };
 
-  const handleDelete = (id: number) => {
+  const handleDelete = async (id: number) => {
     if (confirm('¿Está seguro de eliminar este elemento?')) {
-      if (activeSection === 'comida') {
-        setComida(comida.filter(c => c.id !== id));
-      } else if (activeSection === 'bebidas') {
-        setBebidas(bebidas.filter(b => b.id !== id));
+      if (activeSection === 'comida' || activeSection === 'bebidas') {
+        await deleteProducto(id);
+        await loadProductos();
       } else {
         setTapers(tapers.filter(t => t.id !== id));
       }
     }
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (activeSection === 'comida') {
-      if (editingItem) {
-        setComida(comida.map(c => 
-          c.id === editingItem.id 
-            ? { ...c, ...formData }
-            : c
-        ));
-      } else {
-        const newComida: Comida = {
-          id: Math.max(...comida.map(c => c.id), 0) + 1,
-          ...formData,
-        };
-        setComida([...comida, newComida]);
-      }
+      await upsertProducto({
+        id: editingItem?.id,
+        nombre: formData.nombre,
+        precio: formData.precio,
+        categoria: 'comida',
+        stock: formData.cantidad,
+        activo: true,
+      });
+      await loadProductos();
     } else if (activeSection === 'bebidas') {
-      if (editingItem) {
-        setBebidas(bebidas.map(b => 
-          b.id === editingItem.id 
-            ? { ...b, ...formData }
-            : b
-        ));
-      } else {
-        const newBebida: Bebida = {
-          id: Math.max(...bebidas.map(b => b.id), 0) + 1,
-          ...formData,
-        };
-        setBebidas([...bebidas, newBebida]);
-      }
+      await upsertProducto({
+        id: editingItem?.id,
+        nombre: formData.nombre,
+        precio: formData.precio,
+        categoria: 'bebidas',
+        stock: formData.cantidad,
+        activo: true,
+      });
+      await loadProductos();
     } else {
       if (editingItem) {
         setTapers(tapers.map(t => 

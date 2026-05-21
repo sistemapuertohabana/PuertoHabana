@@ -1,300 +1,335 @@
 'use client';
 
-import { useState } from 'react';
-import { Edit, Trash2, Plus } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { fetchProfiles } from '@/lib/db/admin';
+import type { ProfileRow } from '@/lib/database.types';
 
-type Rol = 'Mozo' | 'Cocinero' | 'Ayudante de Cocina' | 'Lavadero de Platos';
-type Turno = 'Mañana' | 'Tarde';
-
-interface Personal {
-  id: number;
-  nombre: string;
-  dni: string;
-  rol: Rol;
-  turno: Turno;
-  caja: number;
-}
+const rolLabels: Record<string, string> = {
+  admin: 'Administrador',
+  mozo: 'Mozo',
+  cocina: 'Cocinero',
+  ayudante_cocina: 'Ayudante de Cocina',
+  lavaplato: 'Lavaplatos',
+};
 
 export default function PersonalPage() {
-  const [personal, setPersonal] = useState<Personal[]>([
-    { id: 1, nombre: 'Juan Pérez', dni: '12345678', rol: 'Mozo', turno: 'Mañana', caja: 1500 },
-    { id: 2, nombre: 'María García', dni: '23456789', rol: 'Cocinero', turno: 'Mañana', caja: 0 },
-    { id: 3, nombre: 'Carlos López', dni: '34567890', rol: 'Mozo', turno: 'Tarde', caja: 2200 },
-    { id: 4, nombre: 'Ana Martínez', dni: '45678901', rol: 'Ayudante de Cocina', turno: 'Mañana', caja: 0 },
-    { id: 5, nombre: 'Pedro Sánchez', dni: '56789012', rol: 'Lavadero de Platos', turno: 'Tarde', caja: 0 },
-  ]);
+  const [personal, setPersonal] = useState<ProfileRow[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const [showModal, setShowModal] = useState(false);
-  const [editingPersonal, setEditingPersonal] = useState<Personal | null>(null);
-  const [formData, setFormData] = useState({
-    nombre: '',
-    dni: '',
-    rol: 'Mozo' as Rol,
-    turno: 'Mañana' as Turno,
-    caja: 0,
-  });
+  // Form states
+  const [nombre, setNombre] = useState('');
+  const [dni, setDni] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [rol, setRol] = useState('mozo');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState('');
 
-  const handleAdd = () => {
-    setEditingPersonal(null);
-    setFormData({ nombre: '', dni: '', rol: 'Mozo', turno: 'Mañana', caja: 0 });
-    setShowModal(true);
+  const loadProfiles = () => {
+    setLoading(true);
+    setError('');
+    
+    // Fallback timeout in case Supabase hangs
+    const timeout = setTimeout(() => {
+      setLoading(false);
+      setError('La conexión está tardando demasiado. Verifica tu internet o recarga.');
+    }, 8000);
+
+    fetchProfiles()
+      .then((data) => {
+        clearTimeout(timeout);
+        setPersonal(data);
+      })
+      .catch((err) => {
+        clearTimeout(timeout);
+        console.error(err);
+        setError('Error al cargar perfiles. Por favor recarga la página.');
+      })
+      .finally(() => setLoading(false));
   };
 
-  const handleEdit = (p: Personal) => {
-    setEditingPersonal(p);
-    setFormData({ nombre: p.nombre, dni: p.dni, rol: p.rol, turno: p.turno, caja: p.caja });
-    setShowModal(true);
-  };
+  useEffect(() => {
+    loadProfiles();
+  }, []);
 
-  const handleDelete = (id: number) => {
-    if (confirm('¿Está seguro de eliminar este personal?')) {
-      setPersonal(personal.filter(p => p.id !== id));
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    setIsSubmitting(true);
+
+    try {
+      const endpoint = editingId ? '/api/auth/update-user' : '/api/auth/create-user';
+      const bodyPayload = editingId 
+        ? { id: editingId, nombre, email, password, rol, dni }
+        : { nombre, email, password, rol, dni };
+
+      const res = await fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(bodyPayload),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        setError(data.error || 'Error al crear el personal');
+        return;
+      }
+
+      // Success
+      setShowForm(false);
+      setEditingId(null);
+      setNombre('');
+      setDni('');
+      setEmail('');
+      setPassword('');
+      setRol('mozo');
+      loadProfiles(); // Refresh list
+    } catch (err) {
+      setError('Error de conexión al crear el personal');
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleSave = () => {
-    if (editingPersonal) {
-      setPersonal(personal.map(p => 
-        p.id === editingPersonal.id 
-          ? { ...p, ...formData }
-          : p
-      ));
-    } else {
-      const newPersonal: Personal = {
-        id: Math.max(...personal.map(p => p.id), 0) + 1,
-        ...formData,
-      };
-      setPersonal([...personal, newPersonal]);
-    }
-    setShowModal(false);
+  const openEdit = (p: ProfileRow) => {
+    setEditingId(p.id);
+    setNombre(p.nombre);
+    setDni(p.dni || '');
+    setEmail(p.email);
+    setRol(p.rol);
+    setPassword(''); // leave blank unless changing
+    setShowForm(true);
   };
 
-  const getTurnoColor = (turno: Turno) => {
-    return turno === 'Mañana' ? 'bg-gray-100 text-gray-900' : 'bg-gray-200 text-gray-900';
+  const handleCloseForm = () => {
+    setShowForm(false);
+    setEditingId(null);
+    setNombre('');
+    setDni('');
+    setEmail('');
+    setPassword('');
+    setRol('mozo');
+  };
+
+  const handleDelete = async (id: string) => {
+    const confirmed = confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.');
+    if (!confirmed) return;
+    try {
+      const res = await fetch('/api/auth/delete-user', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        alert(data.error || 'Error al eliminar el usuario');
+        return;
+      }
+      loadProfiles();
+    } catch (e) {
+      alert('Error de conexión al eliminar el usuario');
+    }
   };
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
-        <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Gestión de Personal</h1>
-        <button
-          onClick={handleAdd}
-          className="flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-lg hover:bg-blue-700 transition-colors text-sm w-full md:w-auto"
-        >
-          <Plus size={16} strokeWidth={2} />
-          Agregar
-        </button>
-      </div>
-
-      {/* Desktop Table */}
-      <div className="hidden md:block bg-white border border-gray-200 rounded-lg overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-gray-50 border-b border-gray-200">
-              <tr>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  Nombre
-                </th>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  DNI
-                </th>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  Rol
-                </th>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  Turno
-                </th>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  Caja
-                </th>
-                <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">
-                  Acciones
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {personal.map((p) => (
-                <tr key={p.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900 font-medium">{p.nombre}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{p.dni}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-600">{p.rol}</div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <span className={`px-2.5 py-1 inline-flex items-center text-xs rounded ${getTurnoColor(p.turno)}`}>
-                      {p.turno}
-                    </span>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap">
-                    <div className="text-sm text-gray-900">
-                      {p.caja.toFixed(2)}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 whitespace-nowrap text-sm">
-                    <button
-                      onClick={() => handleEdit(p)}
-                      className="text-gray-500 hover:text-black mr-3 transition-colors"
-                    >
-                      <Edit size={16} strokeWidth={2} />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(p.id)}
-                      className="text-gray-500 hover:text-black transition-colors"
-                    >
-                      <Trash2 size={16} strokeWidth={2} />
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+        <div>
+          <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Personal</h1>
+          <p className="text-sm text-gray-500 mt-2">
+            Gestiona los usuarios y accesos al sistema Puerto Habana.
+          </p>
         </div>
+        {!showForm && (
+          <button
+            onClick={() => setShowForm(true)}
+            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+          >
+            <Plus size={20} />
+            Crear Personal
+          </button>
+        )}
       </div>
 
-      {/* Mobile Card View */}
-      <div className="md:hidden space-y-4 pb-4">
-        {personal.map((p) => (
-          <div key={p.id} className="bg-white border border-gray-200 rounded-lg p-4">
-            <div className="flex justify-between items-start mb-3">
-              <div>
-                <h3 className="text-sm font-medium text-gray-900">{p.nombre}</h3>
-                <p className="text-xs text-gray-500">DNI: {p.dni}</p>
-                <p className="text-xs text-gray-500">{p.rol}</p>
-              </div>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => handleEdit(p)}
-                  className="text-gray-500 hover:text-black transition-colors p-1"
-                >
-                  <Edit size={16} strokeWidth={2} />
-                </button>
-                <button
-                  onClick={() => handleDelete(p.id)}
-                  className="text-gray-500 hover:text-black transition-colors p-1"
-                >
-                  <Trash2 size={16} strokeWidth={2} />
-                </button>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <p className="text-xs text-gray-500">Turno</p>
-                <span className={`inline-block px-2 py-0.5 text-xs rounded ${getTurnoColor(p.turno)}`}>
-                  {p.turno}
-                </span>
-              </div>
-              <div>
-                <p className="text-xs text-gray-500">Caja</p>
-                <p className="text-sm font-medium text-gray-900">${p.caja.toFixed(2)}</p>
-              </div>
-            </div>
-          </div>
-        ))}
-      </div>
+      {error && !showForm && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center justify-between">
+          <p>{error}</p>
+          <button onClick={loadProfiles} className="text-sm font-bold hover:underline">Reintentar</button>
+        </div>
+      )}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white w-full max-w-md rounded-lg shadow-lg">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">
-                {editingPersonal ? 'Editar Personal' : 'Agregar Personal'}
-              </h2>
+      {showForm && (
+        <div className="bg-white rounded-2xl shadow-sm border p-6 mb-8 relative animate-in slide-in-from-top-4 duration-300">
+          <button 
+            onClick={handleCloseForm}
+            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
+          >
+            <X size={20} />
+          </button>
+          
+          <h2 className="text-xl font-bold text-gray-900 mb-6">
+            {editingId ? 'Editar miembro del personal' : 'Nuevo miembro del personal'}
+          </h2>
+          
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+              <input
+                type="text"
+                value={nombre}
+                onChange={(e) => setNombre(e.target.value)}
+                required
+                placeholder="Ej. Juan Pérez"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">DNI (Opcional)</label>
+              <input
+                type="text"
+                value={dni}
+                onChange={(e) => setDni(e.target.value)}
+                placeholder="Ej. 12345678"
+                maxLength={8}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
             </div>
             
-            <div className="p-6">
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2 font-medium">
-                    Nombre
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-colors"
-                    placeholder="Nombre completo"
-                  />
-                </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
+              <input
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                placeholder="mozo1@puertohabana.pe"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Contraseña {editingId && <span className="text-gray-400 font-normal">(dejar en blanco para no cambiar)</span>}
+              </label>
+              <input
+                type="password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required={!editingId}
+                minLength={6}
+                placeholder={editingId ? "Dejar en blanco para no cambiar" : "Mínimo 6 caracteres"}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Rol en el sistema</label>
+              <select
+                value={rol}
+                onChange={(e) => setRol(e.target.value)}
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              >
+                <option value="mozo">Mozo (Atención en mesas)</option>
+                <option value="cocina">Cocinero (Preparación principal)</option>
+                <option value="ayudante_cocina">Ayudante de Cocina</option>
+                <option value="lavaplato">Lavaplatos</option>
+                <option value="admin">Administrador (Control total)</option>
+              </select>
+            </div>
 
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2 font-medium">
-                    DNI
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.dni}
-                    onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-colors"
-                    placeholder="12345678"
-                    maxLength={8}
-                  />
-                </div>
+            {error && (
+              <div className="md:col-span-2">
+                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3">
+                  {error}
+                </p>
+              </div>
+            )}
 
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2 font-medium">
-                    Rol
-                  </label>
-                  <select
-                    value={formData.rol}
-                    onChange={(e) => setFormData({ ...formData, rol: e.target.value as Rol })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-colors"
+            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
+              <button
+                type="button"
+                onClick={handleCloseForm}
+                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
+              >
+                Cancelar
+              </button>
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center min-w-[140px] disabled:opacity-70"
+              >
+                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : (editingId ? 'Guardar Cambios' : 'Crear usuario')}
+              </button>
+            </div>
+          </form>
+        </div>
+      )}
+
+      {loading && !personal.length ? (
+        <div className="flex justify-center items-center py-20">
+          <Loader2 size={32} className="animate-spin text-gray-300" />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+          {personal.map((p) => (
+            <div key={p.id} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-4">
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-100 text-blue-600">
+                    <User size={26} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-gray-900 text-lg leading-tight">{p.nombre}</h3>
+                    <p className="text-sm text-gray-500 mt-0.5">{p.email}</p>
+                    {p.dni && <p className="text-xs text-gray-400 mt-0.5">DNI: {p.dni}</p>}
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <button 
+                    onClick={() => openEdit(p)}
+                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                    title="Editar"
                   >
-                    <option value="Mozo">Mozo</option>
-                    <option value="Cocinero">Cocinero</option>
-                    <option value="Ayudante de Cocina">Ayudante de Cocina</option>
-                    <option value="Lavadero de Platos">Lavadero de Platos</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2 font-medium">
-                    Turno
-                  </label>
-                  <select
-                    value={formData.turno}
-                    onChange={(e) => setFormData({ ...formData, turno: e.target.value as Turno })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-colors"
+                    <Edit2 size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleDelete(p.id)}
+                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                    title="Eliminar"
                   >
-                    <option value="Mañana">Mañana</option>
-                    <option value="Tarde">Tarde (Incluye Noche)</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-sm text-gray-600 mb-2 font-medium">
-                    Caja Asignada (Solo para Mozos)
-                  </label>
-                  <input
-                    type="number"
-                    value={formData.caja}
-                    onChange={(e) => setFormData({ ...formData, caja: parseFloat(e.target.value) || 0 })}
-                    className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-black focus:ring-1 focus:ring-black transition-colors"
-                    placeholder="0.00"
-                    step="0.01"
-                  />
+                    <Trash2 size={18} />
+                  </button>
                 </div>
               </div>
-
-              <div className="flex gap-3 mt-6">
-                <button
-                  onClick={handleSave}
-                  className="flex-1 bg-black text-white px-4 py-2.5 rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium"
-                >
-                  Guardar
-                </button>
-                <button
-                  onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-lg hover:bg-gray-200 transition-colors text-sm font-medium"
-                >
-                  Cancelar
-                </button>
+              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
+                <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
+                  p.rol === 'admin' ? 'bg-purple-100 text-purple-700' :
+                  p.rol === 'mozo' ? 'bg-blue-100 text-blue-700' :
+                  'bg-orange-100 text-orange-700'
+                }`}>
+                  {rolLabels[p.rol] ?? p.rol}
+                </span>
+                {p.area_id && (
+                  <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md border">
+                    Área: {p.area_id}
+                  </span>
+                )}
               </div>
             </div>
-          </div>
+          ))}
+        </div>
+      )}
+
+      {!loading && personal.length === 0 && (
+        <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+          <User size={48} className="mx-auto text-gray-300 mb-4" />
+          <p className="font-medium text-gray-600">No hay perfiles registrados</p>
+          <p className="text-sm mt-1">Agrega a tu primer miembro del personal usando el botón de arriba.</p>
         </div>
       )}
     </div>
