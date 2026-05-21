@@ -1,4 +1,4 @@
-export type UserRol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato';
+export type UserRol = 'admin' | 'mozo' | 'cocina' | 'ayudante' | 'lavaplatos';
 export type SalarioTipo = 'diario' | 'semanal' | 'mensual';
 export type MesaEstado = 'Disponible' | 'Ocupada' | 'Reservada';
 export type ItemEstado = 'Pendiente' | 'En preparación' | 'Listo' | 'Entregado';
@@ -46,10 +46,10 @@ export interface ProfileRow {
   id: string;
   nombre: string;
   email: string;
+  dni?: string;
   rol: UserRol;
   foto_url: string | null;
   area_id: number | null;
-  dni: string | null;
   salario_monto: number | null;
   salario_tipo: SalarioTipo | null;
 }
