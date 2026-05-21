@@ -2,9 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
-import { fetchProfiles } from '@/lib/db/admin';
-import type { ProfileRow } from '@/lib/database.types';
-import { createClient } from '@/lib/supabase/client';
+import { subscribePersonal, addPersonal, updatePersonal, deletePersonal } from '@/lib/db';
+
+type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato';
+type SalarioTipo = 'diario' | 'semanal' | 'mensual';
+
+interface Personal {
+  id: string;
+  nombre: string;
+  dni?: string;
+  email?: string;
+  rol: Rol;
+  salario_monto?: number;
+  salario_tipo?: SalarioTipo;
+  createdAt?: number;
+}
 
 const rolLabels: Record<string, string> = {
   admin: 'Administrador',
@@ -14,397 +26,350 @@ const rolLabels: Record<string, string> = {
   lavaplato: 'Lavaplatos',
 };
 
+const rolColors: Record<string, string> = {
+  admin: 'bg-purple-100 text-purple-700',
+  mozo: 'bg-blue-100 text-blue-700',
+  cocina: 'bg-orange-100 text-orange-700',
+  ayudante_cocina: 'bg-yellow-100 text-yellow-700',
+  lavaplato: 'bg-gray-100 text-gray-700',
+};
+
 export default function PersonalPage() {
-  const [personal, setPersonal] = useState<ProfileRow[]>([]);
+  const [personal, setPersonal] = useState<Personal[]>([]);
   const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
-
-  // Form states
-  const [nombre, setNombre] = useState('');
-  const [dni, setDni] = useState('');
-
-  const [salarioMonto, setSalarioMonto] = useState('');
-  const [salarioTipo, setSalarioTipo] = useState('mensual');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-
-  const [rol, setRol] = useState('mozo');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  const loadProfiles = () => {
-    setLoading(true);
-    setError('');
-    
-    // Fallback timeout in case Supabase hangs
-    const timeout = setTimeout(() => {
-      setLoading(false);
-      setError('La conexión está tardando demasiado. Verifica tu internet o recarga.');
-    }, 8000);
+  const [formData, setFormData] = useState({
+    nombre: '',
+    dni: '',
+    email: '',
+    rol: 'mozo' as Rol,
+    salario_monto: '',
+    salario_tipo: 'mensual' as SalarioTipo,
+  });
 
-    fetchProfiles()
-      .then((data) => {
-        clearTimeout(timeout);
-        setPersonal(data);
-      })
-      .catch((err) => {
-        clearTimeout(timeout);
-        console.error(err);
-        setError('Error al cargar perfiles. Por favor recarga la página.');
-      })
-      .finally(() => setLoading(false));
+  // Suscripción en tiempo real a Firebase
+  useEffect(() => {
+    const unsub = subscribePersonal((data) => {
+      setPersonal(data.sort((a: Personal, b: Personal) => (a.createdAt ?? 0) - (b.createdAt ?? 0)));
+      setLoading(false);
+    });
+    return () => unsub();
+  }, []);
+
+  const resetForm = () => {
+    setFormData({ nombre: '', dni: '', email: '', rol: 'mozo', salario_monto: '', salario_tipo: 'mensual' });
+    setEditingId(null);
+    setError('');
   };
 
-  useEffect(() => {
-    loadProfiles();
+  const handleOpenAdd = () => {
+    resetForm();
+    setShowForm(true);
+  };
 
-    const supabase = createClient();
-    const channel = supabase
-      .channel('realtime_profiles')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          // Refrescar silenciosamente sin mostrar el spinner
-          fetchProfiles()
-            .then(setPersonal)
-            .catch(console.error);
-        }
-      )
-      .subscribe();
+  const handleOpenEdit = (p: Personal) => {
+    setFormData({
+      nombre: p.nombre,
+      dni: p.dni ?? '',
+      email: p.email ?? '',
+      rol: p.rol,
+      salario_monto: p.salario_monto?.toString() ?? '',
+      salario_tipo: p.salario_tipo ?? 'mensual',
+    });
+    setEditingId(p.id);
+    setShowForm(true);
+  };
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, []);
+  const handleClose = () => {
+    setShowForm(false);
+    resetForm();
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!formData.nombre.trim()) { setError('El nombre es requerido'); return; }
     setError('');
     setIsSubmitting(true);
 
     try {
-      const endpoint = editingId ? '/api/auth/update-user' : '/api/auth/create-user';
-      const bodyPayload = editingId 
-        ? { id: editingId, nombre, email, password, rol, dni, salario_monto: salarioMonto ? parseFloat(salarioMonto) : null, salario_tipo: salarioTipo }
-        : { nombre, email, password, rol, dni, salario_monto: salarioMonto ? parseFloat(salarioMonto) : null, salario_tipo: salarioTipo };
+      const payload = {
+        nombre: formData.nombre.trim(),
+        dni: formData.dni.trim(),
+        email: formData.email.trim(),
+        rol: formData.rol,
+        salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : null,
+        salario_tipo: formData.salario_tipo,
+      };
 
-      const res = await fetch(endpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(bodyPayload),
-      });
-
-      const data = await res.json();
-
-      if (!res.ok) {
-        setError(data.error || 'Error al crear el personal');
-        return;
+      if (editingId) {
+        await updatePersonal(editingId, payload);
+      } else {
+        await addPersonal(payload);
       }
 
-      // Success
-      setShowForm(false);
-      setEditingId(null);
-      setNombre('');
-      setDni('');
-      setSalarioMonto('');
-      setSalarioTipo('mensual');
-      setEmail('');
-      setPassword('');
-      setRol('mozo');
-      loadProfiles(); // Refresh list
+      handleClose();
     } catch (err) {
-      setError('Error de conexión al crear el personal');
+      setError('Error al guardar. Intenta de nuevo.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const openEdit = (p: ProfileRow) => {
-    setEditingId(p.id);
-    setNombre(p.nombre);
-    setDni(p.dni || '');
-    setSalarioMonto(p.salario_monto?.toString() || '');
-    setSalarioTipo(p.salario_tipo || 'mensual');
-    setEmail(p.email);
-    setRol(p.rol);
-    setPassword(''); // leave blank unless changing
-    setShowForm(true);
-  };
-
-  const handleCloseForm = () => {
-    setShowForm(false);
-    setEditingId(null);
-    setNombre('');
-    setDni('');
-    setSalarioMonto('');
-    setSalarioTipo('mensual');
-    setEmail('');
-    setPassword('');
-    setRol('mozo');
-  };
-
-  const handleDelete = async (id: string) => {
-    const confirmed = confirm('¿Estás seguro de eliminar este usuario? Esta acción no se puede deshacer.');
-    if (!confirmed) return;
+  const handleDelete = async (id: string, nombre: string) => {
+    if (!confirm(`¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
     try {
-      const res = await fetch('/api/auth/delete-user', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        alert(data.error || 'Error al eliminar el usuario');
-        return;
-      }
-      loadProfiles();
-    } catch (e) {
-      alert('Error de conexión al eliminar el usuario');
+      await deletePersonal(id);
+    } catch {
+      alert('Error al eliminar. Intenta de nuevo.');
     }
   };
 
   return (
     <div className="animate-in fade-in duration-300">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Personal</h1>
-          <p className="text-sm text-gray-500 mt-2">
-            Gestiona los usuarios y accesos al sistema Puerto Habana.
-          </p>
+          <p className="text-sm text-gray-500 mt-1">Gestiona el equipo de Puerto Habana.</p>
         </div>
         {!showForm && (
           <button
-            onClick={() => setShowForm(true)}
-            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 shadow-sm"
+            onClick={handleOpenAdd}
+            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
           >
-            <Plus size={20} />
-            Crear Personal
+            <Plus size={18} />
+            Agregar
           </button>
         )}
       </div>
 
-      {error && !showForm && (
-        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700 flex items-center justify-between">
-          <p>{error}</p>
-          <button onClick={loadProfiles} className="text-sm font-bold hover:underline">Reintentar</button>
-        </div>
-      )}
-
+      {/* Formulario */}
       {showForm && (
-        <div className="bg-white rounded-2xl shadow-sm border p-6 mb-8 relative animate-in slide-in-from-top-4 duration-300">
-          <button 
-            onClick={handleCloseForm}
-            className="absolute top-4 right-4 p-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100 transition-colors"
-          >
-            <X size={20} />
-          </button>
-          
-          <h2 className="text-xl font-bold text-gray-900 mb-6">
-            {editingId ? 'Editar miembro del personal' : 'Nuevo miembro del personal'}
-          </h2>
-          
-          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 animate-in slide-in-from-top-4 duration-300">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Nombre completo</label>
+              <h2 className="text-xl font-semibold text-gray-900">
+                {editingId ? 'Editar Personal' : 'Nuevo Personal'}
+              </h2>
+              <p className="text-sm text-gray-500 mt-0.5">
+                {editingId ? 'Modifica los datos del personal' : 'Completa la información del nuevo integrante'}
+              </p>
+            </div>
+            <button onClick={handleClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+              <X size={20} />
+            </button>
+          </div>
+
+          <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre completo *</label>
               <input
                 type="text"
-                value={nombre}
-                onChange={(e) => setNombre(e.target.value)}
+                value={formData.nombre}
+                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                 required
                 placeholder="Ej. Juan Pérez"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">DNI (Opcional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">DNI</label>
               <input
                 type="text"
-                value={dni}
-                onChange={(e) => setDni(e.target.value)}
-                placeholder="Ej. 12345678"
+                value={formData.dni}
+                onChange={(e) => {
+                  const v = e.target.value.replace(/\D/g, '');
+                  if (v.length <= 8) setFormData({ ...formData, dni: v });
+                }}
+                placeholder="12345678"
                 maxLength={8}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                inputMode="numeric"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+              />
+              <p className="text-xs text-gray-400 mt-1">Solo números, 8 dígitos</p>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                placeholder="mozo@puertohabana.pe"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Monto de Salario (Opcional)</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Rol</label>
+              <select
+                value={formData.rol}
+                onChange={(e) => setFormData({ ...formData, rol: e.target.value as Rol })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+              >
+                <option value="admin">Administrador</option>
+                <option value="mozo">Mozo</option>
+                <option value="cocina">Cocinero</option>
+                <option value="ayudante_cocina">Ayudante de Cocina</option>
+                <option value="lavaplato">Lavaplatos</option>
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
-                value={salarioMonto}
-                onChange={(e) => setSalarioMonto(e.target.value)}
-                placeholder="Ej. 1025.50"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                value={formData.salario_monto}
+                onChange={(e) => setFormData({ ...formData, salario_monto: e.target.value })}
+                placeholder="0.00"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Tipo de Salario</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Salario</label>
               <select
-                value={salarioTipo}
-                onChange={(e) => setSalarioTipo(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
+                value={formData.salario_tipo}
+                onChange={(e) => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
               >
                 <option value="diario">Diario</option>
                 <option value="semanal">Semanal</option>
                 <option value="mensual">Mensual</option>
               </select>
             </div>
-            
-
-
-
-
-
-
-
-
-
-
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Correo electrónico</label>
-              <input
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                placeholder="mozo1@puertohabana.pe"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
-                Contraseña {editingId && <span className="text-gray-400 font-normal">(dejar en blanco para no cambiar)</span>}
-              </label>
-              <input
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required={!editingId}
-                minLength={6}
-                placeholder={editingId ? "Dejar en blanco para no cambiar" : "Mínimo 6 caracteres"}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Rol en el sistema</label>
-              <select
-                value={rol}
-                onChange={(e) => setRol(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-              >
-                <option value="admin">Administrador (Control total)</option>
-                <option value="mozo">Mozo (Atención en mesas)</option>
-                <option value="cocina">Cocina (Ver comandas)</option>
-                <option value="ayudante">Ayudante de cocina</option>
-                <option value="lavaplato">Lavaplatos</option>
-              </select>
-            </div>
 
             {error && (
-              <div className="md:col-span-2">
-                <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-4 py-3">
-                  {error}
-                </p>
+              <div className="md:col-span-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
+                {error}
               </div>
             )}
 
-            <div className="md:col-span-2 flex justify-end gap-3 mt-2">
-              <button
-                type="button"
-                onClick={handleCloseForm}
-                className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-xl hover:bg-gray-50 transition-colors"
-              >
+            <div className="md:col-span-2 flex justify-end gap-3 pt-2">
+              <button type="button" onClick={handleClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
                 Cancelar
               </button>
-              <button
-                type="submit"
-                disabled={isSubmitting}
-                className="px-5 py-2.5 text-sm font-medium text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center min-w-[140px] disabled:opacity-70"
-              >
-                {isSubmitting ? <Loader2 size={18} className="animate-spin" /> : (editingId ? 'Guardar Cambios' : 'Crear usuario')}
+              <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-70 min-w-[130px] justify-center">
+                {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : (editingId ? 'Guardar Cambios' : 'Agregar')}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {loading && !personal.length ? (
+      {/* Loading */}
+      {loading && (
         <div className="flex justify-center items-center py-20">
           <Loader2 size={32} className="animate-spin text-gray-300" />
         </div>
-      ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-          {personal.map((p) => (
-            <div key={p.id} className="bg-white border border-gray-100 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex items-center gap-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center border border-blue-100 text-blue-600">
-                    <User size={26} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-gray-900 text-lg leading-tight">{p.nombre}</h3>
-                    <p className="text-sm text-gray-500 mt-0.5">{p.email}</p>
-                    <div className="flex flex-wrap gap-2 mt-1">
-                      {p.dni && <p className="text-xs text-gray-400">DNI: {p.dni}</p>}
-                      {p.salario_monto !== null && p.salario_monto !== undefined && (
-                        <p className="text-xs font-semibold text-emerald-600">
-                          S/ {p.salario_monto} <span className="font-normal">({p.salario_tipo})</span>
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="flex flex-col gap-1">
-                  <button 
-                    onClick={() => openEdit(p)}
-                    className="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                    title="Editar"
-                  >
-                    <Edit2 size={18} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(p.id)}
-                    className="p-2 text-red-500 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Eliminar"
-                  >
-                    <Trash2 size={18} />
-                  </button>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 mt-4 pt-4 border-t border-gray-50">
-                <span className={`inline-block text-xs font-bold px-3 py-1 rounded-full ${
-                  p.rol === 'admin' ? 'bg-purple-100 text-purple-700' :
-                  p.rol === 'mozo' ? 'bg-blue-100 text-blue-700' :
-                  'bg-orange-100 text-orange-700'
-                }`}>
-                  {rolLabels[p.rol] ?? p.rol}
-                </span>
-                {p.area_id && (
-                  <span className="text-xs text-gray-400 bg-gray-50 px-2 py-1 rounded-md border">
-                    Área: {p.area_id}
-                  </span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
       )}
 
-      {!loading && personal.length === 0 && (
-        <div className="text-center py-16 text-gray-400 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
-          <User size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="font-medium text-gray-600">No hay perfiles registrados</p>
-          <p className="text-sm mt-1">Agrega a tu primer miembro del personal usando el botón de arriba.</p>
-        </div>
+      {/* Lista */}
+      {!loading && (
+        <>
+          {/* Desktop table */}
+          <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Nombre</th>
+                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">DNI</th>
+                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Rol</th>
+                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Salario</th>
+                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Acciones</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {personal.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-5 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
+                          <User size={16} />
+                        </div>
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
+                          {p.email && <p className="text-xs text-gray-400">{p.email}</p>}
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-600">{p.dni || '—'}</td>
+                    <td className="px-5 py-4">
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
+                        {rolLabels[p.rol] ?? p.rol}
+                      </span>
+                    </td>
+                    <td className="px-5 py-4 text-sm text-gray-700">
+                      {p.salario_monto ? `S/ ${p.salario_monto.toFixed(2)} (${p.salario_tipo})` : '—'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <div className="flex gap-2">
+                        <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                          <Edit2 size={15} />
+                        </button>
+                        <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                          <Trash2 size={15} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile cards */}
+          <div className="md:hidden space-y-3">
+            {personal.map((p) => (
+              <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-4">
+                <div className="flex justify-between items-start mb-3">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
+                      <User size={18} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
+                      {p.dni && <p className="text-xs text-gray-500">DNI: {p.dni}</p>}
+                    </div>
+                  </div>
+                  <div className="flex gap-1">
+                    <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
+                      <Edit2 size={15} />
+                    </button>
+                    <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
+                    {rolLabels[p.rol] ?? p.rol}
+                  </span>
+                  {p.salario_monto && (
+                    <span className="text-xs font-semibold text-emerald-600">
+                      S/ {p.salario_monto.toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span>
+                    </span>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {personal.length === 0 && (
+            <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+              <User size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-medium text-gray-600">No hay personal registrado</p>
+              <p className="text-sm text-gray-400 mt-1">Agrega al primer integrante del equipo.</p>
+            </div>
+          )}
+        </>
       )}
     </div>
   );

@@ -1,18 +1,21 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
-import CobrarBoleta from '@/components/CobrarBoleta';
-import { usePedidosRealtime, getLocalDateString } from '@/hooks/usePedidosRealtime';
-import { useAuth } from '@/hooks/useAuth';
-import { flatToPedidoUI } from '@/lib/pedido-mapper';
-import { updateItemEstado, createComandaWithItems } from '@/lib/db/pedidos';
-import { fetchMesas } from '@/lib/db/mesas';
-import { fetchProductosActivos } from '@/lib/db/productos';
-import { fetchProfiles, fetchDesperdicios, fetchPagosPersonal, insertDesperdicio, deleteDesperdicio, insertPagoPersonal, deletePagoPersonal } from '@/lib/db/admin';
-import type { ItemEstado } from '@/lib/database.types';
+import {
+  subscribePersonal,
+  subscribePedidos,
+  addPedido,
+  updatePedido,
+  subscribeWastes,
+  addWaste,
+  deleteWaste,
+  subscribePayments,
+  addPayment,
+  deletePayment,
+} from '@/lib/db';
 import { 
   Utensils, 
   Wine, 
@@ -72,7 +75,6 @@ const platosMenu = [
 
 
 export default function DashboardPage() {
-  const { profile } = useAuth();
   const colorMode = 'claro' as any;
   const setColorMode = (mode: ColorMode) => {};
   const [mounted, setMounted] = useState(false);
@@ -118,8 +120,6 @@ export default function DashboardPage() {
     notas: '',
   });
 
-  const { pedidos: pedidosFlat, reload: reloadPedidos } = usePedidosRealtime(simulatedDate);
-
   // History State
   const [rangoHistorial, setRangoHistorial] = useState<RangoHistorial>('dia');
   const [selectedDateForHistory, setSelectedDateForHistory] = useState('2026-05-19');
@@ -137,30 +137,55 @@ export default function DashboardPage() {
       setActiveTab(savedActiveTab);
     }
 
-    fetchProfiles().then((p) => {
-      const mozos = p.filter((x) => x.rol === 'mozo').map((x) => ({ id: x.id, nombre: x.nombre }));
-      setMozosList(mozos);
-      if (mozos[0]) {
-        setSelectedWaiterId(mozos[0].id);
-        setNewOrder((n) => ({ ...n, mozoId: mozos[0].id }));
+    // Cargar personal (mozos) desde Firebase en tiempo real
+    subscribePersonal((data: any[]) => {
+      const mozos = data
+        .filter((x: any) => x.rol === 'mozo' || x.rol === 'admin')
+        .map((x: any) => ({ id: x.id, nombre: x.nombre }));
+      if (mozos.length) {
+        setMozosList(mozos);
+        setSelectedWaiterId((prev) => prev || mozos[0].id);
+        setNewOrder((n) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
       }
     });
-    fetchDesperdicios().then((d) =>
-      setInsumosWasted(d.map((w) => ({ id: w.id, descripcion: w.descripcion, costo: Number(w.costo), fecha: w.fecha })))
-    );
-    fetchPagosPersonal().then((p) =>
-      setStaffPayments(p.map((x) => ({ id: x.id, mozoNombre: x.mozo_nombre, monto: Number(x.monto), concepto: x.concepto, fecha: x.fecha })))
-    );
-    fetchProductosActivos().then((prods) => {
-      if (prods.length) {
-        setPlatosMenuDynamic(
-          prods.map((p) => ({
-            name: p.nombre,
-            price: Number(p.precio),
-            category: p.categoria as 'comida' | 'bebidas',
-          }))
-        );
-      }
+
+    // Cargar wastes desde Firebase en tiempo real
+    subscribeWastes((data: any[]) => {
+      setInsumosWasted(data.map((w: any) => ({
+        id: w.id,
+        descripcion: w.descripcion,
+        costo: Number(w.costo),
+        fecha: w.fecha,
+      })));
+    });
+
+    // Cargar payments desde Firebase en tiempo real
+    subscribePayments((data: any[]) => {
+      setStaffPayments(data.map((x: any) => ({
+        id: x.id,
+        mozoNombre: x.mozoNombre,
+        monto: Number(x.monto),
+        concepto: x.concepto,
+        fecha: x.fecha,
+      })));
+    });
+
+    // Cargar pedidos desde Firebase en tiempo real
+    subscribePedidos((data: any[]) => {
+      setPedidos(data.map((p: any) => ({
+        id: p.id,
+        item: p.item,
+        cantidad: p.cantidad,
+        mesa: p.mesa,
+        precio: p.precio,
+        estado: p.estado,
+        hora: p.hora,
+        notas: p.notas ?? '',
+        mozoId: p.mozoId,
+        mozoNombre: p.mozoNombre,
+        fecha: p.fecha,
+        category: p.category,
+      })));
     });
 
     const savedSimDate = localStorage.getItem('puerto_habana_simulated_date');
@@ -188,11 +213,6 @@ export default function DashboardPage() {
 
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-    setPedidos(pedidosFlat.map(flatToPedidoUI) as Pedido[]);
-  }, [pedidosFlat, mounted]);
-
   // Real-time automatic midnight clock checker
   useEffect(() => {
     if (!mounted) return;
@@ -207,7 +227,6 @@ export default function DashboardPage() {
         setSelectedDateForHistory(todayStr);
         localStorage.setItem('puerto_habana_simulated_date', todayStr);
         
-        reloadPedidos();
         setToastMessage(`¡Nueva fecha de operación! El día de hoy ha comenzado (${formatDate(todayStr)}).`);
         setTimeout(() => setToastMessage(null), 6000);
       }
@@ -297,43 +316,35 @@ export default function DashboardPage() {
 
   const handleAddWaste = async () => {
     if (!wasteForm.descripcion || !wasteForm.costo) return;
-    await insertDesperdicio({
+    await addWaste({
       descripcion: wasteForm.descripcion,
       costo: parseFloat(wasteForm.costo) || 0,
       fecha: simulatedDate,
     });
-    const d = await fetchDesperdicios();
-    setInsumosWasted(d.map((w) => ({ id: w.id, descripcion: w.descripcion, costo: Number(w.costo), fecha: w.fecha })));
     setWasteForm({ descripcion: '', costo: '', fecha: '' });
     setToastMessage('Pérdida de insumo registrada correctamente.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleDeleteWaste = async (id: number) => {
-    await deleteDesperdicio(id);
-    const d = await fetchDesperdicios();
-    setInsumosWasted(d.map((w) => ({ id: w.id, descripcion: w.descripcion, costo: Number(w.costo), fecha: w.fecha })));
+  const handleDeleteWaste = async (id: string) => {
+    await deleteWaste(id);
   };
 
   const handleAddPayment = async () => {
     if (!paymentForm.concepto || !paymentForm.monto) return;
-    await insertPagoPersonal({
-      mozo_nombre: paymentForm.mozoNombre,
+    await addPayment({
+      mozoNombre: paymentForm.mozoNombre,
       monto: parseFloat(paymentForm.monto) || 0,
       concepto: paymentForm.concepto,
       fecha: simulatedDate,
     });
-    const p = await fetchPagosPersonal();
-    setStaffPayments(p.map((x) => ({ id: x.id, mozoNombre: x.mozo_nombre, monto: Number(x.monto), concepto: x.concepto, fecha: x.fecha })));
     setPaymentForm({ mozoNombre: mozosList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  const handleDeletePayment = async (id: number) => {
-    await deletePagoPersonal(id);
-    const p = await fetchPagosPersonal();
-    setStaffPayments(p.map((x) => ({ id: x.id, mozoNombre: x.mozo_nombre, monto: Number(x.monto), concepto: x.concepto, fecha: x.fecha })));
+  const handleDeletePayment = async (id: string) => {
+    await deletePayment(id);
   };
 
   // Helper to extract top dishes data dynamically from the orders list
@@ -465,54 +476,47 @@ export default function DashboardPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Add new order
+  // Add new order — guarda en Firebase
   const handleCreateOrder = async () => {
     const menu = platosMenuDynamic.length ? platosMenuDynamic : platosMenu;
     const selectedItem = menu[newOrder.platoIndex];
     const mozo = mozosList.find((m) => m.id === newOrder.mozoId);
     if (!mozo || !selectedItem) return;
 
-    try {
-      const mesas = await fetchMesas();
-      const mesaRow = mesas.find((m) => m.numero === newOrder.mesa);
-      if (!mesaRow) {
-        alert('Mesa no encontrada');
-        return;
-      }
-      const prods = await fetchProductosActivos();
-      const prod = prods.find((p) => p.nombre === selectedItem.name);
-      await createComandaWithItems(mesaRow.id, mozo.id, simulatedDate, [
-        {
-          productoId: prod?.id ?? 0,
-          nombre: selectedItem.name,
-          precio: selectedItem.price,
-          cantidad: newOrder.cantidad,
-          categoria: selectedItem.category,
-          notas: newOrder.notas,
-        },
-      ]);
-      setShowAddModal(false);
-      setNewOrder({
-        mozoId: mozosList[0]?.id ?? '',
-        mesa: 'Mesa 1',
-        platoIndex: 0,
-        cantidad: 1,
-        notas: '',
-      });
-      reloadPedidos();
-      setToastMessage(`Pedido registrado para ${mozo.nombre} en ${newOrder.mesa}.`);
-      setTimeout(() => setToastMessage(null), 4500);
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al crear pedido');
-    }
+    const now = new Date();
+    const horaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+    await addPedido({
+      item: selectedItem.name,
+      cantidad: newOrder.cantidad,
+      mesa: newOrder.mesa,
+      precio: selectedItem.price,
+      estado: 'Pendiente',
+      hora: horaStr,
+      notas: newOrder.notas,
+      category: selectedItem.category,
+      fecha: simulatedDate,
+      mozoId: mozo.id,
+      mozoNombre: mozo.nombre,
+    });
+
+    setShowAddModal(false);
+    setNewOrder({
+      mozoId: mozosList[0]?.id ?? '',
+      mesa: 'Mesa 1',
+      platoIndex: 0,
+      cantidad: 1,
+      notas: '',
+    });
+    setToastMessage(`Pedido registrado para ${mozo.nombre} en ${newOrder.mesa}.`);
+    setTimeout(() => setToastMessage(null), 4500);
   };
 
   const handleUpdateOrderStatus = async (
-    orderId: number,
+    orderId: string,
     nextStatus: 'Pendiente' | 'En preparación' | 'Listo'
   ) => {
-    await updateItemEstado(orderId, nextStatus as ItemEstado);
-    reloadPedidos();
+    await updatePedido(orderId, { estado: nextStatus });
     if (selectedMozo) {
       const mozoOrders = pedidos.filter(
         (p) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id
@@ -1859,23 +1863,12 @@ export default function DashboardPage() {
                     S/ {selectedMozo.pedidos.reduce((total, p) => total + (p.precio * p.cantidad), 0).toFixed(2)}
                   </span>
                 </div>
-                {selectedMozo.pedidos[0]?.comandaId && selectedMozo.pedidos[0]?.mesaId && profile && (
-                  <CobrarBoleta
-                    pedidos={selectedMozo.pedidos}
-                    comandaId={selectedMozo.pedidos[0].comandaId!}
-                    mesaId={selectedMozo.pedidos[0].mesaId!}
-                    mesaLabel={selectedMozo.pedidos[0].mesa}
-                    mozoNombre={selectedMozo.nombre}
-                    fecha={simulatedDate}
-                    hora={selectedMozo.pedidos[0].hora}
-                    userId={profile.id}
-                    onSuccess={() => reloadPedidos()}
-                  />
-                )}
                 <button
                   onClick={() => setShowBoleta(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-800 px-4 py-2.5 rounded-xl hover:bg-gray-200 transition-colors text-sm font-semibold mt-2"
+                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
                 >
+                  🧾 Imprimir Boleta
+                </button>
                   Vista previa boleta
                 </button>
               </div>

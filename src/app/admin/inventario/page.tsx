@@ -2,13 +2,16 @@
 
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus, Utensils, Wine, Package } from 'lucide-react';
-import { fetchAllProductos, upsertProducto, deleteProducto } from '@/lib/db/productos';
-
-type ColorMode = 'claro' | 'oscuro';
+import {
+  subscribeInventario,
+  addInventarioItem,
+  updateInventarioItem,
+  deleteInventarioItem,
+} from '@/lib/db';
 
 // Interfaces
 interface Comida {
-  id: number;
+  id: string;
   nombre: string;
   categoria: string;
   precio: number;
@@ -16,7 +19,7 @@ interface Comida {
 }
 
 interface Bebida {
-  id: number;
+  id: string;
   nombre: string;
   categoria: string;
   precio: number;
@@ -24,7 +27,7 @@ interface Bebida {
 }
 
 interface Taper {
-  id: number;
+  id: string;
   nombre: string;
   tipo: string;
   precio: number;
@@ -35,74 +38,39 @@ type ActiveSection = 'comida' | 'bebidas' | 'tapers' | 'nuevo-plato';
 
 export default function InventarioPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>('comida');
-  const colorMode = 'claro' as any;
-  const setColorMode = (mode: ColorMode) => {};
   const [mounted, setMounted] = useState(false);
-
-  const loadProductos = async () => {
-    const prods = await fetchAllProductos();
-    setComida(
-      prods
-        .filter((p) => p.categoria === 'comida' && p.activo)
-        .map((p) => ({
-          id: p.id,
-          nombre: p.nombre,
-          categoria: 'Platos',
-          precio: Number(p.precio),
-          cantidad: p.stock ?? 0,
-        }))
-    );
-    setBebidas(
-      prods
-        .filter((p) => p.categoria === 'bebidas' && p.activo)
-        .map((p) => ({
-          id: p.id,
-          nombre: p.nombre,
-          categoria: 'Bebidas',
-          precio: Number(p.precio),
-          cantidad: p.stock ?? 0,
-        }))
-    );
-  };
 
   useEffect(() => {
     setMounted(true);
-    loadProductos();
   }, []);
 
   // Estados para Comida
-  const [comida, setComida] = useState<Comida[]>([
-    { id: 1, nombre: 'Ceviche Clásico', categoria: 'Ceviches', precio: 25.00, cantidad: 15 },
-    { id: 2, nombre: 'Ceviche Mixto', categoria: 'Ceviches', precio: 30.00, cantidad: 12 },
-    { id: 3, nombre: 'Arroz con Mariscos', categoria: 'Platos Fuertes', precio: 35.00, cantidad: 8 },
-    { id: 4, nombre: 'Jalea de Pescado', categoria: 'Platos Fuertes', precio: 28.00, cantidad: 10 },
-    { id: 5, nombre: 'Causa Rellena', categoria: 'Entradas', precio: 15.00, cantidad: 20 },
-  ]);
+  const [comida, setComida] = useState<Comida[]>([]);
 
   // Estados para Bebidas
-  const [bebidas, setBebidas] = useState<Bebida[]>([
-    { id: 1, nombre: 'Cerveza Pilsen', categoria: 'Cervezas', precio: 8.00, cantidad: 50 },
-    { id: 2, nombre: 'Cerveza Cusqueña', categoria: 'Cervezas', precio: 9.00, cantidad: 30 },
-    { id: 3, nombre: 'Refresco Cola', categoria: 'Refrescos', precio: 3.00, cantidad: 80 },
-    { id: 4, nombre: 'Refresco Naranja', categoria: 'Refrescos', precio: 3.00, cantidad: 60 },
-    { id: 5, nombre: 'Pisco Sour', categoria: 'Cócteles', precio: 18.00, cantidad: 25 },
-  ]);
+  const [bebidas, setBebidas] = useState<Bebida[]>([]);
 
   // Estados para Tapers
-  const [tapers, setTapers] = useState<Taper[]>([
-    { id: 1, nombre: 'Taper Pequeño', tipo: 'Envase', precio: 2.00, cantidad: 100 },
-    { id: 2, nombre: 'Taper Mediano', tipo: 'Envase', precio: 3.00, cantidad: 80 },
-    { id: 3, nombre: 'Taper Grande', tipo: 'Envase', precio: 4.00, cantidad: 60 },
-    { id: 4, nombre: 'Bolsa Plástica', tipo: 'Empaque', precio: 0.50, cantidad: 200 },
-    { id: 5, nombre: 'Cubiertos Descartables', tipo: 'Accesorios', precio: 1.00, cantidad: 150 },
-  ]);
+  const [tapers, setTapers] = useState<Taper[]>([]);
+
+  // Suscripciones en tiempo real a Firebase
+  useEffect(() => {
+    const unsubComida = subscribeInventario('comida', (data) => setComida(data));
+    const unsubBebidas = subscribeInventario('bebidas', (data) => setBebidas(data));
+    const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
+    return () => {
+      unsubComida();
+      unsubBebidas();
+      unsubTapers();
+    };
+  }, []);
 
   // Estados para modales
   const [showModal, setShowModal] = useState(false);
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
-  
-  // Estados para ingredientes y creación de platos
+
+  // Estados para ingredientes (local, no persisten en DB)
   const [ingredientes, setIngredientes] = useState([
     { id: 1, nombre: 'Pescado', cantidad: 10, unidad: 'kg', precio: 25.00 },
     { id: 2, nombre: 'Limón', cantidad: 50, unidad: 'unidades', precio: 0.50 },
@@ -117,7 +85,6 @@ export default function InventarioPage() {
   const [ingredienteForm, setIngredienteForm] = useState({ nombre: '', cantidad: 0, unidad: 'kg', precio: 0 });
   const [showIngredienteModal, setShowIngredienteModal] = useState(false);
 
-  // Cálculos para el gráfico (SOLO INGRESOS)
   const totalComida = comida.reduce((sum, c) => sum + (c.precio * c.cantidad), 0);
   const totalBebidas = bebidas.reduce((sum, b) => sum + (b.precio * b.cantidad), 0);
   const totalTapers = tapers.reduce((sum, t) => sum + (t.precio * t.cantidad), 0);
@@ -126,72 +93,36 @@ export default function InventarioPage() {
   // Funciones para manejar modales
   const handleAdd = () => {
     setEditingItem(null);
-    if (activeSection === 'comida') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0 });
-    } else if (activeSection === 'bebidas') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0 });
-    } else {
+    if (activeSection === 'tapers') {
       setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0 });
+    } else {
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0 });
     }
     setShowModal(true);
   };
 
   const handleEdit = (item: any) => {
     setEditingItem(item);
-    if (activeSection === 'comida' || activeSection === 'bebidas') {
-      setFormData({ nombre: item.nombre, categoria: item.categoria, precio: item.precio, cantidad: item.cantidad });
-    } else {
+    if (activeSection === 'tapers') {
       setFormData({ nombre: item.nombre, tipo: item.tipo, precio: item.precio, cantidad: item.cantidad });
+    } else {
+      setFormData({ nombre: item.nombre, categoria: item.categoria, precio: item.precio, cantidad: item.cantidad });
     }
     setShowModal(true);
   };
 
-  const handleDelete = async (id: number) => {
-    if (confirm('¿Está seguro de eliminar este elemento?')) {
-      if (activeSection === 'comida' || activeSection === 'bebidas') {
-        await deleteProducto(id);
-        await loadProductos();
-      } else {
-        setTapers(tapers.filter(t => t.id !== id));
-      }
-    }
+  const handleDelete = async (id: string) => {
+    if (!confirm('¿Eliminar este elemento?')) return;
+    const seccion = activeSection as 'comida' | 'bebidas' | 'tapers';
+    await deleteInventarioItem(seccion, id);
   };
 
   const handleSave = async () => {
-    if (activeSection === 'comida') {
-      await upsertProducto({
-        id: editingItem?.id,
-        nombre: formData.nombre,
-        precio: formData.precio,
-        categoria: 'comida',
-        stock: formData.cantidad,
-        activo: true,
-      });
-      await loadProductos();
-    } else if (activeSection === 'bebidas') {
-      await upsertProducto({
-        id: editingItem?.id,
-        nombre: formData.nombre,
-        precio: formData.precio,
-        categoria: 'bebidas',
-        stock: formData.cantidad,
-        activo: true,
-      });
-      await loadProductos();
+    const seccion = activeSection as 'comida' | 'bebidas' | 'tapers';
+    if (editingItem) {
+      await updateInventarioItem(seccion, editingItem.id, formData);
     } else {
-      if (editingItem) {
-        setTapers(tapers.map(t => 
-          t.id === editingItem.id 
-            ? { ...t, ...formData }
-            : t
-        ));
-      } else {
-        const newTaper: Taper = {
-          id: Math.max(...tapers.map(t => t.id), 0) + 1,
-          ...formData,
-        };
-        setTapers([...tapers, newTaper]);
-      }
+      await addInventarioItem(seccion, formData);
     }
     setShowModal(false);
   };
@@ -257,14 +188,12 @@ export default function InventarioPage() {
   }
 
   return (
-    <div className={`animate-in fade-in duration-300 ${colorMode === 'oscuro' ? 'bg-black min-h-screen' : ''}`}>
+    <div className="animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
-        <h1 className={`text-3xl md:text-4xl font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>Inventario General</h1>
+        <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Inventario General</h1>
         <button
           onClick={handleAdd}
-          className={`flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm w-full md:w-auto ${
-            colorMode === 'oscuro' ? 'bg-white text-black hover:bg-gray-200' : 'bg-blue-600 text-white hover:bg-blue-700'
-          }`}
+          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm w-full md:w-auto bg-blue-600 text-white hover:bg-blue-700"
         >
           <Plus size={16} strokeWidth={2} />
           Agregar {activeSection === 'comida' ? 'Platillo' : activeSection === 'bebidas' ? 'Bebida' : 'Taper'}
@@ -272,8 +201,8 @@ export default function InventarioPage() {
       </div>
 
       {/* Gráfico de resumen */}
-      <div className={`border rounded-lg p-6 mb-8 ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'}`}>
-        <h2 className={`text-xl font-medium mb-6 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>Resumen de Inventario</h2>
+      <div className="border rounded-lg p-6 mb-8 bg-white border-gray-200">
+        <h2 className="text-xl font-medium mb-6 text-gray-900">Resumen de Inventario</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
           <div className="text-center">
