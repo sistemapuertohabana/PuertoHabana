@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { Edit, Trash2, Plus, Loader2 } from 'lucide-react';
-import { subscribeGastos, addGasto, updateGasto, deleteGasto } from '@/lib/db';
+
+const STORAGE_KEY = 'ph_gastos';
 
 interface Gasto {
   id: string;
@@ -28,14 +29,15 @@ export default function GastosPage() {
     fecha: new Date().toISOString().split('T')[0],
   });
 
-  // Suscripción en tiempo real a Firebase
-  useEffect(() => {
-    const unsub = subscribeGastos((data: Gasto[]) => {
-      setGastos(data.sort((a, b) => (b.createdAt ?? 0) - (a.createdAt ?? 0)));
-      setLoading(false);
-    });
-    return () => unsub();
-  }, []);
+  const loadGastos = () => {
+    try {
+      const data = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+      setGastos(data.sort((a: Gasto, b: Gasto) => b.id.localeCompare(a.id)));
+    } catch { setGastos([]); }
+    setLoading(false);
+  };
+
+  useEffect(() => { loadGastos(); }, []);
 
   const handleAdd = () => {
     setEditingGasto(null);
@@ -49,24 +51,27 @@ export default function GastosPage() {
     setShowModal(true);
   };
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = (id: string) => {
     if (!confirm('¿Eliminar este gasto?')) return;
-    await deleteGasto(id);
+    const updated = gastos.filter(g => g.id !== id);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setGastos(updated);
   };
 
-  const handleSave = async () => {
+  const handleSave = () => {
     if (!formData.descripcion.trim()) return;
     setIsSaving(true);
-    try {
-      if (editingGasto) {
-        await updateGasto(editingGasto.id, formData);
-      } else {
-        await addGasto(formData);
-      }
-      setShowModal(false);
-    } finally {
-      setIsSaving(false);
+    const current = JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+    let updated: Gasto[];
+    if (editingGasto) {
+      updated = current.map((g: Gasto) => g.id === editingGasto.id ? { ...g, ...formData } : g);
+    } else {
+      updated = [{ id: String(Date.now()), ...formData }, ...current];
     }
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(updated));
+    setGastos(updated);
+    setIsSaving(false);
+    setShowModal(false);
   };
 
   const totalGastos = gastos.reduce((sum, g) => sum + g.monto, 0);

@@ -4,18 +4,14 @@ import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
-import {
-  subscribePersonal,
-  subscribePedidos,
-  addPedido,
-  updatePedido,
-  subscribeWastes,
-  addWaste,
-  deleteWaste,
-  subscribePayments,
-  addPayment,
-  deletePayment,
-} from '@/lib/db';
+
+// Helper para obtener fecha local en formato YYYY-MM-DD
+function getLocalDateString(d: Date = new Date()) {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 import { 
   Utensils, 
   Wine, 
@@ -137,56 +133,39 @@ export default function DashboardPage() {
       setActiveTab(savedActiveTab);
     }
 
-    // Cargar personal (mozos) desde Firebase en tiempo real
-    subscribePersonal((data: any[]) => {
-      const mozos = data
-        .filter((x: any) => x.rol === 'mozo' || x.rol === 'admin')
-        .map((x: any) => ({ id: x.id, nombre: x.nombre }));
-      if (mozos.length) {
-        setMozosList(mozos);
-        setSelectedWaiterId((prev) => prev || mozos[0].id);
-        setNewOrder((n) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
-      }
-    });
+    // Cargar personal (mozos) desde localStorage
+    const savedPersonal = localStorage.getItem('ph_personal');
+    if (savedPersonal) {
+      try {
+        const data = JSON.parse(savedPersonal);
+        const mozos = data
+          .filter((x: any) => x.rol === 'mozo' || x.rol === 'admin')
+          .map((x: any) => ({ id: x.id, nombre: x.nombre }));
+        if (mozos.length) {
+          setMozosList(mozos);
+          setSelectedWaiterId((prev) => prev || mozos[0].id);
+          setNewOrder((n) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
+        }
+      } catch {}
+    }
 
-    // Cargar wastes desde Firebase en tiempo real
-    subscribeWastes((data: any[]) => {
-      setInsumosWasted(data.map((w: any) => ({
-        id: w.id,
-        descripcion: w.descripcion,
-        costo: Number(w.costo),
-        fecha: w.fecha,
-      })));
-    });
+    // Cargar wastes desde localStorage
+    const savedWastes = localStorage.getItem('puerto_habana_wastes');
+    if (savedWastes) {
+      try { setInsumosWasted(JSON.parse(savedWastes)); } catch {}
+    }
 
-    // Cargar payments desde Firebase en tiempo real
-    subscribePayments((data: any[]) => {
-      setStaffPayments(data.map((x: any) => ({
-        id: x.id,
-        mozoNombre: x.mozoNombre,
-        monto: Number(x.monto),
-        concepto: x.concepto,
-        fecha: x.fecha,
-      })));
-    });
+    // Cargar payments desde localStorage
+    const savedPayments = localStorage.getItem('puerto_habana_payments');
+    if (savedPayments) {
+      try { setStaffPayments(JSON.parse(savedPayments)); } catch {}
+    }
 
-    // Cargar pedidos desde Firebase en tiempo real
-    subscribePedidos((data: any[]) => {
-      setPedidos(data.map((p: any) => ({
-        id: p.id,
-        item: p.item,
-        cantidad: p.cantidad,
-        mesa: p.mesa,
-        precio: p.precio,
-        estado: p.estado,
-        hora: p.hora,
-        notas: p.notas ?? '',
-        mozoId: p.mozoId,
-        mozoNombre: p.mozoNombre,
-        fecha: p.fecha,
-        category: p.category,
-      })));
-    });
+    // Cargar pedidos desde localStorage
+    const savedPedidos = localStorage.getItem('puerto_habana_pedidos');
+    if (savedPedidos) {
+      try { setPedidos(JSON.parse(savedPedidos)); } catch {}
+    }
 
     const savedSimDate = localStorage.getItem('puerto_habana_simulated_date');
     const manualSimFlag = localStorage.getItem('puerto_habana_is_manual_sim') === 'true';
@@ -316,35 +295,47 @@ export default function DashboardPage() {
 
   const handleAddWaste = async () => {
     if (!wasteForm.descripcion || !wasteForm.costo) return;
-    await addWaste({
+    const newWaste = {
+      id: Date.now(),
       descripcion: wasteForm.descripcion,
       costo: parseFloat(wasteForm.costo) || 0,
       fecha: simulatedDate,
-    });
+    };
+    const updated = [newWaste, ...insumosWasted];
+    setInsumosWasted(updated);
+    localStorage.setItem('puerto_habana_wastes', JSON.stringify(updated));
     setWasteForm({ descripcion: '', costo: '', fecha: '' });
     setToastMessage('Pérdida de insumo registrada correctamente.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleDeleteWaste = async (id: string) => {
-    await deleteWaste(id);
+    const updated = insumosWasted.filter((w: any) => String(w.id) !== String(id));
+    setInsumosWasted(updated);
+    localStorage.setItem('puerto_habana_wastes', JSON.stringify(updated));
   };
 
   const handleAddPayment = async () => {
     if (!paymentForm.concepto || !paymentForm.monto) return;
-    await addPayment({
+    const newPayment = {
+      id: Date.now(),
       mozoNombre: paymentForm.mozoNombre,
       monto: parseFloat(paymentForm.monto) || 0,
       concepto: paymentForm.concepto,
       fecha: simulatedDate,
-    });
+    };
+    const updated = [newPayment, ...staffPayments];
+    setStaffPayments(updated);
+    localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
     setPaymentForm({ mozoNombre: mozosList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleDeletePayment = async (id: string) => {
-    await deletePayment(id);
+    const updated = staffPayments.filter((p: any) => String(p.id) !== String(id));
+    setStaffPayments(updated);
+    localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
   };
 
   // Helper to extract top dishes data dynamically from the orders list
@@ -486,7 +477,8 @@ export default function DashboardPage() {
     const now = new Date();
     const horaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    await addPedido({
+    const newPedidoObj: Pedido = {
+      id: Date.now(),
       item: selectedItem.name,
       cantidad: newOrder.cantidad,
       mesa: newOrder.mesa,
@@ -498,7 +490,10 @@ export default function DashboardPage() {
       fecha: simulatedDate,
       mozoId: mozo.id,
       mozoNombre: mozo.nombre,
-    });
+    };
+    const updatedPedidos = [newPedidoObj, ...pedidos];
+    setPedidos(updatedPedidos);
+    localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updatedPedidos));
 
     setShowAddModal(false);
     setNewOrder({
@@ -516,10 +511,14 @@ export default function DashboardPage() {
     orderId: string,
     nextStatus: 'Pendiente' | 'En preparación' | 'Listo'
   ) => {
-    await updatePedido(orderId, { estado: nextStatus });
+    const updated = pedidos.map((p: any) =>
+      String(p.id) === String(orderId) ? { ...p, estado: nextStatus } : p
+    );
+    setPedidos(updated);
+    localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updated));
     if (selectedMozo) {
-      const mozoOrders = pedidos.filter(
-        (p) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id
+      const mozoOrders = updated.filter(
+        (p: any) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id
       );
       setSelectedMozo({ ...selectedMozo, pedidos: mozoOrders });
     }
@@ -1590,7 +1589,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-red-500">S/ {w.costo.toFixed(2)}</span>
-                        <button onClick={() => handleDeleteWaste(w.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <button onClick={() => handleDeleteWaste(String(w.id))} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -1661,7 +1660,7 @@ export default function DashboardPage() {
                       </div>
                       <div className="flex items-center gap-3">
                         <span className="font-bold text-amber-500">S/ {p.monto.toFixed(2)}</span>
-                        <button onClick={() => handleDeletePayment(p.id)} className="text-gray-400 hover:text-red-500 transition-colors">
+                        <button onClick={() => handleDeletePayment(String(p.id))} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -1828,7 +1827,7 @@ export default function DashboardPage() {
                   <div className="flex gap-2 justify-end">
                     {pedido.estado === 'Pendiente' && (
                       <button
-                        onClick={() => handleUpdateOrderStatus(pedido.id, 'En preparación')}
+                        onClick={() => handleUpdateOrderStatus(String(pedido.id), 'En preparación')}
                         className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
                       >
                         Iniciar Preparación
@@ -1836,7 +1835,7 @@ export default function DashboardPage() {
                     )}
                     {pedido.estado === 'En preparación' && (
                       <button
-                        onClick={() => handleUpdateOrderStatus(pedido.id, 'Listo')}
+                        onClick={() => handleUpdateOrderStatus(String(pedido.id), 'Listo')}
                         className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
                       >
                         <Check size={12} />
@@ -1868,8 +1867,6 @@ export default function DashboardPage() {
                   className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
                 >
                   🧾 Imprimir Boleta
-                </button>
-                  Vista previa boleta
                 </button>
               </div>
             )}

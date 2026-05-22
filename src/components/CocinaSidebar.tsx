@@ -2,13 +2,14 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChefHat, User, LogOut } from 'lucide-react';
+import { ChefHat, User, LogOut, Clock } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto } from '@/hooks/useProfilePhoto';
 
 const menuItems = [
   { href: '/cocina', icon: ChefHat, label: 'Comandas' },
   { href: '/cocina/perfil', icon: User, label: 'Mi Perfil' },
+  { href: '/cocina/historial', icon: Clock, label: 'Historial' },
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {

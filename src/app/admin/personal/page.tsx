@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
-import { subscribePersonal, addPersonal, updatePersonal, deletePersonal } from '@/lib/db';
 
 type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato';
 type SalarioTipo = 'diario' | 'semanal' | 'mensual';
@@ -15,8 +14,9 @@ interface Personal {
   rol: Rol;
   salario_monto?: number;
   salario_tipo?: SalarioTipo;
-  createdAt?: number;
 }
+
+const STORAGE_KEY = 'ph_personal';
 
 const rolLabels: Record<string, string> = {
   admin: 'Administrador',
@@ -33,6 +33,16 @@ const rolColors: Record<string, string> = {
   ayudante_cocina: 'bg-yellow-100 text-yellow-700',
   lavaplato: 'bg-gray-100 text-gray-700',
 };
+
+function loadPersonal(): Personal[] {
+  try {
+    return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]');
+  } catch { return []; }
+}
+
+function savePersonal(data: Personal[]) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+}
 
 export default function PersonalPage() {
   const [personal, setPersonal] = useState<Personal[]>([]);
@@ -51,13 +61,9 @@ export default function PersonalPage() {
     salario_tipo: 'mensual' as SalarioTipo,
   });
 
-  // Suscripción en tiempo real a Firebase
   useEffect(() => {
-    const unsub = subscribePersonal((data) => {
-      setPersonal(data.sort((a: Personal, b: Personal) => (a.createdAt ?? 0) - (b.createdAt ?? 0)));
-      setLoading(false);
-    });
-    return () => unsub();
+    setPersonal(loadPersonal());
+    setLoading(false);
   }, []);
 
   const resetForm = () => {
@@ -66,9 +72,17 @@ export default function PersonalPage() {
     setError('');
   };
 
-  const handleOpenAdd = () => {
-    resetForm();
-    setShowForm(true);
+  const getNextMozoName = (currentPersonal: Personal[]) => {
+    const mozos = currentPersonal.filter(p => p.rol === 'mozo' && p.nombre.startsWith('Mozo '));
+    if (mozos.length === 0) return 'Mozo 1';
+    const nums = mozos.map(m => parseInt(m.nombre.replace('Mozo ', '')) || 0);
+    return `Mozo ${Math.max(...nums) + 1}`;
+  };
+
+  const handleOpenAdd = () => { 
+    resetForm(); 
+    setFormData(prev => ({ ...prev, nombre: getNextMozoName(personal) }));
+    setShowForm(true); 
   };
 
   const handleOpenEdit = (p: Personal) => {
@@ -84,48 +98,42 @@ export default function PersonalPage() {
     setShowForm(true);
   };
 
-  const handleClose = () => {
-    setShowForm(false);
-    resetForm();
-  };
+  const handleClose = () => { setShowForm(false); resetForm(); };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.nombre.trim()) { setError('El nombre es requerido'); return; }
     setError('');
     setIsSubmitting(true);
 
-    try {
-      const payload = {
-        nombre: formData.nombre.trim(),
-        dni: formData.dni.trim(),
-        email: formData.email.trim(),
-        rol: formData.rol,
-        salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : null,
-        salario_tipo: formData.salario_tipo,
-      };
+    const payload: Personal = {
+      id: editingId ?? String(Date.now()),
+      nombre: formData.nombre.trim(),
+      dni: formData.dni.trim() || undefined,
+      email: formData.email.trim() || undefined,
+      rol: formData.rol,
+      salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : undefined,
+      salario_tipo: formData.salario_tipo,
+    };
 
-      if (editingId) {
-        await updatePersonal(editingId, payload);
-      } else {
-        await addPersonal(payload);
-      }
-
-      handleClose();
-    } catch (err) {
-      setError('Error al guardar. Intenta de nuevo.');
-    } finally {
-      setIsSubmitting(false);
+    const current = loadPersonal();
+    let updated: Personal[];
+    if (editingId) {
+      updated = current.map(p => p.id === editingId ? payload : p);
+    } else {
+      updated = [...current, payload];
     }
+    savePersonal(updated);
+    setPersonal(updated);
+    setIsSubmitting(false);
+    handleClose();
   };
 
-  const handleDelete = async (id: string, nombre: string) => {
-    if (!confirm(`¿Eliminar a ${nombre}? Esta acción no se puede deshacer.`)) return;
-    try {
-      await deletePersonal(id);
-    } catch {
-      alert('Error al eliminar. Intenta de nuevo.');
-    }
+  const handleDelete = (id: string, nombre: string) => {
+    if (!confirm(`¿Eliminar a ${nombre}?`)) return;
+    const updated = personal.filter(p => p.id !== id);
+    savePersonal(updated);
+    setPersonal(updated);
   };
 
   return (
@@ -137,12 +145,9 @@ export default function PersonalPage() {
           <p className="text-sm text-gray-500 mt-1">Gestiona el equipo de Puerto Habana.</p>
         </div>
         {!showForm && (
-          <button
-            onClick={handleOpenAdd}
-            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto"
-          >
-            <Plus size={18} />
-            Agregar
+          <button onClick={handleOpenAdd}
+            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
+            <Plus size={18} />Agregar
           </button>
         )}
       </div>
@@ -152,12 +157,8 @@ export default function PersonalPage() {
         <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mb-8 animate-in slide-in-from-top-4 duration-300">
           <div className="flex justify-between items-start mb-6">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">
-                {editingId ? 'Editar Personal' : 'Nuevo Personal'}
-              </h2>
-              <p className="text-sm text-gray-500 mt-0.5">
-                {editingId ? 'Modifica los datos del personal' : 'Completa la información del nuevo integrante'}
-              </p>
+              <h2 className="text-xl font-semibold text-gray-900">{editingId ? 'Editar Personal' : 'Nuevo Personal'}</h2>
+              <p className="text-sm text-gray-500 mt-0.5">{editingId ? 'Modifica los datos' : 'Completa la información'}</p>
             </div>
             <button onClick={handleClose} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
               <X size={20} />
@@ -166,52 +167,34 @@ export default function PersonalPage() {
 
           <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre completo *</label>
-              <input
-                type="text"
-                value={formData.nombre}
-                onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                required
-                placeholder="Ej. Juan Pérez"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Nombre *</label>
+              <input type="text" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required placeholder="Ej. Juan Pérez"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">DNI</label>
-              <input
-                type="text"
-                value={formData.dni}
-                onChange={(e) => {
-                  const v = e.target.value.replace(/\D/g, '');
-                  if (v.length <= 8) setFormData({ ...formData, dni: v });
-                }}
-                placeholder="12345678"
-                maxLength={8}
-                inputMode="numeric"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
-              <p className="text-xs text-gray-400 mt-1">Solo números, 8 dígitos</p>
+              <input type="text" value={formData.dni}
+                onChange={(e) => { const v = e.target.value.replace(/\D/g, ''); if (v.length <= 8) setFormData({ ...formData, dni: v }); }}
+                placeholder="12345678" maxLength={8} inputMode="numeric"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Email</label>
-              <input
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                placeholder="mozo@puertohabana.pe"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+              <input type="email" value={formData.email} onChange={(e) => setFormData({ ...formData, email: e.target.value })} placeholder="mozo@puertohabana.pe"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Rol</label>
-              <select
-                value={formData.rol}
-                onChange={(e) => setFormData({ ...formData, rol: e.target.value as Rol })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-              >
+              <select value={formData.rol} onChange={(e) => {
+                  const newRol = e.target.value as Rol;
+                  setFormData(prev => ({ 
+                    ...prev, 
+                    rol: newRol,
+                    // Auto-fill for Mozo if we are creating a new one (not editing)
+                    nombre: (!editingId && newRol === 'mozo') ? getNextMozoName(personal) : (newRol !== 'mozo' && prev.nombre.startsWith('Mozo ') ? '' : prev.nombre)
+                  }));
+                }}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
                 <option value="admin">Administrador</option>
                 <option value="mozo">Mozo</option>
                 <option value="cocina">Cocinero</option>
@@ -219,43 +202,23 @@ export default function PersonalPage() {
                 <option value="lavaplato">Lavaplatos</option>
               </select>
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>
-              <input
-                type="number"
-                step="0.01"
-                min="0"
-                value={formData.salario_monto}
-                onChange={(e) => setFormData({ ...formData, salario_monto: e.target.value })}
-                placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-              />
+              <input type="number" step="0.01" min="0" value={formData.salario_monto} onChange={(e) => setFormData({ ...formData, salario_monto: e.target.value })} placeholder="0.00"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
-
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Salario</label>
-              <select
-                value={formData.salario_tipo}
-                onChange={(e) => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white"
-              >
+              <select value={formData.salario_tipo} onChange={(e) => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
                 <option value="diario">Diario</option>
                 <option value="semanal">Semanal</option>
                 <option value="mensual">Mensual</option>
               </select>
             </div>
-
-            {error && (
-              <div className="md:col-span-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">
-                {error}
-              </div>
-            )}
-
+            {error && <div className="md:col-span-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>}
             <div className="md:col-span-2 flex justify-end gap-3 pt-2">
-              <button type="button" onClick={handleClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
-                Cancelar
-              </button>
+              <button type="button" onClick={handleClose} className="px-5 py-2.5 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">Cancelar</button>
               <button type="submit" disabled={isSubmitting} className="px-5 py-2.5 text-sm font-semibold text-white bg-blue-600 rounded-xl hover:bg-blue-700 transition-colors flex items-center gap-2 disabled:opacity-70 min-w-[130px] justify-center">
                 {isSubmitting ? <Loader2 size={16} className="animate-spin" /> : (editingId ? 'Guardar Cambios' : 'Agregar')}
               </button>
@@ -264,14 +227,8 @@ export default function PersonalPage() {
         </div>
       )}
 
-      {/* Loading */}
-      {loading && (
-        <div className="flex justify-center items-center py-20">
-          <Loader2 size={32} className="animate-spin text-gray-300" />
-        </div>
-      )}
+      {loading && <div className="flex justify-center py-20"><Loader2 size={32} className="animate-spin text-gray-300" /></div>}
 
-      {/* Lista */}
       {!loading && (
         <>
           {/* Desktop table */}
@@ -279,11 +236,9 @@ export default function PersonalPage() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Nombre</th>
-                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">DNI</th>
-                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Rol</th>
-                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Salario</th>
-                  <th className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">Acciones</th>
+                  {['Nombre', 'DNI', 'Rol', 'Salario', 'Acciones'].map(h => (
+                    <th key={h} className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{h}</th>
+                  ))}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
@@ -291,9 +246,7 @@ export default function PersonalPage() {
                   <tr key={p.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-5 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0">
-                          <User size={16} />
-                        </div>
+                        <div className="w-9 h-9 rounded-full bg-blue-50 flex items-center justify-center text-blue-600 flex-shrink-0"><User size={16} /></div>
                         <div>
                           <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
                           {p.email && <p className="text-xs text-gray-400">{p.email}</p>}
@@ -302,21 +255,15 @@ export default function PersonalPage() {
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-600">{p.dni || '—'}</td>
                     <td className="px-5 py-4">
-                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
-                        {rolLabels[p.rol] ?? p.rol}
-                      </span>
+                      <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>{rolLabels[p.rol] ?? p.rol}</span>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-700">
                       {p.salario_monto ? `S/ ${p.salario_monto.toFixed(2)} (${p.salario_tipo})` : '—'}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
-                        <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                          <Edit2 size={15} />
-                        </button>
-                        <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                          <Trash2 size={15} />
-                        </button>
+                        <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
+                        <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={15} /></button>
                       </div>
                     </td>
                   </tr>
@@ -331,32 +278,20 @@ export default function PersonalPage() {
               <div key={p.id} className="bg-white border border-gray-200 rounded-xl p-4">
                 <div className="flex justify-between items-start mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600">
-                      <User size={18} />
-                    </div>
+                    <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center text-blue-600"><User size={18} /></div>
                     <div>
                       <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
                       {p.dni && <p className="text-xs text-gray-500">DNI: {p.dni}</p>}
                     </div>
                   </div>
                   <div className="flex gap-1">
-                    <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
-                      <Edit2 size={15} />
-                    </button>
-                    <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors">
-                      <Trash2 size={15} />
-                    </button>
+                    <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit2 size={15} /></button>
+                    <button onClick={() => handleDelete(p.id, p.nombre)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={15} /></button>
                   </div>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
-                    {rolLabels[p.rol] ?? p.rol}
-                  </span>
-                  {p.salario_monto && (
-                    <span className="text-xs font-semibold text-emerald-600">
-                      S/ {p.salario_monto.toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span>
-                    </span>
-                  )}
+                  <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>{rolLabels[p.rol] ?? p.rol}</span>
+                  {p.salario_monto && <span className="text-xs font-semibold text-emerald-600">S/ {p.salario_monto.toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span></span>}
                 </div>
               </div>
             ))}

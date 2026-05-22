@@ -1,389 +1,384 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Plus, Link as LinkIcon, X, Minus, CheckCircle, Users, Edit2, Check } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { fetchMesas, juntarMesas, separarMesas, updateMesa } from '@/lib/db/mesas';
-import { fetchProductosActivos } from '@/lib/db/productos';
-import { createComandaWithItems } from '@/lib/db/pedidos';
-import { getLocalDateString } from '@/hooks/usePedidosRealtime';
-import { createClient } from '@/lib/supabase/client';
-import type { MesaRow, ProductoRow } from '@/lib/database.types';
-import CobrarBoleta from '@/components/CobrarBoleta';
-import { fetchPedidosByFecha } from '@/lib/db/pedidos';
-import { flatToPedidoUI } from '@/lib/pedido-mapper';
+import { useState, useEffect } from 'react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle } from 'lucide-react';
 
-export default function MozoMesasPage() {
-  const { profile } = useAuth();
-  const [mesas, setMesas] = useState<MesaRow[]>([]);
-  const [productos, setProductos] = useState<ProductoRow[]>([]);
-  const [isJoinMode, setIsJoinMode] = useState(false);
-  const [selectedMesas, setSelectedMesas] = useState<number[]>([]);
-  const [isOrderModalOpen, setIsOrderModalOpen] = useState(false);
-  const [activeMesaIds, setActiveMesaIds] = useState<number[]>([]);
-  const [cart, setCart] = useState<{ id: number; qty: number }[]>([]);
-  const [editingCapacidad, setEditingCapacidad] = useState<number | null>(null);
-  const [tempCapacidad, setTempCapacidad] = useState(0);
-  const [mounted, setMounted] = useState(false);
-  const [currentDate, setCurrentDate] = useState('');
-  const [openComanda, setOpenComanda] = useState<{
-    comandaId: string;
-    mesaId: number;
-    mesaLabel: string;
-    hora: string;
-    pedidos: ReturnType<typeof flatToPedidoUI>[];
-  } | null>(null);
-  const [showCobrar, setShowCobrar] = useState(false);
+interface MesaConfig {
+  id: string;
+  nombre: string;
+  sillas: number;
+  unidaCon: string[];
+}
 
-  const syncDate = () => {
-    setCurrentDate(localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString());
-  };
+const DEFAULT_MESAS: MesaConfig[] = Array.from({ length: 8 }).map((_, i) => ({
+  id: `mesa-${i + 1}`,
+  nombre: `Mesa ${i + 1}`,
+  sillas: 4,
+  unidaCon: [],
+}));
 
-  const loadMesas = useCallback(async () => {
-    const data = await fetchMesas();
-    setMesas(data);
-  }, []);
+const MENU = [
+  { name: 'Ceviche Mixto', price: 45.00, category: 'comida' as const },
+  { name: 'Ceviche de Pescado', price: 42.00, category: 'comida' as const },
+  { name: 'Arroz con Mariscos', price: 38.00, category: 'comida' as const },
+  { name: 'Lomo Saltado', price: 32.00, category: 'comida' as const },
+  { name: 'Jalea Mixta', price: 40.00, category: 'comida' as const },
+  { name: 'Leche de Tigre', price: 20.00, category: 'comida' as const },
+  { name: 'Cerveza Pilsner', price: 12.00, category: 'bebidas' as const },
+  { name: 'Inca Kola', price: 5.00, category: 'bebidas' as const },
+  { name: 'Chicha Morada', price: 8.00, category: 'bebidas' as const },
+  { name: 'Jugo de Naranja', price: 8.00, category: 'bebidas' as const },
+];
 
-  const loadProductos = useCallback(async () => {
-    const data = await fetchProductosActivos();
-    setProductos(data);
-  }, []);
+function getLocalDateString() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+export default function MozoPage() {
+  const [activeMesa, setActiveMesa] = useState<MesaConfig | null>(null);
+  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string }[]>([]);
+  const [success, setSuccess] = useState(false);
+  const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
+  
+  // Config mode
+  const [isConfigMode, setIsConfigMode] = useState(false);
+  const [mesas, setMesas] = useState<MesaConfig[]>([]);
+  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+  const [editingSillas, setEditingSillas] = useState<string | null>(null);
 
   useEffect(() => {
-    setMounted(true);
-    syncDate();
-    loadMesas();
-    loadProductos();
-
-    const supabase = createClient();
-    const channel = supabase
-      .channel('mozo-mesas')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'mesas' }, () => loadMesas())
-      .subscribe();
-
-    window.addEventListener('storage', syncDate);
-    return () => {
-      supabase.removeChannel(channel);
-      window.removeEventListener('storage', syncDate);
-    };
-  }, [loadMesas, loadProductos]);
-
-  const handleMesaClick = (id: number) => {
-    if (!isJoinMode) return;
-    if (selectedMesas.includes(id)) {
-      setSelectedMesas(selectedMesas.filter((m) => m !== id));
-    } else if (selectedMesas.length < 2) {
-      setSelectedMesas([...selectedMesas, id]);
+    try {
+      const stored = localStorage.getItem('puerto_habana_mesas');
+      if (stored) {
+        setMesas(JSON.parse(stored));
+      } else {
+        setMesas(DEFAULT_MESAS);
+        localStorage.setItem('puerto_habana_mesas', JSON.stringify(DEFAULT_MESAS));
+      }
+    } catch {
+      setMesas(DEFAULT_MESAS);
     }
+  }, []);
+
+  const saveMesas = (newMesas: MesaConfig[]) => {
+    setMesas(newMesas);
+    localStorage.setItem('puerto_habana_mesas', JSON.stringify(newMesas));
   };
 
-  const juntarMesasHandler = async () => {
-    if (selectedMesas.length !== 2) return;
-    await juntarMesas(selectedMesas[0], selectedMesas[1]);
-    setIsJoinMode(false);
-    setSelectedMesas([]);
-    await loadMesas();
-  };
-
-  const separarMesasHandler = async (a: number, b: number) => {
-    await separarMesas(a, b);
-    await loadMesas();
-  };
-
-  const openOrder = (ids: number[]) => {
-    if (isJoinMode) return;
-    setActiveMesaIds(ids);
-    setCart([]);
-    setIsOrderModalOpen(true);
-    setShowCobrar(false);
-    setOpenComanda(null);
-  };
-
-  const openCobrar = async (mesaId: number, mesaLabel: string) => {
-    const fecha = currentDate || getLocalDateString();
-    const flat = await fetchPedidosByFecha(fecha);
-    const pedidos = flat
-      .map(flatToPedidoUI)
-      .filter((p) => p.mesaId === mesaId && p.comanda_estado !== 'cerrada');
-    const comandaId = pedidos[0]?.comandaId;
-    if (!comandaId || !pedidos.length) {
-      alert('No hay comanda abierta para esta mesa.');
-      return;
+  useEffect(() => {
+    try {
+      const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+      const mozoId = session.id || '';
+      const pedidos = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+      const hoy = localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString();
+      const filtered = pedidos.filter((p: any) => p.fecha === hoy && p.estado !== 'Listo' && p.mozoId === mozoId);
+      setMesasOcupadas(new Set(filtered.map((p: any) => p.mesa)));
+    } catch {
+      setMesasOcupadas(new Set());
     }
-    setOpenComanda({
-      comandaId,
-      mesaId,
-      mesaLabel,
-      hora: pedidos[0].hora,
-      pedidos,
-    });
-    setShowCobrar(true);
-  };
+  }, []);
 
-  const updateCart = (productoId: number, delta: number) => {
-    setCart((prev) => {
-      const existing = prev.find((i) => i.id === productoId);
+  const updateCart = (item: typeof MENU[0], delta: number) => {
+    setCart(prev => {
+      const existing = prev.find(c => c.name === item.name);
       if (existing) {
         const newQty = existing.qty + delta;
-        if (newQty <= 0) return prev.filter((i) => i.id !== productoId);
-        return prev.map((i) => (i.id === productoId ? { ...i, qty: newQty } : i));
+        if (newQty <= 0) return prev.filter(c => c.name !== item.name);
+        return prev.map(c => c.name === item.name ? { ...c, qty: newQty } : c);
       }
-      if (delta > 0) return [...prev, { id: productoId, qty: delta }];
+      if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category }];
       return prev;
     });
   };
 
-  const totalCartPrice = cart.reduce((total, item) => {
-    const mi = productos.find((m) => m.id === item.id);
-    return total + (mi ? Number(mi.precio) * item.qty : 0);
-  }, 0);
+  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
 
-  const submitOrder = async () => {
-    if (!profile) return alert('Sesión no válida');
-    if (cart.length === 0) return alert('No has agregado productos a la comanda.');
+  const handleEnviar = () => {
+    if (!activeMesa || cart.length === 0) return;
+    const fecha = typeof window !== 'undefined'
+      ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
+      : getLocalDateString();
+    const now = new Date();
+    const hora = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const fecha = currentDate || getLocalDateString();
-    const primaryMesaId = activeMesaIds[0];
-
+    const mesaName = getDisplayName(activeMesa);
+    
+    // Get actual mozo details
+    let mozoId = 'mozo';
+    let mozoNombre = 'Mozo';
     try {
-      await createComandaWithItems(
-        primaryMesaId,
-        profile.id,
-        fecha,
-        cart.map((c) => {
-          const p = productos.find((m) => m.id === c.id)!;
-          return {
-            productoId: p.id,
-            nombre: p.nombre,
-            precio: Number(p.precio),
-            cantidad: c.qty,
-            categoria: p.categoria,
-          };
-        })
-      );
-
-      for (const mid of activeMesaIds) {
-        await updateMesa(mid, { estado: 'Ocupada' });
+      const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+      if (session && session.nombre) {
+        mozoId = session.id || 'mozo';
+        mozoNombre = session.nombre;
       }
-      await loadMesas();
-      setIsOrderModalOpen(false);
-      setCart([]);
-      alert('¡Comanda enviada a cocina exitosamente!');
-    } catch (e) {
-      alert(e instanceof Error ? e.message : 'Error al enviar comanda');
+    } catch {}
+
+    const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+    const nuevos = cart.map(c => ({
+      id: Date.now() + Math.random(),
+      item: c.name,
+      cantidad: c.qty,
+      mesa: mesaName,
+      precio: c.price,
+      estado: 'Pendiente',
+      hora,
+      notas: '',
+      category: c.category,
+      fecha,
+      mozoId,
+      mozoNombre,
+    }));
+    localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
+    setCart([]);
+    setActiveMesa(null);
+    setSuccess(true);
+    
+    // Update occupied state immediately
+    setMesasOcupadas(prev => {
+      const next = new Set(prev);
+      next.add(mesaName);
+      return next;
+    });
+    
+    // Notify cocina
+    window.dispatchEvent(new Event('storage'));
+    
+    setTimeout(() => setSuccess(false), 3000);
+  };
+
+  const getDisplayName = (m: MesaConfig) => {
+    if (m.unidaCon.length === 0) return m.nombre;
+    const allIds = [m.id, ...m.unidaCon].sort();
+    const group = mesas.filter(x => allIds.includes(x.id)).map(x => x.nombre);
+    return group.join(' + ');
+  };
+
+  const getGroupLeader = (m: MesaConfig) => {
+    if (m.unidaCon.length === 0) return m;
+    const allIds = [m.id, ...m.unidaCon].sort();
+    return mesas.find(x => x.id === allIds[0]) || m;
+  };
+
+  const handleMerge = (mesa2Id: string) => {
+    if (!mergeTarget || mergeTarget === mesa2Id) {
+      setMergeTarget(null);
+      return;
     }
-  };
+    const m1 = mesas.find(x => x.id === mergeTarget);
+    const m2 = mesas.find(x => x.id === mesa2Id);
+    if (!m1 || !m2) return;
 
-  const saveCapacidad = async (id: number) => {
-    if (tempCapacidad < 1) return;
-    await updateMesa(id, { capacidad: tempCapacidad });
-    setEditingCapacidad(null);
-    await loadMesas();
-  };
-
-  const getEstadoStyles = (estado: string, isJoined: boolean) => {
-    if (isJoined) return 'bg-indigo-50 border-indigo-300 text-indigo-800';
-    switch (estado) {
-      case 'Disponible':
-        return 'bg-green-50 border-green-200 text-green-800';
-      case 'Ocupada':
-        return 'bg-red-50 border-red-200 text-red-800';
-      case 'Reservada':
-        return 'bg-amber-50 border-amber-200 text-amber-800';
-      default:
-        return 'bg-gray-50 border-gray-200 text-gray-800';
-    }
-  };
-
-  const processedIds = new Set<number>();
-  const renderGroups: (
-    | { type: 'single'; mesa: MesaRow }
-    | { type: 'joined'; a: MesaRow; b: MesaRow }
-  )[] = [];
-
-  mesas.forEach((mesa) => {
-    if (processedIds.has(mesa.id)) return;
-    if (mesa.juntada_con_id) {
-      const pareja = mesas.find((m) => m.id === mesa.juntada_con_id);
-      if (pareja && !processedIds.has(pareja.id)) {
-        renderGroups.push({ type: 'joined', a: mesa, b: pareja });
-        processedIds.add(mesa.id);
-        processedIds.add(pareja.id);
-        return;
+    const newMesas = mesas.map(m => {
+      if (m.id === m1.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m2.id, ...m2.unidaCon])] };
+      if (m.id === m2.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, ...m1.unidaCon])] };
+      // Also update any others already in the group
+      if (m1.unidaCon.includes(m.id) || m2.unidaCon.includes(m.id)) {
+         return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, m2.id, ...m1.unidaCon, ...m2.unidaCon].filter(id => id !== m.id))] };
       }
+      return m;
+    });
+    saveMesas(newMesas);
+    setMergeTarget(null);
+  };
+
+  const handleUnmerge = (mesaId: string) => {
+    const mesa = mesas.find(x => x.id === mesaId);
+    if (!mesa) return;
+    
+    const newMesas = mesas.map(m => {
+      if (m.id === mesaId) return { ...m, unidaCon: [] };
+      if (mesa.unidaCon.includes(m.id)) {
+        return { ...m, unidaCon: m.unidaCon.filter(id => id !== mesaId) };
+      }
+      return m;
+    });
+    saveMesas(newMesas);
+  };
+
+  // Group mesas for display
+  const displayMesas: MesaConfig[] = [];
+  const processed = new Set<string>();
+  
+  mesas.forEach(m => {
+    if (processed.has(m.id)) return;
+    const leader = getGroupLeader(m);
+    if (!processed.has(leader.id)) {
+      displayMesas.push(leader);
+      leader.unidaCon.forEach(id => processed.add(id));
+      processed.add(leader.id);
     }
-    renderGroups.push({ type: 'single', mesa });
-    processedIds.add(mesa.id);
   });
 
-  const getActiveLabel = () => {
-    return activeMesaIds.map((id) => mesas.find((m) => m.id === id)?.numero).filter(Boolean).join(' + ');
-  };
-
-  if (!mounted) return null;
-
   return (
-    <div className="animate-in fade-in duration-300 pb-20 lg:pb-0">
-      <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Mesas y Comandas</h1>
-            <span className="bg-indigo-50 text-indigo-700 text-xs font-bold px-3 py-1.5 rounded-full border border-indigo-200">
-              Operando: {currentDate}
-            </span>
-          </div>
-          <p className="text-sm text-gray-500">
-            {profile ? `Mozo: ${profile.nombre}` : ''} · {isJoinMode ? `Unir mesas (${selectedMesas.length}/2)` : 'Clic en mesa para pedido o cobro.'}
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10 flex justify-between items-center">
+        <h1 className="text-xl font-bold text-gray-900">Puerto Habana — Mesas</h1>
+        <button 
+          onClick={() => setIsConfigMode(!isConfigMode)}
+          className={`p-2 rounded-xl transition-colors ${isConfigMode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+        >
+          <Settings size={20} />
+        </button>
+      </div>
+
+      {success && (
+        <div className="mx-4 mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium">
+          ✅ Pedido enviado a cocina correctamente
+        </div>
+      )}
+
+      {/* Grid de mesas */}
+      {!activeMesa && (
+        <div className="p-4">
+          <p className="text-sm text-gray-500 mb-4">
+            {isConfigMode ? 'Modo configuración: Edita sillas o une mesas' : 'Selecciona una mesa para tomar el pedido'}
           </p>
-        </div>
-        <div className="flex gap-2">
-          {isJoinMode ? (
-            <>
-              <button
-                onClick={() => { setIsJoinMode(false); setSelectedMesas([]); }}
-                className="px-4 py-2.5 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium"
-              >
-                Cancelar
-              </button>
-              {selectedMesas.length >= 2 && (
-                <button onClick={juntarMesasHandler} className="px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">
-                  Confirmar Unión
-                </button>
-              )}
-            </>
-          ) : (
-            <button onClick={() => setIsJoinMode(true)} className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-indigo-600 text-white text-sm font-bold">
-              <LinkIcon size={18} /> Unir Mesas
-            </button>
-          )}
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-5">
-        {renderGroups.map((group) => {
-          if (group.type === 'joined') {
-            const { a, b } = group;
-            return (
-              <div key={`j-${a.id}-${b.id}`} className="col-span-1 sm:col-span-2">
-                <div className="relative bg-gradient-to-br from-indigo-50 to-blue-50 border-2 border-indigo-200/60 rounded-3xl p-6">
-                  <div className="text-center mb-4 font-bold text-indigo-800">{a.numero} + {b.numero}</div>
-                  <button onClick={() => openOrder([a.id, b.id])} className="w-full bg-indigo-600 text-white font-bold py-3 rounded-xl mb-2">
-                    <Plus size={18} className="inline mr-1" /> Tomar Pedido
-                  </button>
-                  {a.estado === 'Ocupada' && (
-                    <button onClick={() => openCobrar(a.id, `${a.numero} + ${b.numero}`)} className="w-full bg-green-600 text-white font-bold py-2 rounded-xl text-sm">
-                      Cobrar / Boleta
-                    </button>
-                  )}
-                  <button onClick={() => separarMesasHandler(a.id, b.id)} className="mt-3 text-xs text-indigo-400 w-full">
-                    Separar mesas
-                  </button>
-                </div>
-              </div>
-            );
-          }
-
-          const { mesa } = group;
-          const isSelected = selectedMesas.includes(mesa.id);
-          return (
-            <div
-              key={mesa.id}
-              onClick={() => (isJoinMode ? handleMesaClick(mesa.id) : openOrder([mesa.id]))}
-              className={`relative rounded-3xl border-2 p-6 cursor-pointer transition-all ${getEstadoStyles(mesa.estado, false)} ${isSelected ? 'ring-4 ring-indigo-500/20' : ''}`}
-            >
-              <div className="text-center">
-                <h3 className="text-2xl font-black mb-2">{mesa.numero}</h3>
-                <span className="text-xs font-bold px-3 py-1 rounded-full bg-white/80">{mesa.estado}</span>
-                <div className="mt-4 flex justify-center" onClick={(e) => e.stopPropagation()}>
-                  {editingCapacidad === mesa.id ? (
-                    <div className="flex gap-1 items-center">
-                      <input type="number" value={tempCapacidad} min={1} onChange={(e) => setTempCapacidad(parseInt(e.target.value) || 1)} className="w-12 text-xs border rounded px-1" />
-                      <button onClick={() => saveCapacidad(mesa.id)}><Check size={14} /></button>
-                    </div>
-                  ) : (
-                    <span className="text-sm font-bold cursor-pointer" onClick={() => { setEditingCapacidad(mesa.id); setTempCapacidad(mesa.capacidad); }}>
-                      {mesa.capacidad} sillas <Edit2 size={12} className="inline" />
-                    </span>
-                  )}
-                </div>
-                {mesa.estado === 'Ocupada' && !isJoinMode && (
-                  <button
-                    onClick={(e) => { e.stopPropagation(); openCobrar(mesa.id, mesa.numero); }}
-                    className="mt-3 w-full bg-green-600 text-white text-sm font-bold py-2 rounded-xl"
-                  >
-                    Cobrar / Boleta
-                  </button>
-                )}
-              </div>
+          
+          {isConfigMode && mergeTarget && (
+            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm flex justify-between items-center">
+              <span>Selecciona otra mesa para unir con <b>{mesas.find(x => x.id === mergeTarget)?.nombre}</b></span>
+              <button onClick={() => setMergeTarget(null)}><X size={16}/></button>
             </div>
-          );
-        })}
-      </div>
+          )}
 
-      {showCobrar && openComanda && profile && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-xl">
-            <h3 className="font-bold text-lg mb-4">Cobrar — {openComanda.mesaLabel}</h3>
-            <CobrarBoleta
-              pedidos={openComanda.pedidos}
-              comandaId={openComanda.comandaId}
-              mesaId={openComanda.mesaId}
-              mesaLabel={openComanda.mesaLabel}
-              mozoNombre={profile.nombre}
-              fecha={currentDate}
-              hora={openComanda.hora}
-              userId={profile.id}
-              onSuccess={() => { setShowCobrar(false); loadMesas(); }}
-            />
-            <button onClick={() => setShowCobrar(false)} className="mt-4 w-full text-sm text-gray-500">Cerrar</button>
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+            {(isConfigMode ? mesas : displayMesas).map(mesa => {
+              const dName = isConfigMode ? mesa.nombre : getDisplayName(mesa);
+              const ocupada = !isConfigMode && mesasOcupadas.has(dName);
+              const isMergeTarget = isConfigMode && mergeTarget === mesa.id;
+              
+              return (
+                <div key={mesa.id} className="relative">
+                  <button
+                    onClick={() => { 
+                      if (isConfigMode) {
+                        if (mergeTarget) handleMerge(mesa.id);
+                        else setMergeTarget(mesa.id);
+                      } else {
+                        setActiveMesa(mesa); 
+                        setCart([]); 
+                      }
+                    }}
+                    className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${
+                      isMergeTarget ? 'bg-blue-50 border-blue-500 shadow-md transform scale-[1.02]' :
+                      isConfigMode ? 'bg-white border-gray-200 hover:border-blue-300' :
+                      ocupada
+                        ? 'bg-red-50 border-red-200 text-red-700'
+                        : 'bg-green-50 border-green-200 text-green-700 hover:shadow-md'
+                    }`}
+                  >
+                    <div className="font-bold text-lg mb-1">{dName}</div>
+                    
+                    {!isConfigMode ? (
+                      <div className={`text-xs font-medium ${ocupada ? 'text-red-500' : 'text-green-600'}`}>
+                        {ocupada ? 'Ocupada' : 'Disponible'} • {mesa.unidaCon.length === 0 ? `${mesa.sillas} sillas` : 'Grupo'}
+                      </div>
+                    ) : (
+                      <div className="flex justify-between items-center mt-2">
+                        <div className="flex items-center gap-1 text-gray-500 text-xs">
+                          <UsersIcon size={12} />
+                          {editingSillas === mesa.id ? (
+                            <input 
+                              type="number"
+                              autoFocus
+                              className="w-12 border border-gray-300 rounded px-1"
+                              defaultValue={mesa.sillas}
+                              onBlur={(e) => {
+                                const v = parseInt(e.target.value);
+                                if (v > 0) saveMesas(mesas.map(m => m.id === mesa.id ? {...m, sillas: v} : m));
+                                setEditingSillas(null);
+                              }}
+                              onClick={(e) => e.stopPropagation()}
+                            />
+                          ) : (
+                            <span onClick={(e) => { e.stopPropagation(); setEditingSillas(mesa.id); }} className="cursor-pointer hover:text-blue-600 border-b border-dashed border-gray-400">
+                              {mesa.sillas} sillas
+                            </span>
+                          )}
+                        </div>
+                        {mesa.unidaCon.length > 0 && (
+                          <button 
+                            onClick={(e) => { e.stopPropagation(); handleUnmerge(mesa.id); }}
+                            className="text-orange-500 hover:bg-orange-50 p-1 rounded flex items-center gap-1 text-[10px] font-bold uppercase"
+                          >
+                            <Unlink size={12} /> Separar
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </button>
+                  {isConfigMode && mesa.unidaCon.length > 0 && !isMergeTarget && (
+                    <div className="absolute -top-2 -right-2 bg-blue-100 text-blue-600 rounded-full p-1 border border-blue-200 shadow-sm" title="Unida">
+                      <LinkIcon size={12} />
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       )}
 
-      {isOrderModalOpen && activeMesaIds.length > 0 && (
-        <div className="fixed inset-0 bg-black/50 flex justify-end z-50">
-          <div className="bg-white w-full max-w-md h-full shadow-2xl flex flex-col">
-            <div className="p-5 border-b flex justify-between items-center bg-gray-50">
-              <div>
-                <h2 className="text-lg font-bold">Nueva Comanda</h2>
-                <p className="text-sm text-gray-500">{getActiveLabel()}</p>
-              </div>
-              <button onClick={() => setIsOrderModalOpen(false)}><X size={20} /></button>
+      {/* Modal de pedido */}
+      {activeMesa && (
+        <div className="fixed inset-0 bg-white z-50 flex flex-col">
+          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 bg-white sticky top-0">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900">{getDisplayName(activeMesa)}</h2>
+              <p className="text-xs text-gray-500">Selecciona los productos</p>
             </div>
-            <div className="flex-1 overflow-y-auto p-5 space-y-6">
-              {(['comida', 'bebidas'] as const).map((cat) => (
-                <div key={cat}>
-                  <h3 className="text-sm font-bold uppercase text-gray-400 mb-3">{cat}</h3>
-                  <div className="space-y-2">
-                    {productos.filter((m) => m.categoria === cat).map((item) => {
-                      const qty = cart.find((c) => c.id === item.id)?.qty || 0;
-                      return (
-                        <div key={item.id} className="flex justify-between p-3 border rounded-xl">
-                          <div>
-                            <p className="font-medium text-sm">{item.nombre}</p>
-                            <p className="text-xs text-gray-500">S/ {Number(item.precio).toFixed(2)}</p>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <button onClick={() => updateCart(item.id, -1)} disabled={qty === 0}><Minus size={12} /></button>
-                            <span className="font-semibold text-sm w-4 text-center">{qty}</span>
-                            <button onClick={() => updateCart(item.id, 1)}><Plus size={12} /></button>
-                          </div>
+            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="p-2 hover:bg-gray-100 rounded-full">
+              <X size={20} className="text-gray-500" />
+            </button>
+          </div>
+
+          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+            {(['comida', 'bebidas'] as const).map(cat => (
+              <div key={cat}>
+                <h3 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">{cat}</h3>
+                <div className="space-y-2">
+                  {MENU.filter(m => m.category === cat).map(item => {
+                    const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                    return (
+                      <div key={item.name} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <div>
+                          <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                          <p className="text-xs text-gray-500">S/ {item.price.toFixed(2)}</p>
                         </div>
-                      );
-                    })}
-                  </div>
+                        <div className="flex items-center gap-3">
+                          <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
+                            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30">
+                            <Minus size={12} />
+                          </button>
+                          <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                          <button onClick={() => updateCart(item, 1)}
+                            className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                            <Plus size={12} />
+                          </button>
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              ))}
-            </div>
-            <div className="p-5 border-t">
-              <div className="flex justify-between mb-4">
-                <span className="text-sm text-gray-500">Total:</span>
-                <span className="text-xl font-bold">S/ {totalCartPrice.toFixed(2)}</span>
               </div>
-              <button onClick={submitOrder} className="w-full bg-blue-600 text-white font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2">
-                <CheckCircle size={20} /> Enviar a Cocina
-              </button>
+            ))}
+          </div>
+
+          <div className="p-4 border-t border-gray-200 bg-white">
+            <div className="flex justify-between items-center mb-3">
+              <span className="text-sm text-gray-500">{cart.reduce((s, c) => s + c.qty, 0)} productos</span>
+              <span className="text-xl font-bold text-gray-900">S/ {total.toFixed(2)}</span>
             </div>
+            <button
+              onClick={handleEnviar}
+              disabled={cart.length === 0}
+              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-blue-700 transition-colors"
+            >
+              <CheckCircle size={20} />
+              Enviar a Cocina
+            </button>
           </div>
         </div>
       )}

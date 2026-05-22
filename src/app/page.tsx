@@ -4,50 +4,53 @@ import { ChefHat, Users, ShieldCheck } from 'lucide-react';
 
 export default function WelcomePortal() {
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-white p-4">
-      <div className="text-center mb-12 animate-in fade-in slide-in-from-bottom-4 duration-700">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-gray-100 via-white to-gray-200 p-6">
+      <div className="text-center space-y-8">
         <Image
           src="/logo/LogoPuertoHabana.png"
           alt="Puerto Habana"
-          width={100}
-          height={100}
-          className="mx-auto mb-6 rounded-2xl shadow-lg"
+          width={120}
+          height={120}
+          className="mx-auto rounded-xl shadow-2xl"
           priority
         />
-        <h1 className="text-4xl font-black text-gray-900 tracking-tight">Puerto Habana</h1>
-        <p className="text-gray-500 font-medium mt-2 tracking-wide uppercase text-sm">Selecciona tu portal de acceso</p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl animate-in fade-in slide-in-from-bottom-8 duration-700 delay-150">
-        {/* Portal Mozo */}
-        <Link href="/login-mozo" className="group relative bg-white/60 backdrop-blur-xl border border-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-blue-500/5 to-blue-500/0 group-hover:from-blue-500/10 transition-colors" />
-          <div className="w-20 h-20 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <Users size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Mozos</h2>
-          <p className="text-sm text-gray-500">Gestión de mesas, comandas y atención al cliente.</p>
-        </Link>
-
-        {/* Portal Cocina */}
-        <Link href="/login-cocina" className="group relative bg-white/60 backdrop-blur-xl border border-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-orange-500/5 to-orange-500/0 group-hover:from-orange-500/10 transition-colors" />
-          <div className="w-20 h-20 bg-orange-100 text-orange-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <ChefHat size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Cocina</h2>
-          <p className="text-sm text-gray-500">Visualización de pedidos y control de preparación.</p>
-        </Link>
-
-        {/* Portal Admin */}
-        <Link href="/login-admin" className="group relative bg-white/60 backdrop-blur-xl border border-white rounded-3xl p-8 shadow-xl hover:shadow-2xl transition-all duration-300 hover:-translate-y-2 overflow-hidden flex flex-col items-center text-center">
-          <div className="absolute inset-0 bg-gradient-to-br from-purple-500/5 to-purple-500/0 group-hover:from-purple-500/10 transition-colors" />
-          <div className="w-20 h-20 bg-purple-100 text-purple-600 rounded-full flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-300 shadow-inner">
-            <ShieldCheck size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-2">Administración</h2>
-          <p className="text-sm text-gray-500">Dashboard, inventarios, personal y configuración.</p>
-        </Link>
+        <h1 className="text-5xl font-extrabold tracking-tight text-gray-800">Puerto Habana</h1>
+        <p className="text-gray-500 uppercase tracking-wider">Selecciona tu portal de acceso</p>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-3xl mx-auto">
+          {/* Mozo */}
+          <Link
+            href="/login-mozo"
+            className="group relative p-8 bg-white/60 backdrop-blur-lg rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
+          >
+            <div className="flex flex-col items-center space-y-4">
+              <Users size={48} className="text-blue-600 group-hover:text-blue-700 transition-colors" />
+              <h2 className="text-xl font-semibold text-gray-800">Mozo</h2>
+              <p className="text-sm text-gray-500">Gestión de mesas y pedidos.</p>
+            </div>
+          </Link>
+          {/* Cocina */}
+          <Link
+            href="/login-cocina"
+            className="group relative p-8 bg-white/60 backdrop-blur-lg rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
+          >
+            <div className="flex flex-col items-center space-y-4">
+              <ChefHat size={48} className="text-orange-600 group-hover:text-orange-700 transition-colors" />
+              <h2 className="text-xl font-semibold text-gray-800">Cocina</h2>
+              <p className="text-sm text-gray-500">Control y visualización de órdenes.</p>
+            </div>
+          </Link>
+          {/* Admin */}
+          <Link
+            href="/login-admin"
+            className="group relative p-8 bg-white/60 backdrop-blur-lg rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
+          >
+            <div className="flex flex-col items-center space-y-4">
+              <ShieldCheck size={48} className="text-purple-600 group-hover:text-purple-700 transition-colors" />
+              <h2 className="text-xl font-semibold text-gray-800">Administración</h2>
+              <p className="text-sm text-gray-500">Dashboard, inventarios y personal.</p>
+            </div>
+          </Link>
+        </div>
       </div>
     </div>
   );

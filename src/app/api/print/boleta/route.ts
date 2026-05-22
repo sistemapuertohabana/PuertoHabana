@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import net from 'net';
-import { createClient } from '@/lib/supabase/server';
 import { buildEscPosTicket, type BoletaPayload } from '@/lib/escpos';
 
 function sendToPrinter(host: string, port: number, data: string): Promise<void> {
@@ -33,22 +32,8 @@ function sendToPrinter(host: string, port: number, data: string): Promise<void> 
 
 export async function POST(request: Request) {
   try {
-    const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('rol')
-      .eq('id', user.id)
-      .single() as { data: { rol: string } | null };
-
-    const rol = profile?.rol;
-    if (!rol || !['admin', 'mozo', 'cocina'].includes(rol)) {
-      return NextResponse.json({ error: 'Sin permiso' }, { status: 403 });
-    }
+    // Auth mocked for now (Supabase removed)
+    // In production, add your custom auth logic here
 
     const body = (await request.json()) as BoletaPayload;
     if (!body?.mesa || !body?.items?.length) {

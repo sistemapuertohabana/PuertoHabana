@@ -1,108 +1,113 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { usePedidosRealtime, getLocalDateString } from '@/hooks/usePedidosRealtime';
-import { flatToPedidoUI } from '@/lib/pedido-mapper';
+import { useState, useEffect } from 'react';
+import { getLocalDateString } from '@/hooks/usePedidosRealtime';
+import { FileText, CheckCircle2 } from 'lucide-react';
+
+interface Pedido {
+  id: number;
+  item: string;
+  cantidad: number;
+  mesa: string;
+  estado: string;
+  hora: string;
+  precio: number;
+  fecha: string;
+}
 
 export default function MozoHistorialPage() {
-  const [fecha] = useState(() =>
-    typeof window !== 'undefined'
-      ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
-      : getLocalDateString()
-  );
-  const [search, setSearch] = useState('');
-  const { pedidos: flat, loading } = usePedidosRealtime(fecha);
+  const [pedidos, setPedidos] = useState<Pedido[]>([]);
+  const [total, setTotal] = useState(0);
 
-  const grouped = useMemo(() => {
-    const pedidos = flat.map(flatToPedidoUI);
-    const groups: Record<string, typeof pedidos> = {};
-    pedidos.forEach((p) => {
-      const key = `${p.mesa}-${p.hora}`;
-      if (!groups[key]) groups[key] = [];
-      groups[key].push(p);
-    });
-    return Object.entries(groups)
-      .map(([key, items]) => {
-        const statuses = items.map((i) => i.estado);
-        let estado = 'Pendiente';
-        if (statuses.every((s) => s === 'Entregado')) estado = 'Entregado';
-        else if (statuses.every((s) => s === 'Listo' || s === 'Entregado')) estado = 'Listo';
-        else if (statuses.some((s) => s === 'En preparación')) estado = 'En preparación';
-        return {
-          key,
-          mesa: items[0].mesa,
-          hora: items[0].hora,
-          mozoNombre: items[0].mozoNombre,
-          items,
-          estado,
-          total: items.reduce((s, i) => s + i.precio * i.cantidad, 0),
-        };
-      })
-      .filter(
-        (g) =>
-          !search ||
-          g.mesa.toLowerCase().includes(search.toLowerCase()) ||
-          g.items.some((i) => i.item.toLowerCase().includes(search.toLowerCase()))
-      )
-      .sort((a, b) => b.hora.localeCompare(a.hora));
-  }, [flat, search]);
+  const fecha = typeof window !== 'undefined'
+    ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
+    : getLocalDateString();
 
-  if (loading) return null;
+  const loadPedidos = () => {
+    try {
+      const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+      const todayPedidos = all.filter((p: Pedido) => p.fecha === fecha);
+      setPedidos(todayPedidos);
+      setTotal(todayPedidos.reduce((sum: number, p: Pedido) => sum + (p.precio * p.cantidad), 0));
+    } catch {
+      setPedidos([]);
+    }
+  };
+
+  useEffect(() => {
+    loadPedidos();
+    const interval = setInterval(loadPedidos, 2000);
+    window.addEventListener('storage', loadPedidos);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener('storage', loadPedidos);
+    };
+  }, [fecha]);
+
+  const updateEstado = (id: number, nuevoEstado: string) => {
+    try {
+      const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+      const updated = all.map((p: Pedido) => p.id === id ? { ...p, estado: nuevoEstado } : p);
+      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updated));
+      loadPedidos();
+      window.dispatchEvent(new Event('storage'));
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   return (
-    <div className="animate-in fade-in duration-1000 min-h-screen bg-[#0a0a0a] text-white p-6 md:p-12 lg:p-24 selection:bg-white selection:text-black">
-      <header className="mb-24 border-b border-[#333] pb-12 flex flex-col md:flex-row md:items-end justify-between gap-8">
+    <div className="min-h-screen bg-gray-50 pb-20">
+      <div className="bg-white border-b border-gray-200 px-6 py-6 sticky top-0 z-10 flex justify-between items-center">
         <div>
-          <h1 className="text-6xl md:text-8xl font-bold tracking-tighter uppercase leading-none">Historial</h1>
-          <p className="text-[10px] tracking-[0.4em] text-[#888] uppercase mt-6">
-            {fecha}
-          </p>
+          <h1 className="text-2xl font-bold text-gray-900">Historial de Pedidos</h1>
+          <p className="text-sm text-gray-500 mt-1">{fecha}</p>
         </div>
-        <div className="w-full md:w-96">
-          <input
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="[ BUSCAR ]"
-            className="w-full bg-transparent border-b border-[#333] pb-4 text-xl tracking-[0.2em] uppercase focus:outline-none focus:border-white placeholder:text-[#444] transition-colors"
-          />
+        <div className="text-right">
+          <p className="text-sm text-gray-500 uppercase font-semibold">Total del Día</p>
+          <p className="text-2xl font-bold text-blue-600">S/ {total.toFixed(2)}</p>
         </div>
-      </header>
-
-      <div className="space-y-32">
-        {grouped.length === 0 && (
-          <div className="py-32 text-center border border-[#222]">
-            <p className="text-[10px] tracking-[0.4em] text-[#444] uppercase">Vacío</p>
+      </div>
+      
+      <div className="p-4 md:p-6 max-w-4xl mx-auto">
+        {pedidos.length === 0 ? (
+          <div className="mt-16 text-center border-2 border-dashed border-gray-200 py-16 rounded-2xl bg-white">
+            <FileText size={48} className="mx-auto text-gray-300 mb-4" />
+            <p className="text-sm tracking-widest text-gray-500 uppercase font-medium">Sin pedidos registrados hoy</p>
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {pedidos.map(p => (
+              <div key={p.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-center gap-3 mb-2">
+                    <span className="font-bold text-lg text-gray-900">{p.mesa}</span>
+                    <span className="text-sm text-gray-400">{p.hora}</span>
+                    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                      p.estado === 'Pendiente' ? 'bg-orange-100 text-orange-600' :
+                      p.estado === 'Preparando' ? 'bg-blue-100 text-blue-600' :
+                      p.estado === 'Listo' ? 'bg-green-100 text-green-600' :
+                      'bg-gray-100 text-gray-600'
+                    }`}>
+                      {p.estado}
+                    </span>
+                  </div>
+                  <p className="text-gray-700 font-medium">{p.cantidad}x {p.item}</p>
+                  <p className="text-sm text-gray-500 mt-1">S/ {(p.precio * p.cantidad).toFixed(2)}</p>
+                </div>
+                
+                {p.estado === 'Listo' && (
+                  <button 
+                    onClick={() => updateEstado(p.id, 'Entregado')}
+                    className="w-full md:w-auto bg-black text-white px-6 py-3 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-800 transition-colors"
+                  >
+                    <CheckCircle2 size={18} /> Marcar Entregado
+                  </button>
+                )}
+              </div>
+            ))}
           </div>
         )}
-        
-        {grouped.map((g) => (
-          <div key={g.key} className="flex flex-col">
-            <div className="flex flex-col md:flex-row md:items-baseline justify-between mb-12 pb-4 border-b border-[#333] gap-4">
-              <div>
-                <h3 className="text-4xl md:text-5xl font-bold tracking-tighter uppercase">{g.mesa}</h3>
-                <p className="text-[10px] text-[#888] mt-4 tracking-[0.2em] font-mono">{g.hora} — {g.mozoNombre}</p>
-              </div>
-              <div className="text-left md:text-right mt-4 md:mt-0">
-                <span className={`text-[10px] tracking-[0.4em] uppercase ${g.estado === 'Entregado' ? 'text-[#444]' : 'text-white'}`}>
-                  [ {g.estado} ]
-                </span>
-                <p className="text-4xl font-light mt-4 tracking-tighter">S/ {g.total.toFixed(2)}</p>
-              </div>
-            </div>
-
-            <div className="flex flex-col border-t border-[#111]">
-              {g.items.map((i) => (
-                <div key={i.id} className="flex justify-between items-baseline py-6 px-4 -mx-4 hover:bg-[#111] transition-colors border-b border-[#111]">
-                  <div className="flex gap-8 md:gap-16 items-baseline">
-                    <span className="text-2xl font-light font-mono text-[#555]">{i.cantidad.toString().padStart(2, '0')}</span>
-                    <span className="text-xl md:text-2xl uppercase tracking-widest">{i.item}</span>
-                  </div>
-                  <span className="text-lg md:text-xl font-light tracking-tighter text-[#888]">S/ {(i.precio * i.cantidad).toFixed(2)}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        ))}
       </div>
     </div>
   );

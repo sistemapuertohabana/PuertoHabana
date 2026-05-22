@@ -1,9 +1,8 @@
-import { type NextRequest } from 'next/server';
-import { updateSession } from '@/lib/supabase/middleware';
+import { type NextRequest, NextResponse } from 'next/server';
 
+// Proxy simplificado — sin Supabase middleware
 export async function proxy(request: NextRequest) {
-  // Reuse the same session handling logic
-  return updateSession(request);
+  return NextResponse.next({ request });
 }
 
 export const config = {
