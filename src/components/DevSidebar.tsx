@@ -2,20 +2,20 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User, LogOut, DollarSign } from 'lucide-react';
+import { LayoutDashboard, User, LogOut, DollarSign, DatabaseZap } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande';
 
 const menuItems = [
-  { href: '/lavaplato',        icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/lavaplato/pagos',  icon: DollarSign,      label: 'Pagos'  },
-  { href: '/lavaplato/perfil', icon: User,            label: 'Perfil' },
+  { href: '/desarrollador',        icon: DatabaseZap,  label: 'Panel'  },
+  { href: '/desarrollador/pagos',  icon: DollarSign,   label: 'Pagos'  },
+  { href: '/desarrollador/perfil', icon: User,         label: 'Perfil' },
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {
-  if (photo) return <img src={photo} alt="Lavaplatos" className="w-full h-full object-cover" />; // eslint-disable-line
+  if (photo) return <img src={photo} alt="Dev" className="w-full h-full object-cover" />; // eslint-disable-line
   return <>{fallback}</>;
 }
 
@@ -31,9 +31,9 @@ function navbarBg(s: NavbarStyle) {
 function navbarItem(s: NavbarStyle, active: boolean) {
   if (s === 'minimalista') return active ? 'text-black' : 'text-gray-400 hover:text-gray-600';
   if (s === 'centrado')    return active ? 'text-black font-semibold' : 'text-gray-400 hover:text-gray-600';
-  if (s === 'grande')      return active ? 'text-cyan-600' : 'text-gray-400 hover:text-gray-600';
+  if (s === 'grande')      return active ? 'text-purple-600' : 'text-gray-400 hover:text-gray-600';
   // original
-  return active ? 'bg-cyan-100 text-cyan-600' : 'text-gray-400 hover:bg-gray-100';
+  return active ? 'bg-purple-100 text-purple-600' : 'text-gray-400 hover:bg-gray-100';
 }
 
 function navbarIconSize(s: NavbarStyle) {
@@ -44,10 +44,11 @@ function navbarIconSize(s: NavbarStyle) {
 
 /* ─── componente ─────────────────────────────────────────────────────────── */
 
-export default function LavaplatoSidebar() {
+export default function DevSidebar() {
   const pathname   = usePathname();
+  // We can just use dummy auth for Dev if there is no specific session hook
   const { profile, signOut } = useAuth();
-  const localPhoto = useProfilePhoto('lavaplato');
+  const localPhoto = useProfilePhoto('dev');
   const photo      = profile?.foto_url ?? localPhoto;
   const navbar     = useLocalStorageValue('navbarStyle', 'original') as NavbarStyle;
 
@@ -64,11 +65,11 @@ export default function LavaplatoSidebar() {
               <ProfileAvatar photo={photo} fallback={<User size={18} className="text-gray-400" />} />
             </div>
             <div>
-              <p className="text-sm font-semibold text-gray-900 leading-none">Lavaplatos</p>
+              <p className="text-sm font-semibold text-gray-900 leading-none">Desarrollador</p>
               <p className="text-xs text-gray-400 mt-0.5">{profile?.nombre ?? 'Puerto Habana'}</p>
             </div>
           </div>
-          <button onClick={signOut} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50">
+          <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/'; }} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors px-2 py-1.5 rounded-lg hover:bg-red-50">
             <LogOut size={14} /> Salir
           </button>
         </div>
@@ -102,7 +103,7 @@ export default function LavaplatoSidebar() {
               <ProfileAvatar photo={photo} fallback={<User size={20} className="text-gray-400" />} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">Lavaplatos</p>
+              <p className="text-sm font-semibold text-gray-900 truncate">Desarrollador</p>
               <p className="text-xs text-gray-400 truncate">{profile?.nombre ?? 'Puerto Habana'}</p>
             </div>
           </div>
@@ -115,7 +116,7 @@ export default function LavaplatoSidebar() {
             return (
               <Link key={href} href={href}
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${
-                  active ? 'bg-cyan-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
+                  active ? 'bg-purple-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'
                 }`}>
                 <Icon size={17} strokeWidth={active ? 2.5 : 2} />
                 <span className="text-sm font-medium">{label}</span>
@@ -126,9 +127,9 @@ export default function LavaplatoSidebar() {
 
         {/* Cerrar sesión */}
         <div className="px-3 pb-4 border-t border-gray-100 pt-3">
-          <button onClick={signOut}
+          <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/'; }}
             className="flex items-center justify-center gap-2 w-full py-2 rounded-lg text-red-500 hover:bg-red-50 transition-colors text-sm font-medium">
-            <LogOut size={15} /> Cerrar Sesión
+            <LogOut size={15} /> Volver al Inicio
           </button>
         </div>
       </aside>
