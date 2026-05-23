@@ -74,21 +74,25 @@ export default function CocinaPerfilPage() {
       return;
     }
 
+    // Cargar datos reales de Supabase mediante API
     const loadData = async () => {
-      const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).single();
-      if (!error && data) {
-        setRecord(data);
-        const ex = {
-          turno: data.turno || '',
-          especialidad: data.area || '',
-          telefono: data.telefono || '',
-          fecha_ingreso: data.fecha_ingreso || '',
-        };
-        setExtra(ex);
-        setDraft(ex);
-        setPhoto(data.foto_url || getProfilePhoto('cocina'));
-      } else {
-        setRecord({ id, nombre: session.nombre ?? 'Sin nombre', email: session.email, rol: session.rol ?? 'cocina' });
+      try {
+        const res = await fetch(`/api/personal/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRecord(data);
+          const ex = {
+            turno: data.turno || '',
+            especialidad: data.area || '',
+            telefono: data.telefono || '',
+            fecha_ingreso: data.fecha_ingreso || '',
+          };
+          setExtra(ex);
+          setDraft(ex);
+          setPhoto(data.foto_url || getProfilePhoto('cocina'));
+        }
+      } catch (err) {
+        console.error("Error cargando perfil", err);
       }
       setLoading(false);
     };

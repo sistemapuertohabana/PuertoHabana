@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings } from 'lucide-react';
+import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarSign } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 const menuItems = [
-  { href: '/mozo',          icon: LayoutGrid,    label: 'Mesas'    },
-  { href: '/mozo/reservas', icon: CalendarClock, label: 'Reservas' },
-  { href: '/mozo/historial',icon: ListOrdered,   label: 'Historial'},
+  { href: '/mozo',               icon: LayoutGrid,    label: 'Mesas'    },
+  { href: '/mozo/reservas',      icon: CalendarClock, label: 'Reservas' },
+  { href: '/mozo/historial',     icon: ListOrdered,   label: 'Historial'},
+  { href: '/mozo/pagos',         icon: DollarSign,    label: 'Pagos'    },
   { href: '/mozo/perfil',        icon: User,          label: 'Perfil'   },
   { href: '/mozo/configuracion', icon: Settings,      label: 'Ajustes'  },
 ];

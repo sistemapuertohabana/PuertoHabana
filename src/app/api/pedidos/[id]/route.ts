@@ -8,7 +8,14 @@ export async function PATCH(request: Request, { params }: { params: Promise<{ id
   const { estado, metodo_pago } = await request.json();
 
   const updateData: any = { estado };
-  if (metodo_pago) updateData.metodo_pago = metodo_pago;
+  if (metodo_pago) {
+    if (metodo_pago.startsWith('Mixto')) {
+      updateData.metodo_pago = 'Otro';
+      updateData.notas = metodo_pago;
+    } else {
+      updateData.metodo_pago = metodo_pago;
+    }
+  }
 
   const { error } = await sb.from('comandas').update(updateData).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

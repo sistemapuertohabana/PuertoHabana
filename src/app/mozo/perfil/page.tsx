@@ -75,10 +75,12 @@ export default function MozoPerfilPage() {
       return;
     }
 
-    // Cargar datos reales de Supabase
+    // Cargar datos reales de Supabase mediante API
     const loadData = async () => {
-      const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).single();
-      if (!error && data) {
+      try {
+        const res = await fetch(`/api/personal/${id}`);
+        if (res.ok) {
+          const data = await res.json();
         setRecord(data);
         const ex = {
           turno: data.turno || '',
@@ -90,12 +92,9 @@ export default function MozoPerfilPage() {
         setDraft(ex);
         setPhoto(data.foto_url || getProfilePhoto('mozo'));
       } else {
-        setRecord({
-          id,
-          nombre: session.nombre ?? 'Sin nombre',
-          email:  session.email,
-          rol:    session.rol ?? 'mozo',
-        });
+        }
+      } catch (err) {
+        console.error("Error cargando perfil", err);
       }
       setLoading(false);
     };

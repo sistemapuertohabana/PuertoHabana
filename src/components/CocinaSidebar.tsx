@@ -2,17 +2,18 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { ChefHat, User, LogOut, Clock, Settings } from 'lucide-react';
+import { ChefHat, User, LogOut, Clock, Settings, DollarSign } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 const menuItems = [
-  { href: '/cocina',               icon: ChefHat, label: 'Comandas' },
-  { href: '/cocina/historial',     icon: Clock,   label: 'Historial'},
-  { href: '/cocina/perfil',        icon: User,    label: 'Perfil'   },
-  { href: '/cocina/configuracion', icon: Settings,label: 'Ajustes'  },
+  { href: '/cocina',               icon: ChefHat,     label: 'Comandas' },
+  { href: '/cocina/historial',     icon: Clock,       label: 'Historial'},
+  { href: '/cocina/pagos',         icon: DollarSign,  label: 'Pagos'    },
+  { href: '/cocina/perfil',        icon: User,        label: 'Perfil'   },
+  { href: '/cocina/configuracion', icon: Settings,    label: 'Ajustes'  },
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {
