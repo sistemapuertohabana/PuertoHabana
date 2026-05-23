@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   User, Mail, Clock, Calendar, Briefcase,
-  Edit2, Save, X, Phone, DollarSign,
+  Edit2, Save, X, Phone, DollarSign, BellRing,
 } from 'lucide-react';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
@@ -59,11 +59,15 @@ export default function CocinaPerfilPage() {
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
+  const [notifActivas, setNotifActivas] = useState(false);
 
   useEffect(() => {
     setMounted(true);
     const session = loadSession();
     const id = session.id ?? '';
+
+    // Cargar estado de notificaciones
+    setNotifActivas(sessionStorage.getItem('notificaciones_activas') === 'true');
     
     if (!id) {
       setLoading(false);
@@ -241,6 +245,48 @@ export default function CocinaPerfilPage() {
               </div>
             </div>
           )}
+
+          {/* ── Notificaciones Push ──────────────────────────────────── */}
+          <div className="border-t border-gray-100 pt-5 mt-5">
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
+              Notificaciones Push
+            </h3>
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${notifActivas ? 'bg-orange-100' : 'bg-gray-200'}`}>
+                  <BellRing size={18} className={notifActivas ? 'text-orange-600' : 'text-gray-400'} />
+                </div>
+                <div>
+                  <p className="text-sm font-semibold text-gray-900">
+                    {notifActivas ? 'Notificaciones activadas' : 'Notificaciones desactivadas'}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    {notifActivas ? 'Recibirás alertas de nuevas comandas' : 'No recibirás alertas en tiempo real'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={async () => {
+                  if (notifActivas) {
+                    sessionStorage.removeItem('notificaciones_activas');
+                    setNotifActivas(false);
+                  } else {
+                    if ('Notification' in window) await Notification.requestPermission();
+                    try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
+                    sessionStorage.setItem('notificaciones_activas', 'true');
+                    setNotifActivas(true);
+                  }
+                }}
+                className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                  notifActivas
+                    ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                    : 'bg-orange-500 text-white hover:bg-orange-600'
+                }`}
+              >
+                {notifActivas ? 'Desactivar' : 'Activar'}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
