@@ -31,7 +31,12 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     sessionStorage.setItem('notificaciones_activas', 'true');
     setActivado(true);
   };
-
+  const desactivar = () => {
+    // Elimina flag y desactiva notificaciones
+    sessionStorage.removeItem('notificaciones_activas');
+    setActivado(false);
+    setNotificacion(null);
+  };
   useEffect(() => {
     if (!activado) return;
 
@@ -120,6 +125,33 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     </button>
   );
 
-  if (!notificacion) return (
-    <>{toggleBtn}</>
+  if (!notificacion) {
+    return <>{toggleBtn}</>;
+  }
+
+  // Render toast when there is a notification
+  return (
+    <>
+      {toggleBtn}
+      <div className="fixed top-6 right-6 bg-white border-l-4 border-blue-500 shadow-2xl rounded-2xl p-5 z-[9999] max-w-sm animate-in slide-in-from-right-8 duration-300">
+        <div className="flex items-start gap-4">
+          <div className="mt-1 w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+            <BellRing size={20} />
+          </div>
+          <div>
+            <h4 className="font-bold text-gray-900 text-base">{notificacion.titulo}</h4>
+            <p className="text-sm text-gray-600 mt-1 leading-snug">{notificacion.mensaje}</p>
+          </div>
+        </div>
+        <div className="mt-5 flex justify-end">
+          <button
+            onClick={() => setNotificacion(null)}
+            className="text-xs bg-gray-100 text-gray-600 px-5 py-2.5 rounded-xl font-bold uppercase hover:bg-gray-200 transition-colors"
+          >
+            Entendido
+          </button>
+        </div>
+      </div>
+    </>
   );
+}

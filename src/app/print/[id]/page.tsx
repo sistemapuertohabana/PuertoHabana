@@ -138,7 +138,7 @@ export default function PrintTicket() {
 
       <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto shadow-sm print:shadow-none print:m-0 print:p-0 print:w-[80mm]">
         {/* Cabecera */}
-          {config.direccion || 'Av. Colonización 1115'}
+          <p className="text-xs">{config.direccion || 'Av. Colonización 1115'}</p>
         </p>
         <p className="text-xs">RUC: {config.ruc || '10429025546'}</p>
         <p className="text-xs">TELF: {config.telefono || '+51 123 456 789'}</p>
