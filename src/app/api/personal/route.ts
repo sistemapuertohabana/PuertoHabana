@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/personal — lista todo el personal activo (excepto admin)
 export async function GET() {
   const sb = getServiceSupabase();

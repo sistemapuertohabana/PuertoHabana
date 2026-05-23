@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { DollarSign, Search, Calendar } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-
+import { DollarSign, Search, Calendar } from 'lucide-react';
 export default function PagosCocinaPage() {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -21,13 +20,15 @@ export default function PagosCocinaPage() {
         setLoading(false);
         return;
       }
-      const { data } = await supabase
-        .from('pagos_personal')
-        .select('*')
-        .ilike('nombre', `%${session.nombre}%`)
-        .order('created_at', { ascending: false });
-      
-      if (data) setPagos(data);
+      try {
+        const res = await fetch(`/api/pagos-personal?nombre=${encodeURIComponent(session.nombre)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPagos(data);
+        }
+      } catch (err) {
+        console.error("Error fetching pagos:", err);
+      }
       setLoading(false);
     };
     if (session) fetchPagos();

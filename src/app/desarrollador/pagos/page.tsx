@@ -1,8 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { DollarSign, Search, Calendar } from 'lucide-react';
-import { supabase } from '@/lib/supabase';
-
 export default function PagosDevPage() {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -22,13 +20,15 @@ export default function PagosDevPage() {
     const fetchPagos = async () => {
       const nombreBuscar = session?.nombre || 'STEV LOZANO BY CODEOL SOFTWARE PERÚ';
       
-      const { data } = await supabase
-        .from('pagos_personal')
-        .select('*')
-        .ilike('nombre', `%${nombreBuscar}%`)
-        .order('created_at', { ascending: false });
-      
-      if (data) setPagos(data);
+      try {
+        const res = await fetch(`/api/pagos-personal?nombre=${encodeURIComponent(nombreBuscar)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPagos(data);
+        }
+      } catch (err) {
+        console.error("Error fetching pagos:", err);
+      }
       setLoading(false);
     };
     if (session) fetchPagos();

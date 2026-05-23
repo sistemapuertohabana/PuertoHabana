@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/notificaciones?rol=mozo&usuario_id=xxx
 export async function GET(request: Request) {
   const sb = getServiceSupabase();
