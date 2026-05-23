@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChefHat, Users, ShieldCheck } from 'lucide-react';
+import { ChefHat, Users, ShieldCheck, Droplets, Code2 } from 'lucide-react';
 
 export default function WelcomePortal() {
   return (
@@ -49,6 +49,14 @@ export default function WelcomePortal() {
               <h2 className="text-xl font-semibold text-gray-800">Administración</h2>
               <p className="text-sm text-gray-500">Dashboard, inventarios y personal.</p>
             </div>
+          </Link>
+        </div>
+        <div className="flex flex-wrap justify-center gap-4 mt-12">
+          <Link href="/login-lavaplato" className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+            <Droplets size={16} /> Acceso Lavaplatos
+          </Link>
+          <Link href="/dev" className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
+            <Code2 size={16} /> Panel de Desarrollador
           </Link>
         </div>
       </div>
