@@ -17,7 +17,10 @@ export default function PagosLavaplatoPage() {
 
   useEffect(() => {
     const fetchPagos = async () => {
-      if (!session?.nombre) return;
+      if (!session?.nombre) {
+        setLoading(false);
+        return;
+      }
       const { data } = await supabase
         .from('pagos_personal')
         .select('*')

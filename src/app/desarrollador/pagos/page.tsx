@@ -12,16 +12,20 @@ export default function PagosDevPage() {
     try {
       const stored = localStorage.getItem('ph_dev_session');
       if (stored) setSession(JSON.parse(stored));
-    } catch {}
+      else setSession({ nombre: 'STEV LOZANO BY CODEOL SOFTWARE PERÚ' });
+    } catch {
+      setSession({ nombre: 'STEV LOZANO BY CODEOL SOFTWARE PERÚ' });
+    }
   }, []);
 
   useEffect(() => {
     const fetchPagos = async () => {
-      if (!session?.nombre) return;
+      const nombreBuscar = session?.nombre || 'STEV LOZANO BY CODEOL SOFTWARE PERÚ';
+      
       const { data } = await supabase
         .from('pagos_personal')
         .select('*')
-        .ilike('nombre', `%${session.nombre}%`)
+        .ilike('nombre', `%${nombreBuscar}%`)
         .order('created_at', { ascending: false });
       
       if (data) setPagos(data);
