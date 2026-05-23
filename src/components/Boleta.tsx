@@ -28,7 +28,7 @@ export default function Boleta({
   hora,
   items,
   onClose,
-  ruc = process.env.NEXT_PUBLIC_NEGOCIO_RUC ?? '20XXXXXXXXX',
+  ruc = process.env.NEXT_PUBLIC_NEGOCIO_RUC ?? '10429025546',
   negocioNombre = process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'PUERTO HABANA',
 }: BoletaProps) {
   const boletaRef = useRef<HTMLDivElement>(null);
