@@ -1,6 +1,10 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
+import { useRouter as useAppRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
@@ -73,8 +77,16 @@ export default function PrintTicket() {
 
   if (!comanda) {
     return (
-      <div className="p-4 text-center text-red-600">
-        No se encontró la comanda solicitada.
+      <div className="p-8 text-center min-h-screen bg-gray-50 flex flex-col items-center justify-center">
+        <div className="bg-white p-8 rounded-2xl shadow-sm border border-red-100 max-w-sm w-full">
+          <p className="text-red-600 mb-6 font-bold text-lg">No se encontró la comanda.</p>
+          <button 
+            onClick={() => window.location.href = '/mozo/historial'} 
+            className="w-full px-4 py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+          >
+            Volver al Historial
+          </button>
+        </div>
       </div>
     );
   }
@@ -86,13 +98,46 @@ export default function PrintTicket() {
   const total = subtotal;
 
   return (
-    <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto print:m-0 print:p-0 print:w-[80mm]">
-      {/* Cabecera */}
-      <div className="text-center mb-4">
-        <h1 className="font-bold text-xl uppercase">
-          {config.nombreEmpresa || 'PUERTO HABANA'}
-        </h1>
-        <p className="text-xs uppercase">
+    <div className="min-h-screen bg-gray-100 py-8 print:py-0 print:bg-white">
+      
+      {/* Controles que NO se imprimen */}
+      <div className="print:hidden absolute top-4 left-4 flex gap-3">
+        <button
+          onClick={() => router.push('/mozo')}
+          className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          Dashboard Mozo
+        </button>
+        <button
+          onClick={() => {
+            console.log('Conectando a la ticketera');
+            alert('Conectado a la ticketera');
+          }}
+          className="px-3 py-2 bg-indigo-600 text-white rounded-md text-sm font-medium shadow-sm hover:bg-indigo-700 transition-colors"
+        >
+          {config?.nombreMaquina || 'Ticketera'}
+        </button>
+      </div>
+
+      {/* Controles de imprimir y volver (no se imprimen) */}
+      <div className="print:hidden w-[80mm] mx-auto mb-6 flex gap-3">
+        <button 
+          onClick={() => window.history.back()} 
+          className="flex-1 px-3 py-3 bg-white border border-gray-200 text-gray-800 rounded-xl text-sm font-bold shadow-sm hover:bg-gray-50 transition-colors"
+        >
+          Volver
+        </button>
+        <button 
+          onClick={() => window.print()} 
+          className="flex-[2] px-3 py-3 bg-blue-600 text-white rounded-xl text-sm font-bold shadow-sm hover:bg-blue-700 transition-colors flex items-center justify-center gap-2"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
+          Imprimir Ticket
+        </button>
+      </div>
+
+      <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto shadow-sm print:shadow-none print:m-0 print:p-0 print:w-[80mm]">
+        {/* Cabecera */}
           {config.direccion || 'Av. Colonización 1115'}
         </p>
         <p className="text-xs">RUC: {config.ruc || '10429025546'}</p>
@@ -156,6 +201,7 @@ export default function PrintTicket() {
           `,
         }}
       />
+      </div>
     </div>
   );
 }
