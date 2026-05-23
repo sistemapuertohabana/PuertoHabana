@@ -128,6 +128,9 @@ export default function PersonalPage() {
 
       if (!res.ok) {
         const err = await res.json();
+        if (res.status >= 500 || err.error?.includes('ECONNREFUSED')) {
+          throw new Error('Fallback to localstorage');
+        }
         setError(err.error || 'Error al guardar');
         setIsSubmitting(false);
         return;

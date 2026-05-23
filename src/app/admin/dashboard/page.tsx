@@ -90,17 +90,10 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
 
   // Reports State
-  const [insumosWasted, setInsumosWasted] = useState([
-    { id: 1, descripcion: 'Cervezas rotas en almacén', costo: 48.00, fecha: '2026-05-18' },
-    { id: 2, descripcion: 'Pescado fresco descartado', costo: 150.00, fecha: '2026-05-15' },
-    { id: 3, descripcion: 'Limones malogrados', costo: 30.00, fecha: '2026-05-12' },
-  ]);
+  const [insumosWasted, setInsumosWasted] = useState<any[]>([]);
   
-  const [staffPayments, setStaffPayments] = useState([
-    { id: 1, mozoNombre: 'Juan Pérez', monto: 180.00, concepto: 'Pago Jornal Semanal', fecha: '2026-05-18' },
-    { id: 2, mozoNombre: 'Carlos López', monto: 200.00, concepto: 'Pago Comisión Ventas', fecha: '2026-05-17' },
-    { id: 3, mozoNombre: 'Sofía Castro', monto: 250.00, concepto: 'Pago Quincena', fecha: '2026-05-15' },
-  ]);
+  const [staffPayments, setStaffPayments] = useState<any[]>([]);
+
 
   // Forms state
   const [wasteForm, setWasteForm] = useState({ descripcion: '', costo: '', fecha: '' });
