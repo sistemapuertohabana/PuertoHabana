@@ -1,11 +1,26 @@
 'use client';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Trash2, UserPlus, AlertTriangle, Code2 } from 'lucide-react';
 
 export default function DevDashboard() {
   const [adminEmail, setAdminEmail] = useState('');
   const [adminName, setAdminName] = useState('');
+  const [admins, setAdmins] = useState<any[]>([]);
   const [status, setStatus] = useState({ msg: '', type: '' });
+
+  const loadAdmins = async () => {
+    try {
+      const res = await fetch('/api/dev/admins');
+      if (res.ok) {
+        const data = await res.json();
+        setAdmins(data);
+      }
+    } catch {}
+  };
+
+  useEffect(() => {
+    loadAdmins();
+  }, []);
 
   const handleCreateAdmin = async () => {
     if (!adminEmail || !adminName) {
@@ -22,6 +37,7 @@ export default function DevDashboard() {
       setStatus({ msg: 'Admin creado/actualizado con éxito', type: 'success' });
       setAdminEmail('');
       setAdminName('');
+      loadAdmins();
     } else {
       setStatus({ msg: data.error || 'Error', type: 'error' });
     }
@@ -66,6 +82,28 @@ export default function DevDashboard() {
           <input type="text" placeholder="Nombre (ej. Super Admin)" className="bg-gray-50 border border-gray-200 text-gray-900 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 text-sm placeholder-gray-400" value={adminName} onChange={(e) => setAdminName(e.target.value)} />
           <input type="email" placeholder="Correo (ej. admin@gmail.com)" className="bg-gray-50 border border-gray-200 text-gray-900 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 text-sm placeholder-gray-400" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
           <button onClick={handleCreateAdmin} className="bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition text-sm">Crear Admin</button>
+        </div>
+
+        {/* Lista de Admins */}
+        <div className="mt-6 border-t border-gray-100 pt-6">
+          <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Admins Registrados ({admins.length})</h3>
+          {admins.length === 0 ? (
+            <p className="text-sm text-gray-400">No hay administradores registrados.</p>
+          ) : (
+            <ul className="space-y-2">
+              {admins.map((a: any) => (
+                <li key={a.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3 flex justify-between items-center">
+                  <div>
+                    <p className="text-sm font-bold text-gray-900">{a.nombre}</p>
+                    <p className="text-xs text-gray-500">{a.email}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${a.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                    {a.activo ? 'Activo' : 'Inactivo'}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
 
