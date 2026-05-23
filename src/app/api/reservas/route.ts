@@ -1,45 +1,59 @@
 import { NextResponse } from 'next/server';
-import pool from '@/../lib/db';
+import { getServiceSupabase } from '@/lib/supabase';
 
 // GET /api/reservas?fecha=YYYY-MM-DD
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const fecha = searchParams.get('fecha');
-    const sql = fecha
-      ? `SELECT id, mesa_id, cliente, telefono, fecha, hora, personas, notas, estado FROM reservas WHERE fecha = ? ORDER BY hora ASC`
-      : `SELECT id, mesa_id, cliente, telefono, fecha, hora, personas, notas, estado FROM reservas ORDER BY fecha DESC, hora ASC`;
-    const [rows]: any = await pool.query(sql, fecha ? [fecha] : []);
-    return NextResponse.json(rows);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { searchParams } = new URL(request.url);
+  const fecha = searchParams.get('fecha');
+
+  let query = sb
+    .from('reservas')
+    .select('id, mesa_id, cliente, telefono, fecha, hora, personas, notas, estado')
+    .order('fecha', { ascending: false });
+
+  if (fecha) query = query.eq('fecha', fecha);
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 // POST /api/reservas
 export async function POST(request: Request) {
-  try {
-    const { mesa_id, cliente, telefono, fecha, hora, personas, notas } = await request.json();
-    if (!cliente || !fecha || !hora) return NextResponse.json({ error: 'cliente, fecha y hora requeridos' }, { status: 400 });
-    const [result]: any = await pool.query(
-      `INSERT INTO reservas (mesa_id, cliente, telefono, fecha, hora, personas, notas, estado) VALUES (?,?,?,?,?,?,?,'pendiente')`,
-      [mesa_id || null, cliente, telefono || null, fecha, hora, personas || 2, notas || null]
-    );
-    return NextResponse.json({ success: true, id: result.insertId }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  const sb = getServiceSupabase();
+  const { mesa_id, cliente, telefono, fecha, hora, personas, notas } = await request.json();
+  if (!cliente || !fecha || !hora) {
+    return NextResponse.json({ error: 'cliente, fecha y hora requeridos' }, { status: 400 });
   }
+
+  const { data, error } = await sb
+    .from('reservas')
+    .insert([{
+      mesa_id: mesa_id || null,
+      cliente,
+      telefono: telefono || null,
+      fecha,
+      hora,
+      personas: personas || 2,
+      notas: notas || null,
+      estado: 'pendiente',
+    }])
+    .select('id')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true, id: data.id }, { status: 201 });
 }
 
 // DELETE /api/reservas?id=xxx
 export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
-    await pool.query(`DELETE FROM reservas WHERE id = ?`, [id]);
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
+
+  const { error } = await sb.from('reservas').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

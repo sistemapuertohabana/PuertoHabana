@@ -1,44 +1,50 @@
 import { NextResponse } from 'next/server';
-import pool from '@/../lib/db';
+import { getServiceSupabase } from '@/lib/supabase';
 
 // GET /api/reportes/payments
 export async function GET() {
-  try {
-    const [rows]: any = await pool.query(
-      `SELECT id, nombre, monto, concepto, fecha FROM pagos_personal ORDER BY fecha DESC, id DESC`
-    );
-    return NextResponse.json(rows);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { data, error } = await sb
+    .from('pagos_personal')
+    .select('id, nombre, monto, concepto, fecha')
+    .order('fecha', { ascending: false });
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 // POST /api/reportes/payments
 export async function POST(request: Request) {
-  try {
-    const { nombre, monto, concepto, fecha, usuario_id } = await request.json();
-    if (!nombre || !monto || !concepto) {
-      return NextResponse.json({ error: 'nombre, monto y concepto son requeridos' }, { status: 400 });
-    }
-    const [result]: any = await pool.query(
-      `INSERT INTO pagos_personal (usuario_id, nombre, monto, concepto, fecha) VALUES (?, ?, ?, ?, ?)`,
-      [usuario_id || null, nombre, parseFloat(monto), concepto, fecha || new Date().toISOString().split('T')[0]]
-    );
-    return NextResponse.json({ success: true, id: result.insertId }, { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  const sb = getServiceSupabase();
+  const { nombre, monto, concepto, fecha, usuario_id } = await request.json();
+  if (!nombre || !monto || !concepto) {
+    return NextResponse.json({ error: 'nombre, monto y concepto son requeridos' }, { status: 400 });
   }
+
+  const { data, error } = await sb
+    .from('pagos_personal')
+    .insert([{
+      usuario_id: usuario_id || null,
+      nombre,
+      monto: parseFloat(monto),
+      concepto,
+      fecha: fecha || new Date().toISOString().split('T')[0],
+    }])
+    .select('id')
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true, id: data.id }, { status: 201 });
 }
 
 // DELETE /api/reportes/payments?id=xxx
 export async function DELETE(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const id = searchParams.get('id');
-    if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
-    await pool.query(`DELETE FROM pagos_personal WHERE id = ?`, [id]);
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { searchParams } = new URL(request.url);
+  const id = searchParams.get('id');
+  if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
+
+  const { error } = await sb.from('pagos_personal').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

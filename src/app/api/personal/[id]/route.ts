@@ -1,29 +1,40 @@
 import { NextResponse } from 'next/server';
-import pool from '@/../lib/db';
+import { getServiceSupabase } from '@/lib/supabase';
 
 // PUT /api/personal/:id
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const { nombre, email, dni, rol, salario_monto, salario_tipo } = await request.json();
-    await pool.query(
-      `UPDATE usuarios SET nombre=?, email=?, dni=?, rol=?, salario_monto=?, salario_tipo=?
-       WHERE id=? AND rol != 'admin'`,
-      [nombre, email?.trim().toLowerCase() || null, dni || null, rol, salario_monto || null, salario_tipo || null, id]
-    );
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { id } = await params;
+  const { nombre, email, dni, rol, salario_monto, salario_tipo } = await request.json();
+
+  const { error } = await sb
+    .from('usuarios')
+    .update({
+      nombre,
+      email: email?.trim().toLowerCase() || null,
+      dni: dni || null,
+      rol,
+      salario_monto: salario_monto || null,
+      salario_tipo: salario_tipo || null,
+    })
+    .eq('id', id)
+    .neq('rol', 'admin');
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }
 
 // DELETE /api/personal/:id — soft delete
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    await pool.query(`UPDATE usuarios SET activo = 0 WHERE id = ? AND rol != 'admin'`, [id]);
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { id } = await params;
+
+  const { error } = await sb
+    .from('usuarios')
+    .update({ activo: false })
+    .eq('id', id)
+    .neq('rol', 'admin');
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }

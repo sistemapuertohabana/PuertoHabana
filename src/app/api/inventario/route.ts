@@ -1,33 +1,38 @@
 import { NextResponse } from 'next/server';
-import pool from '@/../lib/db';
+import { getServiceSupabase } from '@/lib/supabase';
 
 // GET /api/inventario?seccion=comida
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const seccion = searchParams.get('seccion');
-    const sql = seccion
-      ? `SELECT id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo FROM inventario WHERE seccion = ? ORDER BY nombre ASC`
-      : `SELECT id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo FROM inventario ORDER BY seccion, nombre ASC`;
-    const [rows]: any = await pool.query(sql, seccion ? [seccion] : []);
-    return NextResponse.json(rows);
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { searchParams } = new URL(request.url);
+  const seccion = searchParams.get('seccion');
+
+  let query = sb
+    .from('inventario')
+    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo')
+    .order('nombre');
+
+  if (seccion) query = query.eq('seccion', seccion);
+
+  const { data, error } = await query;
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data);
 }
 
 // POST /api/inventario
 export async function POST(request: Request) {
-  try {
-    const { seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo } = await request.json();
-    if (!seccion || !nombre) return NextResponse.json({ error: 'seccion y nombre requeridos' }, { status: 400 });
-    const [result]: any = await pool.query(
-      `INSERT INTO inventario (seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo) VALUES (?,?,?,?,?,?,?,?)`,
-      [seccion, nombre, categoria || null, tipo || null, precio || 0, cantidad || 0, unidad || 'unidad', minimo || 5]
-    );
-    const [rows]: any = await pool.query(`SELECT * FROM inventario WHERE id = ?`, [result.insertId]);
-    return NextResponse.json(rows[0], { status: 201 });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  const sb = getServiceSupabase();
+  const { seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo } = await request.json();
+  if (!seccion || !nombre) {
+    return NextResponse.json({ error: 'seccion y nombre requeridos' }, { status: 400 });
   }
+
+  const { data, error } = await sb
+    .from('inventario')
+    .insert([{ seccion, nombre, categoria: categoria || null, tipo: tipo || null, precio: precio || 0, cantidad: cantidad || 0, unidad: unidad || 'unidad', minimo: minimo || 5 }])
+    .select()
+    .single();
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json(data, { status: 201 });
 }

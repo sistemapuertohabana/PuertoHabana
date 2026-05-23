@@ -1,29 +1,29 @@
 import { NextResponse } from 'next/server';
-import pool from '@/../lib/db';
+import { getServiceSupabase } from '@/lib/supabase';
 
 // PATCH /api/pedidos/:id — actualizar estado
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    const { estado } = await request.json();
-    await pool.query(`UPDATE comandas SET estado = ? WHERE id = ?`, [estado, id]);
-    // También actualizar items si se marca como Entregado
-    if (estado === 'Entregado') {
-      await pool.query(`UPDATE comanda_items SET estado = 'Entregado' WHERE comanda_id = ?`, [id]);
-    }
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+  const sb = getServiceSupabase();
+  const { id } = await params;
+  const { estado } = await request.json();
+
+  const { error } = await sb.from('comandas').update({ estado }).eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // También actualizar items si se marca como Entregado
+  if (estado === 'Entregado') {
+    await sb.from('comanda_items').update({ estado: 'Entregado' }).eq('comanda_id', id);
   }
+
+  return NextResponse.json({ success: true });
 }
 
 // DELETE /api/pedidos/:id
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
-  try {
-    const { id } = await params;
-    await pool.query(`DELETE FROM comandas WHERE id = ?`, [id]);
-    return NextResponse.json({ success: true });
-  } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
-  }
+  const sb = getServiceSupabase();
+  const { id } = await params;
+
+  const { error } = await sb.from('comandas').delete().eq('id', id);
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
 }
