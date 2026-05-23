@@ -13,6 +13,11 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
       if (permiso === 'true') {
         setActivado(true);
       }
+      
+      // Registrar Service Worker para notificaciones nativas
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.register('/sw.js').catch(() => {});
+      }
     }
   }, []);
 
