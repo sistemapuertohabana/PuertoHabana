@@ -5,6 +5,7 @@ import { BellRing } from 'lucide-react';
 export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: string, rol: string }) {
   const [notificacion, setNotificacion] = useState<any>(null);
   const [activado, setActivado] = useState(false);
+  const [checking, setChecking] = useState(true);
 
   // Intentar cargar estado de activación desde sessionStorage
   useEffect(() => {
@@ -18,6 +19,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
       if ('serviceWorker' in navigator) {
         navigator.serviceWorker.register('/sw.js').catch(() => {});
       }
+      setChecking(false);
     }
   }, []);
 
@@ -95,6 +97,9 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     const interval = setInterval(checkNotifs, 10000);
     return () => clearInterval(interval);
   }, [usuarioId, rol, activado]); // Se removió notificacion de las dependencias para evitar bucles
+
+  // Evitar parpadeo (flash) del modal
+  if (checking) return null;
 
   // Pantalla de bloqueo obligatorio si no ha activado las notificaciones
   if (!activado) {
