@@ -280,7 +280,7 @@ export default function ConfiguracionPage() {
             <Palette size={16} className="text-gray-500" /> Estilo Navigation Bar
           </h2>
           <p className="text-xs text-gray-400 mb-4">Afecta la barra inferior en móvil — Admin, Mozo y Cocina</p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
             {(Object.entries(navbarPreviews) as [NavbarStyle, typeof navbarPreviews.original][]).map(([key, p]) => {
               const active = navbarStyle === key;
               return (
