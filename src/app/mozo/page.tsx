@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle } from 'lucide-react';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 interface MesaConfig {
   id: string;
@@ -121,6 +122,18 @@ export default function MozoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
       });
+      
+      // Notificar a cocina
+      fetch('/api/notificaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rol_destino: 'cocina',
+          titulo: 'Nueva Comanda',
+          mensaje: `El ${mozoNombre} ha enviado un nuevo pedido para la ${mesaName}`
+        })
+      }).catch(() => {});
+
     } catch {
       // Fallback localStorage si la API falla
       const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
@@ -205,6 +218,7 @@ export default function MozoPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 pb-20">
+      <NotificacionesToast rol="mozo" usuarioId={typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('ph_mozo_session') || '{}')?.id) : undefined} />
       <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10 flex justify-between items-center">
         <h1 className="text-xl font-bold text-gray-900">Puerto Habana — Mesas</h1>
         <button 

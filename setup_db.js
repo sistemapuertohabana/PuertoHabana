@@ -138,6 +138,7 @@ async function main() {
         fecha       DATE          NOT NULL,
         hora        VARCHAR(20)   NOT NULL,
         notas       TEXT,
+        metodo_pago ENUM('Efectivo','Yape','Tarjeta','Otro') NOT NULL DEFAULT 'Efectivo',
         created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
                     ON UPDATE CURRENT_TIMESTAMP,
@@ -224,12 +225,27 @@ async function main() {
         fecha           DATE          NOT NULL UNIQUE,
         total_comandas  INT           NOT NULL DEFAULT 0,
         total_ingresos  DECIMAL(10,2) NOT NULL DEFAULT 0,
+        total_yape      DECIMAL(10,2) NOT NULL DEFAULT 0,
+        total_efectivo  DECIMAL(10,2) NOT NULL DEFAULT 0,
         total_comida    DECIMAL(10,2) NOT NULL DEFAULT 0,
         total_bebidas   DECIMAL(10,2) NOT NULL DEFAULT 0,
         created_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
         updated_at      TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP
                         ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB`, 'ventas_diarias');
+
+    /* ── NOTIFICACIONES ──────────────────────────────────────────────── */
+    await q(conn, `
+      CREATE TABLE IF NOT EXISTS notificaciones (
+        id          INT           NOT NULL AUTO_INCREMENT PRIMARY KEY,
+        usuario_id  VARCHAR(36)   NULL,
+        rol_destino VARCHAR(50)   NULL,
+        titulo      VARCHAR(255)  NOT NULL,
+        mensaje     TEXT          NOT NULL,
+        leida       TINYINT(1)    NOT NULL DEFAULT 0,
+        created_at  TIMESTAMP     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+      ) ENGINE=InnoDB`, 'notificaciones');
 
     /* ── CONFIGURACION ───────────────────────────────────────────────── */
     await q(conn, `
@@ -295,6 +311,7 @@ async function main() {
     console.log('    pagos_personal  — Pagos a empleados');
     console.log('    mermas          — Desperdicios');
     console.log('    ventas_diarias  — Resumen diario (pronósticos)');
+    console.log('    notificaciones  — Notificaciones Push in-app');
     console.log('    configuracion   — Configuración del sistema\n');
 
   } catch (err) {

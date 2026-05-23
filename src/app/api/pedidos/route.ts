@@ -10,7 +10,7 @@ export async function GET(request: Request) {
 
   let query = sb
     .from('comandas')
-    .select('id, mesa_nombre, mozo_id, mozo_nombre, estado, total, fecha, hora, notas, comanda_items(id, nombre, cantidad, precio, categoria, notas, estado)')
+    .select('id, mesa_nombre, mozo_id, mozo_nombre, estado, total, fecha, hora, notas, metodo_pago, comanda_items(id, nombre, cantidad, precio, categoria, notas, estado)')
     .order('created_at', { ascending: false });
 
   if (fecha)  query = query.eq('fecha', fecha);

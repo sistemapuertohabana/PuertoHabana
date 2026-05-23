@@ -22,6 +22,7 @@ function getLocalDateString() {
 export default function MozoHistorialPage() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [loading,  setLoading]  = useState(true);
+  const [pagoModalId, setPagoModalId] = useState<number | null>(null);
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
@@ -68,18 +69,32 @@ export default function MozoHistorialPage() {
     return () => { clearInterval(interval); window.removeEventListener('storage', loadComandas); };
   }, [loadComandas]);
 
-  const marcarEntregado = async (id: number) => {
+  const confirmarCobro = async (id: number, metodo: 'Yape' | 'Efectivo') => {
     try {
       await fetch(`/api/pedidos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'Entregado' }),
+        body: JSON.stringify({ estado: 'Entregado', metodo_pago: metodo }),
       });
       loadComandas();
+      setPagoModalId(null);
+      
+      // Intentar enviar notificación al admin
+      fetch('/api/notificaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          rol_destino: 'admin',
+          titulo: 'Nuevo Pago Recibido',
+          mensaje: `La comanda fue cobrada con ${metodo}`
+        })
+      }).catch(() => {});
+      
     } catch {
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado' } : p)));
+      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)));
       loadComandas();
+      setPagoModalId(null);
     }
   };
 
@@ -149,12 +164,26 @@ export default function MozoHistorialPage() {
                     🖨️ Imprimir
                   </a>
                   {c.estado === 'Listo' && (
-                    <button onClick={() => marcarEntregado(c.id)}
+                    <button onClick={() => setPagoModalId(c.id)}
                       className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
-                      <CheckCircle2 size={16} /> Entregado
+                      <CheckCircle2 size={16} /> Cobrar
                     </button>
                   )}
                 </div>
+
+                {/* Modal de Pago */}
+                {pagoModalId === c.id && (
+                  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
+                      <h3 className="text-xl font-bold mb-6 text-center text-gray-900">¿Método de Pago?</h3>
+                      <div className="flex gap-4">
+                        <button onClick={() => confirmarCobro(c.id, 'Yape')} className="flex-1 bg-[#7408B6] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#5C0691] transition-colors shadow-lg">Yape</button>
+                        <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-700 transition-colors shadow-lg">Efectivo</button>
+                      </div>
+                      <button onClick={() => setPagoModalId(null)} className="w-full mt-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-2xl transition-colors">Cancelar</button>
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>

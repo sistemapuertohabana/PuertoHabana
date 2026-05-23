@@ -3,10 +3,12 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Check, Clock, UtensilsCrossed } from 'lucide-react';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 interface Pedido {
   id: number;
   mesa: string;
+  mozo_id?: string;
   mozo_nombre?: string;
   estado: string;
   hora: string;
@@ -63,6 +65,22 @@ export default function CocinaPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: nuevoEstado }),
       });
+
+      if (nuevoEstado === 'Listo') {
+        const comanda = pedidos.find(p => p.id === id);
+        if (comanda?.mozo_id) {
+          fetch('/api/notificaciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              usuario_id: comanda.mozo_id,
+              titulo: 'Comanda Lista',
+              mensaje: `La orden para ${comanda.mesa} está lista para recoger.`
+            })
+          }).catch(() => {});
+        }
+      }
+
       loadPedidos();
     } catch {
       // Fallback localStorage
@@ -76,6 +94,7 @@ export default function CocinaPage() {
 
   return (
     <div className="p-6 max-w-5xl mx-auto animate-in fade-in">
+      <NotificacionesToast rol="cocina" />
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-3xl md:text-4xl font-medium text-gray-900 mb-2">Comandas de Cocina</h1>

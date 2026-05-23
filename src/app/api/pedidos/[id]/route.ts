@@ -5,9 +5,12 @@ import { getServiceSupabase } from '@/lib/supabase';
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sb = getServiceSupabase();
   const { id } = await params;
-  const { estado } = await request.json();
+  const { estado, metodo_pago } = await request.json();
 
-  const { error } = await sb.from('comandas').update({ estado }).eq('id', id);
+  const updateData: any = { estado };
+  if (metodo_pago) updateData.metodo_pago = metodo_pago;
+
+  const { error } = await sb.from('comandas').update(updateData).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   // También actualizar items si se marca como Entregado

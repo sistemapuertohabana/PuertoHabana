@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 // Helper para obtener fecha local en formato YYYY-MM-DD
 function getLocalDateString(d: Date = new Date()) {
@@ -54,6 +55,7 @@ interface Pedido {
   category: 'comida' | 'bebidas';
   comandaId?: string;
   mesaId?: number;
+  metodo_pago?: 'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro';
 }
 
 const platosMenu = [
@@ -215,6 +217,7 @@ export default function DashboardPage() {
               fecha: c.fecha,
               category: item.categoria || 'comida',
               comandaId: String(c.id),
+              metodo_pago: c.metodo_pago || 'Efectivo',
             }))
           );
           setPedidos(normalized);
@@ -372,6 +375,20 @@ export default function DashboardPage() {
         const { id } = await res.json();
         const newPayment = { id, mozoNombre: paymentForm.mozoNombre, monto: parseFloat(paymentForm.monto), concepto: paymentForm.concepto, fecha: simulatedDate };
         setStaffPayments(prev => [newPayment, ...prev]);
+
+        // Enviar notificacion al usuario pagado
+        const staff = allStaffList.find(s => s.nombre === paymentForm.mozoNombre);
+        if (staff) {
+          fetch('/api/notificaciones', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              usuario_id: staff.id,
+              titulo: 'Pago Registrado',
+              mensaje: `El administrador ha registrado tu pago de S/ ${paymentForm.monto} por el concepto de: ${paymentForm.concepto}`
+            })
+          }).catch(() => {});
+        }
       }
     } catch {
       const newPayment = { id: Date.now(), mozoNombre: paymentForm.mozoNombre, monto: parseFloat(paymentForm.monto) || 0, concepto: paymentForm.concepto, fecha: simulatedDate };
@@ -683,10 +700,13 @@ export default function DashboardPage() {
       const totalRev = filteredHistoryOrders.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const comidaVal = filteredHistoryOrders.filter(p => p.category === 'comida').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const bebidasVal = filteredHistoryOrders.filter(p => p.category === 'bebidas').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-      const ticketPromedio = filteredHistoryOrders.length > 0 ? (totalRev / filteredHistoryOrders.length) : 0;
+      const totalYape = filteredHistoryOrders.filter(p => p.metodo_pago === 'Yape').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+      const totalEfectivo = filteredHistoryOrders.filter(p => p.metodo_pago === 'Efectivo').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
 
       return {
         ventasTotal: { title: 'Ventas Totales', value: `S/ ${totalRev.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
+        yape: { title: 'Total Yape', value: `S/ ${totalYape.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
+        efectivo: { title: 'Total Efectivo', value: `S/ ${totalEfectivo.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         comidaHist: { title: 'Ventas Comida', value: `S/ ${comidaVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Utensils },
         bebidasHist: { title: 'Ventas Bebidas', value: `S/ ${bebidasVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Wine },
       };
@@ -895,6 +915,7 @@ export default function DashboardPage() {
 
   return (
     <div className={`animate-in fade-in duration-300 overflow-x-hidden w-full ${colorMode === 'oscuro' ? 'bg-black min-h-screen text-white' : 'text-gray-900'}`}>
+      <NotificacionesToast rol="admin" />
       
       {/* Toast Notification */}
       {toastMessage && (
