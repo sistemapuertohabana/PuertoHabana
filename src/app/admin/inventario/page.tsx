@@ -13,7 +13,7 @@ import {
 interface Comida {
   id: string;
   nombre: string;
-  categoria: string;
+  categoria?: string;
   precio: number;
   cantidad: number;
 }
@@ -21,7 +21,7 @@ interface Comida {
 interface Bebida {
   id: string;
   nombre: string;
-  categoria: string;
+  categoria?: string;
   precio: number;
   cantidad: number;
 }
@@ -29,7 +29,7 @@ interface Bebida {
 interface Taper {
   id: string;
   nombre: string;
-  tipo: string;
+  tipo?: string;
   precio: number;
   cantidad: number;
 }

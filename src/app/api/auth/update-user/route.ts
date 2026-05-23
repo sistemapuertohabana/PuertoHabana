@@ -1,6 +1,28 @@
 import { NextResponse } from 'next/server';
+import pool from '@/../lib/db';
 
-export async function POST(request: Request) {
-  const body = await request.json();
-  return NextResponse.json({ success: true, user: body });
+// PUT /api/auth/update-user
+export async function PUT(request: Request) {
+  try {
+    const { id, nombre, email, dni, rol, salario_monto, salario_tipo, activo } = await request.json();
+    if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
+
+    await pool.query(
+      `UPDATE usuarios SET nombre=?, email=?, dni=?, rol=?, salario_monto=?, salario_tipo=?, activo=?
+       WHERE id=?`,
+      [
+        nombre,
+        email ? email.trim().toLowerCase() : null,
+        dni || null,
+        rol,
+        salario_monto || null,
+        salario_tipo || null,
+        activo ?? 1,
+        id,
+      ]
+    );
+    return NextResponse.json({ success: true });
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message }, { status: 500 });
+  }
 }
