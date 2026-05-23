@@ -409,16 +409,16 @@ export default function DashboardPage() {
     // Header for Financial Summary
     csvContent += "=== ESTADO DE RESULTADOS FINANCIEROS ===\n";
     csvContent += `Fecha del Reporte;${formatDate(simulatedDate)}\n`;
-    csvContent += `Ventas Brutas Totales;S/ ${totalVentas.toFixed(2)}\n`;
-    csvContent += `Costo de Insumos Perdidos;S/ ${totalInsumosLoss.toFixed(2)}\n`;
-    csvContent += `Pagos Totales a Personal;S/ ${totalStaffPayments.toFixed(2)}\n`;
-    csvContent += `GANANCIA NETA DEL PERIODO;S/ ${(totalVentas - totalInsumosLoss - totalStaffPayments).toFixed(2)}\n\n`;
+    csvContent += `Ventas Brutas Totales;S/ ${Number(totalVentas).toFixed(2)}\n`;
+    csvContent += `Costo de Insumos Perdidos;S/ ${Number(totalInsumosLoss).toFixed(2)}\n`;
+    csvContent += `Pagos Totales a Personal;S/ ${Number(totalStaffPayments).toFixed(2)}\n`;
+    csvContent += `GANANCIA NETA DEL PERIODO;S/ ${(Number(totalVentas) - Number(totalInsumosLoss) - Number(totalStaffPayments)).toFixed(2)}\n\n`;
     
     // Wasted supplies
     csvContent += "=== DETALLE DE PERDIDA DE INSUMOS ===\n";
     csvContent += "ID;Descripcion;Costo;Fecha\n";
     insumosWasted.forEach(w => {
-      csvContent += `${w.id};${w.descripcion};S/ ${w.costo.toFixed(2)};${w.fecha}\n`;
+      csvContent += `${w.id};${w.descripcion};S/ ${Number(w.costo).toFixed(2)};${w.fecha}\n`;
     });
     csvContent += "\n";
     
@@ -426,7 +426,7 @@ export default function DashboardPage() {
     csvContent += "=== DETALLE DE PAGOS AL PERSONAL ===\n";
     csvContent += "ID;Personal;Monto;Concepto;Fecha\n";
     staffPayments.forEach(p => {
-      csvContent += `${p.id};${p.mozoNombre};S/ ${p.monto.toFixed(2)};${p.concepto};${p.fecha}\n`;
+      csvContent += `${p.id};${p.mozoNombre};S/ ${Number(p.monto).toFixed(2)};${p.concepto};${p.fecha}\n`;
     });
     csvContent += "\n";
 
@@ -434,7 +434,7 @@ export default function DashboardPage() {
     csvContent += "=== PLATOS MAS VENDIDOS (HISTORIAL) ===\n";
     csvContent += "Posicion;Producto;Cantidad Vendida;Ventas Totales\n";
     getTopDishesData().forEach((d, idx) => {
-      csvContent += `${idx + 1};${d.name};${d.qty};S/ ${d.revenue.toFixed(2)}\n`;
+      csvContent += `${idx + 1};${d.name};${d.qty};S/ ${Number(d.revenue).toFixed(2)}\n`;
     });
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -460,25 +460,25 @@ export default function DashboardPage() {
     
     report += "1. BALANCE GENERAL Y NUEVA GANANCIA DEDUCIDA\n";
     report += "-------------------------------------------------------------------------\n";
-    report += `   (+) Ventas de Comandas Registradas: S/ ${totalVentas.toFixed(2)}\n`;
-    report += `   (-) Pérdidas por Mermas / Insumos:  S/ ${totalInsumosLoss.toFixed(2)}\n`;
-    report += `   (-) Costos de Nómina y Personal:    S/ ${totalStaffPayments.toFixed(2)}\n`;
+    report += `   (+) Ventas de Comandas Registradas: S/ ${Number(totalVentas).toFixed(2)}\n`;
+    report += `   (-) Pérdidas por Mermas / Insumos:  S/ ${Number(totalInsumosLoss).toFixed(2)}\n`;
+    report += `   (-) Costos de Nómina y Personal:    S/ ${Number(totalStaffPayments).toFixed(2)}\n`;
     report += "   ----------------------------------------------------------------------\n";
-    report += `   (=) GANANCIA NETA DEDUCIDA (Nueva): S/ ${(totalVentas - totalInsumosLoss - totalStaffPayments).toFixed(2)}\n\n`;
+    report += `   (=) GANANCIA NETA DEDUCIDA (Nueva): S/ ${(Number(totalVentas) - Number(totalInsumosLoss) - Number(totalStaffPayments)).toFixed(2)}\n\n`;
     
     report += "2. MANDO DE CONTROL DE RENDIMIENTO Y PRODUCTIVIDAD\n";
     report += "-------------------------------------------------------------------------\n";
     mozosList.forEach(m => {
       const orders = pedidos.filter(p => p.mozoId === m.id);
       const sales = orders.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-      report += `   * Mozo: ${m.nombre.padEnd(20)} | Comandas: ${String(orders.length).padEnd(4)} | Total Generado: S/ ${sales.toFixed(2)}\n`;
+      report += `   * Mozo: ${m.nombre.padEnd(20)} | Comandas: ${String(orders.length).padEnd(4)} | Total Generado: S/ ${Number(sales).toFixed(2)}\n`;
     });
     report += "\n";
     
     report += "3. RANKING DE PLATOS Y PRODUCTOS MÁS VENDIDOS\n";
     report += "-------------------------------------------------------------------------\n";
     getTopDishesData().forEach((d, idx) => {
-      report += `   [Rank #${idx + 1}] ${d.name.padEnd(22)} | Cantidad: ${String(d.qty).padEnd(4)} u. | Total Recaudado: S/ ${d.revenue.toFixed(2)}\n`;
+      report += `   [Rank #${idx + 1}] ${d.name.padEnd(22)} | Cantidad: ${String(d.qty).padEnd(4)} u. | Total Recaudado: S/ ${Number(d.revenue).toFixed(2)}\n`;
     });
     report += "\n";
     
@@ -852,7 +852,7 @@ export default function DashboardPage() {
                   <span className={`text-[8px] sm:text-[10px] w-full text-center truncate block mt-0.5 sm:mt-1 ${
                     isSelected ? 'text-blue-100 font-semibold' : 'text-green-600 font-medium'
                   }`}>
-                    <span className="hidden sm:inline">S/</span>{dayRevenue.toFixed(0)}
+                    <span className="hidden sm:inline">S/</span>{Number(dayRevenue).toFixed(0)}
                   </span>
                 ) : (
                   <span className="text-[10px] text-transparent select-none">-</span>
@@ -1229,7 +1229,7 @@ export default function DashboardPage() {
                             </td>
                             <td className="px-4 py-3.5 text-center text-xs font-semibold">{pedido.cantidad}</td>
                             <td className="px-4 py-3.5 text-right font-semibold text-xs whitespace-nowrap text-green-600 dark:text-green-500">
-                              S/ {(pedido.precio * pedido.cantidad).toFixed(2)}
+                              S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                             </td>
                           </tr>
                         ))}
@@ -1256,7 +1256,7 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <span className="text-sm font-bold text-green-600 dark:text-green-500">
-                          S/ {(pedido.precio * pedido.cantidad).toFixed(2)}
+                          S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                         </span>
                       </div>
                       
@@ -1343,7 +1343,7 @@ export default function DashboardPage() {
                       
                       <div className="flex gap-4 text-xs text-gray-600">
                         <span>Comandas: <strong className="text-gray-900">{stat.numPedidos}</strong></span>
-                        <span>Ticket Prom.: <strong className="text-gray-900">S/ {stat.ticketProm.toFixed(1)}</strong></span>
+                        <span>Ticket Prom.: <strong className="text-gray-900">S/ {Number(stat.ticketProm).toFixed(1)}</strong></span>
                       </div>
                     </div>
                   );
@@ -1445,10 +1445,10 @@ export default function DashboardPage() {
                             {pedido.cantidad}
                           </td>
                           <td className="py-3 text-right text-gray-500 dark:text-gray-400">
-                            S/ {pedido.precio.toFixed(2)}
+                            S/ {Number(pedido.precio).toFixed(2)}
                           </td>
                           <td className="py-3 text-right font-bold text-green-600 dark:text-green-500">
-                            S/ {(pedido.precio * pedido.cantidad).toFixed(2)}
+                            S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                           </td>
                           <td className="py-3 pl-4 text-gray-500 dark:text-gray-400 italic max-w-[200px] truncate" title={pedido.notas}>
                             {pedido.notas || '-'}
@@ -1499,7 +1499,7 @@ export default function DashboardPage() {
                           )}
                         </div>
                         <span className="text-sm font-bold text-green-600 dark:text-green-500">
-                          S/ {(pedido.precio * pedido.cantidad).toFixed(2)}
+                          S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                         </span>
                       </div>
                       
@@ -1560,25 +1560,25 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full overflow-hidden">
             <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Ventas Brutas</span>
-              <p className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-500">S/ {totalVentas.toFixed(2)}</p>
+              <p className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-500">S/ {Number(totalVentas).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Basado en comandas registradas</p>
             </div>
             
             <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Pérdida de Insumos</span>
-              <p className="text-2xl font-bold mt-2 text-red-600 dark:text-red-500">S/ {totalInsumosLoss.toFixed(2)}</p>
+              <p className="text-2xl font-bold mt-2 text-red-600 dark:text-red-500">S/ {Number(totalInsumosLoss).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Descartes/vencidos ya pagados</p>
             </div>
 
             <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Pagos al Personal</span>
-              <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-500">S/ {totalStaffPayments.toFixed(2)}</p>
+              <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-500">S/ {Number(totalStaffPayments).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Nóminas y comisiones de mozos</p>
             </div>
 
             <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border-blue-100 shadow-sm'}`}>
               <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest block">Ganancia Neta</span>
-              <p className="text-2xl font-bold mt-2 text-green-600 dark:text-green-500">S/ {netProfit.toFixed(2)}</p>
+              <p className="text-2xl font-bold mt-2 text-green-600 dark:text-green-500">S/ {Number(netProfit).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Nueva ganancia tras deducciones</p>
             </div>
           </div>
@@ -1659,7 +1659,7 @@ export default function DashboardPage() {
                         <p className="text-[10px] text-gray-400 mt-0.5">{w.fecha}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-red-500">S/ {w.costo.toFixed(2)}</span>
+                        <span className="font-bold text-red-500">S/ {Number(w.costo).toFixed(2)}</span>
                         <button onClick={() => handleDeleteWaste(String(w.id))} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 size={12} />
                         </button>
@@ -1730,7 +1730,7 @@ export default function DashboardPage() {
                         <p className="text-[10px] text-gray-400 mt-0.5">{p.fecha}</p>
                       </div>
                       <div className="flex items-center gap-3">
-                        <span className="font-bold text-amber-500">S/ {p.monto.toFixed(2)}</span>
+                        <span className="font-bold text-amber-500">S/ {Number(p.monto).toFixed(2)}</span>
                         <button onClick={() => handleDeletePayment(String(p.id))} className="text-gray-400 hover:text-red-500 transition-colors">
                           <Trash2 size={12} />
                         </button>
@@ -1759,7 +1759,7 @@ export default function DashboardPage() {
                       <div key={idx} className="space-y-1">
                         <div className="flex justify-between text-xs font-semibold">
                           <span>{d.name}</span>
-                          <span className="text-gray-400">{d.qty} u. (S/ {d.revenue.toFixed(2)})</span>
+                          <span className="text-gray-400">{d.qty} u. (S/ {Number(d.revenue).toFixed(2)})</span>
                         </div>
                         <div className={`w-full h-2 rounded-full overflow-hidden ${colorMode === 'oscuro' ? 'bg-gray-950' : 'bg-gray-100'}`}>
                           <div 
@@ -1856,7 +1856,7 @@ export default function DashboardPage() {
                       <p className={`text-xs ${colorMode === 'oscuro' ? 'text-gray-400' : 'text-gray-500'}`}>{pedido.mesa}</p>
                     </div>
                     <span className={`text-base font-bold ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
-                      S/ {(pedido.precio * pedido.cantidad).toFixed(2)}
+                      S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                     </span>
                   </div>
                   
@@ -1867,7 +1867,7 @@ export default function DashboardPage() {
                     </div>
                     <div>
                       <p className="text-gray-400">Precio Unit.</p>
-                      <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>S/ {pedido.precio.toFixed(2)}</p>
+                      <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>S/ {Number(pedido.precio).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Hora</p>
@@ -2043,7 +2043,7 @@ export default function DashboardPage() {
                 >
                   {platosMenu.map((p, idx) => (
                     <option key={idx} value={idx}>
-                      {p.name} - S/ {p.price.toFixed(2)} ({p.category === 'comida' ? 'Plato' : 'Bebida'})
+                      {p.name} - S/ {Number(p.price).toFixed(2)} ({p.category === 'comida' ? 'Plato' : 'Bebida'})
                     </option>
                   ))}
                 </select>

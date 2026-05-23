@@ -337,7 +337,7 @@ export default function MozoPage() {
                       <div key={item.name} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
                         <div>
                           <p className="font-medium text-sm text-gray-900">{item.name}</p>
-                          <p className="text-xs text-gray-500">S/ {item.price.toFixed(2)}</p>
+                          <p className="text-xs text-gray-500">S/ {Number(item.price).toFixed(2)}</p>
                         </div>
                         <div className="flex items-center gap-3">
                           <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
@@ -361,7 +361,7 @@ export default function MozoPage() {
           <div className="p-4 border-t border-gray-200 bg-white">
             <div className="flex justify-between items-center mb-3">
               <span className="text-sm text-gray-500">{cart.reduce((s, c) => s + c.qty, 0)} productos</span>
-              <span className="text-xl font-bold text-gray-900">S/ {total.toFixed(2)}</span>
+              <span className="text-xl font-bold text-gray-900">S/ {Number(total).toFixed(2)}</span>
             </div>
             <button
               onClick={handleEnviar}

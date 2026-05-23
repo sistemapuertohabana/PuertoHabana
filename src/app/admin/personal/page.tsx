@@ -306,7 +306,7 @@ export default function PersonalPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-700">
-                      {p.salario_monto ? `S/ ${p.salario_monto.toFixed(2)} (${p.salario_tipo})` : '—'}
+                      {p.salario_monto ? `S/ ${Number(p.salario_monto).toFixed(2)} (${p.salario_tipo})` : '—'}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
@@ -354,7 +354,7 @@ export default function PersonalPage() {
                   </span>
                   {p.salario_monto && (
                     <span className="text-xs font-semibold text-emerald-600">
-                      S/ {p.salario_monto.toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span>
+                      S/ {Number(p.salario_monto).toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span>
                     </span>
                   )}
                 </div>

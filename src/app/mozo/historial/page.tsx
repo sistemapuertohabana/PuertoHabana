@@ -95,7 +95,7 @@ export default function MozoHistorialPage() {
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400 uppercase font-semibold">Total del Día</p>
-          <p className="text-2xl font-bold text-blue-600">S/ {total.toFixed(2)}</p>
+          <p className="text-2xl font-bold text-blue-600">S/ {Number(total).toFixed(2)}</p>
         </div>
       </div>
 
@@ -138,7 +138,7 @@ export default function MozoHistorialPage() {
                       <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
                         <span className="font-bold text-gray-900">{item.cantidad}×</span>
                         <span>{item.nombre}</span>
-                        <span className="text-gray-400 ml-auto">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                        <span className="text-gray-400 ml-auto">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
                       </li>
                     ))}
                   </ul>

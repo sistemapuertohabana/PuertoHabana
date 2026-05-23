@@ -259,7 +259,7 @@ export default function MozoPerfilPage() {
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Salario Base</p>
                   <p className="text-lg font-bold text-gray-900">
-                    S/ {salario.toFixed(2)}
+                    S/ {Number(salario).toFixed(2)}
                     {salTipo && <span className="text-sm font-normal text-gray-400 ml-1">/ {salTipo.toLowerCase()}</span>}
                   </p>
                 </div>

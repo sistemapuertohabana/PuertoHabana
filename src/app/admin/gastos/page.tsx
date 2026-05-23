@@ -130,7 +130,7 @@ export default function GastosPage() {
       {/* Resumen */}
       <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 flex items-center justify-between">
         <p className="text-sm text-gray-500 font-medium">Total Gastos</p>
-        <p className="text-2xl font-bold text-gray-900">S/ {total.toFixed(2)}</p>
+        <p className="text-2xl font-bold text-gray-900">S/ {Number(total).toFixed(2)}</p>
       </div>
 
       {loading && <div className="flex justify-center py-20"><Loader2 size={32} className="animate-spin text-gray-300" /></div>}
