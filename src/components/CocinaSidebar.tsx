@@ -8,6 +8,7 @@ import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
+const menuItems = [
   { href: '/cocina',               icon: ChefHat, label: 'Comandas' },
   { href: '/cocina/historial',     icon: Clock,   label: 'Historial'},
   { href: '/cocina/perfil',        icon: User,    label: 'Perfil'   },
