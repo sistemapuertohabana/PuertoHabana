@@ -193,7 +193,7 @@ export default function DashboardPage() {
               id: `${c.id}-${item.id}`,
               item: item.nombre,
               cantidad: item.cantidad,
-              mesa: c.mesa,
+              mesa: c.mesa_nombre || c.mesa,
               precio: item.precio,
               estado: c.estado,
               hora: c.hora,
