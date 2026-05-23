@@ -34,6 +34,7 @@ const ROL_LABELS: Record<string, string> = {
   cocina:          'Cocinero',
   ayudante_cocina: 'Ayudante de Cocina',
   lavaplato:       'Lavaplatos',
+  dev:             'Desarrollador',
 };
 
 const SALARIO_LABELS: Record<string, string> = {
@@ -88,7 +89,7 @@ export default function DevPerfilPage() {
       } else {
         setRecord({
           id,
-          nombre: session.nombre ?? 'Sin nombre',
+          nombre: session.nombre ?? 'STEV LOZANO BY CODEOL SOFTWARE PERÚ',
           email:  session.email,
           rol:    session.rol ?? 'dev',
         });
@@ -148,7 +149,7 @@ export default function DevPerfilPage() {
   if (!mounted) return null;
 
   const nombre   = record?.nombre ?? '—';
-  const rolLabel = ROL_LABELS[record?.rol ?? ''] ?? record?.rol ?? 'Mozo';
+  const rolLabel = ROL_LABELS[record?.rol ?? ''] ?? record?.rol ?? 'Desarrollador';
   const email    = record?.email ?? '—';
   const salario  = record?.salario_monto;
   const salTipo  = SALARIO_LABELS[record?.salario_tipo ?? ''] ?? record?.salario_tipo ?? '';

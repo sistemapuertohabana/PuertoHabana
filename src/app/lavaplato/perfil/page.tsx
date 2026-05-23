@@ -148,7 +148,7 @@ export default function LavaplatoPerfilPage() {
   if (!mounted) return null;
 
   const nombre   = record?.nombre ?? '—';
-  const rolLabel = ROL_LABELS[record?.rol ?? ''] ?? record?.rol ?? 'Mozo';
+  const rolLabel = ROL_LABELS[record?.rol ?? ''] ?? record?.rol ?? 'Lavaplatos';
   const email    = record?.email ?? '—';
   const salario  = record?.salario_monto;
   const salTipo  = SALARIO_LABELS[record?.salario_tipo ?? ''] ?? record?.salario_tipo ?? '';
