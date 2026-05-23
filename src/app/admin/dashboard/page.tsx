@@ -18,7 +18,6 @@ import {
   Wine, 
   Users, 
   DollarSign, 
-  AlertTriangle,
   Calendar,
   Clock,
   Plus,
@@ -31,7 +30,6 @@ import {
   RefreshCw,
   Sparkles,
   ClipboardList,
-  ChevronDown,
   Download,
   Trash2
 } from 'lucide-react';
@@ -118,13 +116,13 @@ const platosMenu = [
 
 
 export default function DashboardPage() {
-  const colorMode = 'claro' as any;
-  const setColorMode = (mode: ColorMode) => {};
+  const colorMode: ColorMode = 'claro';
+  const setColorMode = () => {};
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
   const [allStaffList, setAllStaffList] = useState<{ id: string; nombre: string; salario_monto?: number; salario_tipo?: string; rol?: string }[]>([]);
-  const [platosMenuDynamic, setPlatosMenuDynamic] = useState(platosMenu);
+  const [platosMenuDynamic] = useState(platosMenu);
   
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [selectedMozo, setSelectedMozo] = useState<{ id: string; nombre: string; pedidos: Pedido[] } | null>(null);
