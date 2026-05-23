@@ -1135,7 +1135,7 @@ export default function DashboardPage() {
                   }`}>
                     <span>Total ventas:</span>
                     <span className="font-semibold text-inherit dark:text-white">
-                      S/ {mozo.pedidos.reduce((total, p) => total + (p.precio * p.cantidad), 0).toFixed(2)}
+                      S/ {mozo.pedidos.reduce((total, p) => total + (Number(p.precio) * p.cantidad), 0).toFixed(2)}
                     </span>
                   </div>
                 )}
@@ -1965,11 +1965,6 @@ export default function DashboardPage() {
                 >
                   🧾 Imprimir Boleta
                 </button>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
 
       {/* Boleta de consumo */}
       {showBoleta && selectedMozo && selectedMozo.pedidos.length > 0 && (
