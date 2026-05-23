@@ -6,7 +6,7 @@ export async function GET() {
   const sb = getServiceSupabase();
   const { data, error } = await sb
     .from('usuarios')
-    .select('id, nombre, email, dni, rol, salario_monto, salario_tipo')
+    .select('id, nombre, email, dni, rol, salario_monto, salario_tipo, telefono, turno, area, fecha_ingreso, foto_url')
     .neq('rol', 'admin')
     .eq('activo', true)
     .order('nombre');
@@ -18,7 +18,7 @@ export async function GET() {
 // POST /api/personal — crear empleado
 export async function POST(request: Request) {
   const sb = getServiceSupabase();
-  const { nombre, email, dni, rol, salario_monto, salario_tipo } = await request.json();
+  const { nombre, email, dni, rol, salario_monto, salario_tipo, telefono, turno, area, fecha_ingreso, foto_url } = await request.json();
   if (!nombre || !rol) {
     return NextResponse.json({ error: 'nombre y rol son requeridos' }, { status: 400 });
   }
@@ -32,9 +32,14 @@ export async function POST(request: Request) {
       rol,
       salario_monto: salario_monto || null,
       salario_tipo: salario_tipo || null,
+      telefono: telefono || null,
+      turno: turno || null,
+      area: area || null,
+      fecha_ingreso: fecha_ingreso || null,
+      foto_url: foto_url || null,
       activo: true,
     }])
-    .select('id, nombre, email, dni, rol, salario_monto, salario_tipo')
+    .select('id, nombre, email, dni, rol, salario_monto, salario_tipo, telefono, turno, area, fecha_ingreso, foto_url')
     .single();
 
   if (error) {

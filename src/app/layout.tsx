@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import Sidebar from "@/components/Sidebar";
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -15,6 +16,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Puerto Habana Cevicheria - Dashboard",
   description: "Sistema de gestión para Puerto Habana Cevicheria",
+  manifest: "/manifest.json",
 };
 
 export default function RootLayout({
@@ -27,7 +29,10 @@ export default function RootLayout({
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
     >
-      <body className="min-h-full flex flex-col overflow-x-hidden w-full">{children}</body>
+      <body className="min-h-full flex flex-col overflow-x-hidden w-full">
+        {children}
+        <PWAInstallPrompt />
+      </body>
     </html>
   );
 }

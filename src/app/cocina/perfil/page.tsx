@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
+import { supabase } from '@/lib/supabase';
+
 interface PersonalRecord {
   id: string;
   nombre: string;
@@ -21,7 +23,7 @@ interface CocinaExtra {
   turno: string;
   especialidad: string;
   telefono: string;
-  fechaIngreso: string;
+  fecha_ingreso: string;
 }
 
 const ROL_LABELS: Record<string, string> = {
@@ -40,26 +42,6 @@ function loadSession() {
   try { return JSON.parse(localStorage.getItem('ph_cocina_session') || '{}'); } catch { return {}; }
 }
 
-function loadPersonalRecord(id: string): PersonalRecord | null {
-  try {
-    const list: PersonalRecord[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
-    return list.find(p => p.id === id) ?? null;
-  } catch { return null; }
-}
-
-function loadExtra(id: string): CocinaExtra {
-  try {
-    const raw = localStorage.getItem(`ph_cocina_extra_${id}`);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { turno: '', especialidad: '', telefono: '', fechaIngreso: '' };
-}
-
-function saveExtra(id: string, data: CocinaExtra) {
-  localStorage.setItem(`ph_cocina_extra_${id}`, JSON.stringify(data));
-  window.dispatchEvent(new Event('ph_store_update'));
-}
-
 function formatDate(iso: string): string {
   if (!iso) return '—';
   try {
@@ -70,43 +52,70 @@ function formatDate(iso: string): string {
 export default function CocinaPerfilPage() {
   const [photo,   setPhoto]   = useState('');
   const [record,  setRecord]  = useState<PersonalRecord | null>(null);
-  const [extra,   setExtra]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fechaIngreso: '' });
+  const [extra,   setExtra]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fecha_ingreso: '' });
   const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fechaIngreso: '' });
+  const [draft,   setDraft]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fecha_ingreso: '' });
   const [saved,   setSaved]   = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setMounted(true);
     const session = loadSession();
     const id = session.id ?? '';
-    setPhoto(getProfilePhoto('cocina'));
-    if (id) {
-      const rec = loadPersonalRecord(id);
-      setRecord(rec ?? { id, nombre: session.nombre ?? 'Sin nombre', email: session.email, rol: session.rol ?? 'cocina' });
-      const ex = loadExtra(id);
-      setExtra(ex);
-      setDraft(ex);
+    
+    if (!id) {
+      setLoading(false);
+      return;
     }
+
+    const loadData = async () => {
+      const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).single();
+      if (!error && data) {
+        setRecord(data);
+        const ex = {
+          turno: data.turno || '',
+          especialidad: data.area || '',
+          telefono: data.telefono || '',
+          fecha_ingreso: data.fecha_ingreso || '',
+        };
+        setExtra(ex);
+        setDraft(ex);
+        setPhoto(data.foto_url || getProfilePhoto('cocina'));
+      } else {
+        setRecord({ id, nombre: session.nombre ?? 'Sin nombre', email: session.email, rol: session.rol ?? 'cocina' });
+      }
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const url = reader.result as string;
       setPhoto(url);
       saveProfilePhoto('cocina', url);
+      const id = loadSession().id;
+      if (id) await supabase.from('usuarios').update({ foto_url: url }).eq('id', id);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const id = record?.id ?? '';
     if (!id) return;
-    saveExtra(id, draft);
+
+    await supabase.from('usuarios').update({
+      turno: draft.turno,
+      area: draft.especialidad,
+      telefono: draft.telefono,
+      fecha_ingreso: draft.fecha_ingreso
+    }).eq('id', id);
+
     setExtra(draft);
     setEditing(false);
     setSaved(true);
@@ -190,16 +199,16 @@ export default function CocinaPerfilPage() {
             {editing ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <EditField label="Teléfono"        icon={<Phone size={14} />}    value={draft.telefono}     onChange={v => setDraft(d => ({ ...d, telefono: v }))}     placeholder="+51 999 999 999" />
-                <EditField label="Turno"           icon={<Clock size={14} />}    value={draft.turno}        onChange={v => setDraft(d => ({ ...d, turno: v }))}        placeholder="Ej: Completo (10:00 - 22:00)" />
-                <EditField label="Especialidad"    icon={<Briefcase size={14} />}value={draft.especialidad} onChange={v => setDraft(d => ({ ...d, especialidad: v }))} placeholder="Ej: Marina & Criolla" />
-                <EditField label="Fecha de Ingreso"icon={<Calendar size={14} />} value={draft.fechaIngreso} onChange={v => setDraft(d => ({ ...d, fechaIngreso: v }))} type="date" />
+                <EditField label="Turno"           icon={<Clock size={14} />}    value={draft.turno}        onChange={v => setDraft(d => ({ ...d, turno: v }))}        placeholder="Ej. Mañana" />
+                <EditField label="Especialidad"    icon={<Briefcase size={14} />}value={draft.especialidad} onChange={v => setDraft(d => ({ ...d, especialidad: v }))} placeholder="Ej. Pescados y Mariscos" />
+                <EditField label="Fecha de Ingreso"icon={<Calendar size={14} />} value={draft.fecha_ingreso}onChange={v => setDraft(d => ({ ...d, fecha_ingreso: v }))} type="date" />
               </div>
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <InfoRow icon={<Phone size={15} />}    label="Teléfono"         value={extra.telefono     || '—'} />
                 <InfoRow icon={<Clock size={15} />}    label="Turno"            value={extra.turno        || '—'} />
                 <InfoRow icon={<Briefcase size={15} />}label="Especialidad"     value={extra.especialidad || '—'} />
-                <InfoRow icon={<Calendar size={15} />} label="Fecha de Ingreso" value={extra.fechaIngreso ? formatDate(extra.fechaIngreso) : '—'} />
+                <InfoRow icon={<Calendar size={15} />} label="Fecha de Ingreso" value={extra.fecha_ingreso|| '—'} />
               </div>
             )}
           </div>

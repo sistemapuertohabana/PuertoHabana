@@ -5,7 +5,7 @@ import { getServiceSupabase } from '@/lib/supabase';
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sb = getServiceSupabase();
   const { id } = await params;
-  const { nombre, email, dni, rol, salario_monto, salario_tipo } = await request.json();
+  const { nombre, email, dni, rol, salario_monto, salario_tipo, telefono, turno, area, fecha_ingreso, foto_url } = await request.json();
 
   const { error } = await sb
     .from('usuarios')
@@ -16,6 +16,11 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       rol,
       salario_monto: salario_monto || null,
       salario_tipo: salario_tipo || null,
+      telefono: telefono || null,
+      turno: turno || null,
+      area: area || null,
+      fecha_ingreso: fecha_ingreso || null,
+      foto_url: foto_url || null,
     })
     .eq('id', id)
     .neq('rol', 'admin');

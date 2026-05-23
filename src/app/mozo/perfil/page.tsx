@@ -7,6 +7,8 @@ import {
 } from 'lucide-react';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
+import { supabase } from '@/lib/supabase';
+
 /* ─── tipos ──────────────────────────────────────────────────────────────── */
 
 interface PersonalRecord {
@@ -23,7 +25,7 @@ interface MozoExtra {
   turno: string;
   area: string;
   telefono: string;
-  fechaIngreso: string;
+  fecha_ingreso: string;
 }
 
 const ROL_LABELS: Record<string, string> = {
@@ -46,36 +48,17 @@ function loadSession(): { id?: string; nombre?: string; rol?: string; email?: st
   try { return JSON.parse(localStorage.getItem('ph_mozo_session') || '{}'); } catch { return {}; }
 }
 
-function loadPersonalRecord(id: string): PersonalRecord | null {
-  try {
-    const list: PersonalRecord[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
-    return list.find(p => p.id === id) ?? null;
-  } catch { return null; }
-}
-
-function loadExtra(id: string): MozoExtra {
-  try {
-    const raw = localStorage.getItem(`ph_mozo_extra_${id}`);
-    if (raw) return JSON.parse(raw);
-  } catch {}
-  return { turno: '', area: '', telefono: '', fechaIngreso: '' };
-}
-
-function saveExtra(id: string, data: MozoExtra) {
-  localStorage.setItem(`ph_mozo_extra_${id}`, JSON.stringify(data));
-  window.dispatchEvent(new Event('ph_store_update'));
-}
-
 /* ─── componente ─────────────────────────────────────────────────────────── */
 
 export default function MozoPerfilPage() {
   const [photo,   setPhoto]   = useState('');
   const [record,  setRecord]  = useState<PersonalRecord | null>(null);
-  const [extra,   setExtra]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fechaIngreso: '' });
+  const [extra,   setExtra]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fecha_ingreso: '' });
   const [editing, setEditing] = useState(false);
-  const [draft,   setDraft]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fechaIngreso: '' });
+  const [draft,   setDraft]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fecha_ingreso: '' });
   const [saved,   setSaved]   = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -83,16 +66,26 @@ export default function MozoPerfilPage() {
     const session = loadSession();
     const id = session.id ?? '';
 
-    // Foto
-    setPhoto(getProfilePhoto('mozo'));
+    if (!id) {
+      setLoading(false);
+      return;
+    }
 
-    // Datos del admin (ph_personal)
-    if (id) {
-      const rec = loadPersonalRecord(id);
-      if (rec) {
-        setRecord(rec);
+    // Cargar datos reales de Supabase
+    const loadData = async () => {
+      const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).single();
+      if (!error && data) {
+        setRecord(data);
+        const ex = {
+          turno: data.turno || '',
+          area: data.area || '',
+          telefono: data.telefono || '',
+          fecha_ingreso: data.fecha_ingreso || '',
+        };
+        setExtra(ex);
+        setDraft(ex);
+        setPhoto(data.foto_url || getProfilePhoto('mozo'));
       } else {
-        // Si no hay registro en ph_personal, usar datos de la sesión
         setRecord({
           id,
           nombre: session.nombre ?? 'Sin nombre',
@@ -100,28 +93,37 @@ export default function MozoPerfilPage() {
           rol:    session.rol ?? 'mozo',
         });
       }
-      const ex = loadExtra(id);
-      setExtra(ex);
-      setDraft(ex);
-    }
+      setLoading(false);
+    };
+    loadData();
   }, []);
 
-  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const url = reader.result as string;
       setPhoto(url);
-      saveProfilePhoto('mozo', url);
+      saveProfilePhoto('mozo', url); // fallback local
+      const id = loadSession().id;
+      if (id) await supabase.from('usuarios').update({ foto_url: url }).eq('id', id);
     };
     reader.readAsDataURL(file);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     const id = record?.id ?? '';
     if (!id) return;
-    saveExtra(id, draft);
+    
+    // Guardar en Supabase
+    await supabase.from('usuarios').update({
+      turno: draft.turno,
+      area: draft.area,
+      telefono: draft.telefono,
+      fecha_ingreso: draft.fecha_ingreso
+    }).eq('id', id);
+
     setExtra(draft);
     setEditing(false);
     setSaved(true);
@@ -225,15 +227,14 @@ export default function MozoPerfilPage() {
                 <EditField label="Turno" icon={<Clock size={14} />}
                   value={draft.turno}
                   onChange={v => setDraft(d => ({ ...d, turno: v }))}
-                  placeholder="Ej: Mañana (08:00 - 16:00)" />
+                  placeholder="Ej. Tarde" />
                 <EditField label="Área Asignada" icon={<MapPin size={14} />}
                   value={draft.area}
                   onChange={v => setDraft(d => ({ ...d, area: v }))}
-                  placeholder="Ej: Terraza Principal" />
+                  placeholder="Ej. Salón Principal" />
                 <EditField label="Fecha de Ingreso" icon={<Calendar size={14} />}
-                  value={draft.fechaIngreso}
-                  onChange={v => setDraft(d => ({ ...d, fechaIngreso: v }))}
-                  placeholder="Ej: 12 de Enero, 2025"
+                  value={draft.fecha_ingreso}
+                  onChange={v => setDraft(d => ({ ...d, fecha_ingreso: v }))}
                   type="date" />
               </div>
             ) : (
@@ -241,7 +242,7 @@ export default function MozoPerfilPage() {
                 <InfoRow icon={<Phone size={15} />}   label="Teléfono"        value={extra.telefono    || '—'} />
                 <InfoRow icon={<Clock size={15} />}   label="Turno"           value={extra.turno       || '—'} />
                 <InfoRow icon={<MapPin size={15} />}  label="Área Asignada"   value={extra.area        || '—'} />
-                <InfoRow icon={<Calendar size={15} />}label="Fecha de Ingreso"value={extra.fechaIngreso ? formatDate(extra.fechaIngreso) : '—'} />
+                <InfoRow icon={<Calendar size={15} />}label="Fecha de Ingreso"value={extra.fecha_ingreso || '—'} />
               </div>
             )}
           </div>
