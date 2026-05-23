@@ -94,57 +94,49 @@ export default function MozoPage() {
 
   const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
 
-  const handleEnviar = () => {
+  const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
     const fecha = typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
       : getLocalDateString();
     const now = new Date();
     const hora = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
-
     const mesaName = getDisplayName(activeMesa);
-    
-    // Get actual mozo details
-    let mozoId = 'mozo';
+
+    let mozoId: string | null = null;
     let mozoNombre = 'Mozo';
     try {
       const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
-      if (session && session.nombre) {
-        mozoId = session.id || 'mozo';
-        mozoNombre = session.nombre;
-      }
+      if (session?.nombre) { mozoId = session.id || null; mozoNombre = session.nombre; }
     } catch {}
 
-    const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-    const nuevos = cart.map(c => ({
-      id: Date.now() + Math.random(),
-      item: c.name,
-      cantidad: c.qty,
-      mesa: mesaName,
-      precio: c.price,
-      estado: 'Pendiente',
-      hora,
-      notas: '',
-      category: c.category,
-      fecha,
-      mozoId,
-      mozoNombre,
+    const items = cart.map(c => ({
+      nombre: c.name, cantidad: c.qty, precio: c.price, categoria: c.category,
     }));
-    localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
+
+    try {
+      // Guardar en MySQL via API
+      await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
+      });
+    } catch {
+      // Fallback localStorage si la API falla
+      const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+      const nuevos = cart.map(c => ({
+        id: Date.now() + Math.random(), item: c.name, cantidad: c.qty,
+        mesa: mesaName, precio: c.price, estado: 'Pendiente', hora,
+        notas: '', category: c.category, fecha, mozoId, mozoNombre,
+      }));
+      localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
+    }
+
     setCart([]);
     setActiveMesa(null);
     setSuccess(true);
-    
-    // Update occupied state immediately
-    setMesasOcupadas(prev => {
-      const next = new Set(prev);
-      next.add(mesaName);
-      return next;
-    });
-    
-    // Notify cocina
+    setMesasOcupadas(prev => { const next = new Set(prev); next.add(mesaName); return next; });
     window.dispatchEvent(new Event('storage'));
-    
     setTimeout(() => setSuccess(false), 3000);
   };
 

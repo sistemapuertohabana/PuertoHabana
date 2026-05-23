@@ -3,49 +3,70 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChefHat, ArrowLeft, Mail } from 'lucide-react';
+import { ChefHat, ArrowLeft, Mail, Loader2 } from 'lucide-react';
 
 export default function LoginCocinaPage() {
-  const router = useRouter();
-  const [input, setInput] = useState('');
-  const [error, setError] = useState('');
+  const router  = useRouter();
+  const [input,   setInput]   = useState('');
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    const val = input.trim().toLowerCase();
+
+    try {
+      // 1. Intentar desde la API (MySQL)
+      const res = await fetch('/api/personal');
+      if (res.ok) {
+        const personal: any[] = await res.json();
+        localStorage.setItem('ph_personal', JSON.stringify(personal));
+
+        const user = personal.find(p =>
+          (p.rol === 'cocina' || p.rol === 'ayudante_cocina') &&
+          (p.email?.toLowerCase() === val || p.nombre?.toLowerCase() === val)
+        );
+
+        if (!user) {
+          setError('No se encontró un cocinero con ese Gmail o nombre. Pídele al admin que te registre.');
+          setLoading(false);
+          return;
+        }
+
+        localStorage.setItem('ph_cocina_session', JSON.stringify({
+          id: user.id, nombre: user.nombre, email: user.email,
+          rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+        }));
+        router.push('/cocina');
+        return;
+      }
+    } catch {}
+
+    // 2. Fallback localStorage
     try {
       const personal: any[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
-      const val = input.trim().toLowerCase();
-
-      // Acepta cocina o ayudante_cocina
       const user = personal.find(p =>
         (p.rol === 'cocina' || p.rol === 'ayudante_cocina') &&
         (p.email?.toLowerCase() === val || p.nombre?.toLowerCase() === val)
       );
 
-      if (!user) {
+      if (user) {
+        localStorage.setItem('ph_cocina_session', JSON.stringify({
+          id: user.id, nombre: user.nombre, email: user.email,
+          rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+        }));
+        router.push('/cocina');
+      } else {
         setError('No se encontró un cocinero con ese Gmail o nombre. Pídele al admin que te registre.');
-        setLoading(false);
-        return;
       }
-
-      localStorage.setItem('ph_cocina_session', JSON.stringify({
-        id:     user.id,
-        nombre: user.nombre,
-        email:  user.email,
-        rol:    user.rol,
-        salario_monto: user.salario_monto,
-        salario_tipo:  user.salario_tipo,
-      }));
-
-      router.push('/cocina');
     } catch {
       setError('Error al procesar el inicio de sesión.');
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -72,9 +93,7 @@ export default function LoginCocinaPage() {
               Gmail o Nombre registrado
             </label>
             <input
-              type="text"
-              required
-              value={input}
+              type="text" required value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="tu@gmail.com  o  Tu Nombre"
               autoComplete="off"
@@ -86,17 +105,12 @@ export default function LoginCocinaPage() {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-              {error}
-            </div>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-60 text-sm"
-          >
-            {loading ? 'Verificando...' : 'Entrar a Comandas'}
+          <button type="submit" disabled={loading}
+            className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-60 text-sm flex items-center justify-center gap-2">
+            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Entrar a Comandas'}
           </button>
         </form>
       </div>

@@ -127,68 +127,99 @@ export default function DashboardPage() {
     const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
     if (savedColorMode) setColorMode(savedColorMode);
 
-    // Load active tab from localStorage
+    // Load active tab from localStorage (UI preference only)
     const savedActiveTab = localStorage.getItem('puerto_habana_active_tab') as TabType;
     if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'reportes'].includes(savedActiveTab)) {
       setActiveTab(savedActiveTab);
     }
 
-    // Cargar personal (mozos) desde localStorage
-    const savedPersonal = localStorage.getItem('ph_personal');
-    if (savedPersonal) {
-      try {
-        const data = JSON.parse(savedPersonal);
-        const mozos = data
-          .filter((x: any) => x.rol === 'mozo' || x.rol === 'admin')
-          .map((x: any) => ({ id: x.id, nombre: x.nombre }));
-        if (mozos.length) {
-          setMozosList(mozos);
-          setSelectedWaiterId((prev) => prev || mozos[0].id);
-          setNewOrder((n) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
-        }
-      } catch {}
-    }
-
-    // Cargar wastes desde localStorage
-    const savedWastes = localStorage.getItem('puerto_habana_wastes');
-    if (savedWastes) {
-      try { setInsumosWasted(JSON.parse(savedWastes)); } catch {}
-    }
-
-    // Cargar payments desde localStorage
-    const savedPayments = localStorage.getItem('puerto_habana_payments');
-    if (savedPayments) {
-      try { setStaffPayments(JSON.parse(savedPayments)); } catch {}
-    }
-
-    // Cargar pedidos desde localStorage
-    const savedPedidos = localStorage.getItem('puerto_habana_pedidos');
-    if (savedPedidos) {
-      try { setPedidos(JSON.parse(savedPedidos)); } catch {}
-    }
-
+    // Fecha simulada (UI preference only)
     const savedSimDate = localStorage.getItem('puerto_habana_simulated_date');
     const manualSimFlag = localStorage.getItem('puerto_habana_is_manual_sim') === 'true';
     setIsManualSim(manualSimFlag);
-    
-    let activeSimDate = '';
-    if (savedSimDate) {
-      activeSimDate = savedSimDate;
-    } else {
-      activeSimDate = getLocalDateString();
-      localStorage.setItem('puerto_habana_simulated_date', activeSimDate);
-    }
-
+    let activeSimDate = savedSimDate || getLocalDateString();
     const realTodayStr = getLocalDateString();
     if (!manualSimFlag && activeSimDate !== realTodayStr) {
       activeSimDate = realTodayStr;
       localStorage.setItem('puerto_habana_simulated_date', realTodayStr);
     }
-    
     setSimulatedDate(activeSimDate);
     setSelectedDateForHistory(activeSimDate);
     const parts = activeSimDate.split('-');
     setCalendarMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
+
+    // ── Cargar datos desde MySQL API ──────────────────────────────────────
+    const loadAll = async () => {
+      // Personal (mozos)
+      try {
+        const res = await fetch('/api/personal');
+        if (res.ok) {
+          const data = await res.json();
+          localStorage.setItem('ph_personal', JSON.stringify(data)); // sync para logins
+          const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          if (mozos.length) {
+            setMozosList(mozos);
+            setSelectedWaiterId((prev: string) => prev || mozos[0].id);
+            setNewOrder((n: any) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
+            setPaymentForm((f: any) => ({ ...f, mozoNombre: mozos[0].nombre }));
+          }
+        }
+      } catch {
+        // Fallback localStorage
+        try {
+          const data = JSON.parse(localStorage.getItem('ph_personal') || '[]');
+          const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          if (mozos.length) { setMozosList(mozos); setSelectedWaiterId(mozos[0].id); }
+        } catch {}
+      }
+
+      // Mermas/Wastes
+      try {
+        const res = await fetch('/api/reportes/wastes');
+        if (res.ok) { setInsumosWasted(await res.json()); }
+      } catch {
+        try { setInsumosWasted(JSON.parse(localStorage.getItem('puerto_habana_wastes') || '[]')); } catch {}
+      }
+
+      // Pagos personal
+      try {
+        const res = await fetch('/api/reportes/payments');
+        if (res.ok) { setStaffPayments(await res.json()); }
+      } catch {
+        try { setStaffPayments(JSON.parse(localStorage.getItem('puerto_habana_payments') || '[]')); } catch {}
+      }
+
+      // Pedidos/Comandas
+      try {
+        const res = await fetch('/api/pedidos');
+        if (res.ok) {
+          const data = await res.json();
+          // Normalizar formato para compatibilidad con el dashboard
+          const normalized = data.flatMap((c: any) =>
+            (c.items || []).map((item: any) => ({
+              id: `${c.id}-${item.id}`,
+              item: item.nombre,
+              cantidad: item.cantidad,
+              mesa: c.mesa,
+              precio: item.precio,
+              estado: c.estado,
+              hora: c.hora,
+              notas: item.notas,
+              mozoId: c.mozo_id || '',
+              mozoNombre: c.mozo_nombre || '',
+              fecha: c.fecha,
+              category: item.categoria || 'comida',
+              comandaId: String(c.id),
+            }))
+          );
+          setPedidos(normalized);
+        }
+      } catch {
+        try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
+      }
+    };
+
+    loadAll();
 
   }, []);
 
@@ -295,47 +326,64 @@ export default function DashboardPage() {
 
   const handleAddWaste = async () => {
     if (!wasteForm.descripcion || !wasteForm.costo) return;
-    const newWaste = {
-      id: Date.now(),
-      descripcion: wasteForm.descripcion,
-      costo: parseFloat(wasteForm.costo) || 0,
-      fecha: simulatedDate,
-    };
-    const updated = [newWaste, ...insumosWasted];
-    setInsumosWasted(updated);
-    localStorage.setItem('puerto_habana_wastes', JSON.stringify(updated));
+    try {
+      const res = await fetch('/api/reportes/wastes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ descripcion: wasteForm.descripcion, costo: wasteForm.costo, fecha: simulatedDate }),
+      });
+      if (res.ok) {
+        const { id } = await res.json();
+        const newWaste = { id, descripcion: wasteForm.descripcion, costo: parseFloat(wasteForm.costo), fecha: simulatedDate };
+        setInsumosWasted(prev => [newWaste, ...prev]);
+      }
+    } catch {
+      const newWaste = { id: Date.now(), descripcion: wasteForm.descripcion, costo: parseFloat(wasteForm.costo) || 0, fecha: simulatedDate };
+      const updated = [newWaste, ...insumosWasted];
+      setInsumosWasted(updated);
+      localStorage.setItem('puerto_habana_wastes', JSON.stringify(updated));
+    }
     setWasteForm({ descripcion: '', costo: '', fecha: '' });
     setToastMessage('Pérdida de insumo registrada correctamente.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleDeleteWaste = async (id: string) => {
-    const updated = insumosWasted.filter((w: any) => String(w.id) !== String(id));
-    setInsumosWasted(updated);
-    localStorage.setItem('puerto_habana_wastes', JSON.stringify(updated));
+    try {
+      await fetch(`/api/reportes/wastes?id=${id}`, { method: 'DELETE' });
+    } catch {}
+    setInsumosWasted(prev => prev.filter((w: any) => String(w.id) !== String(id)));
   };
 
   const handleAddPayment = async () => {
     if (!paymentForm.concepto || !paymentForm.monto) return;
-    const newPayment = {
-      id: Date.now(),
-      mozoNombre: paymentForm.mozoNombre,
-      monto: parseFloat(paymentForm.monto) || 0,
-      concepto: paymentForm.concepto,
-      fecha: simulatedDate,
-    };
-    const updated = [newPayment, ...staffPayments];
-    setStaffPayments(updated);
-    localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
+    try {
+      const res = await fetch('/api/reportes/payments', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ nombre: paymentForm.mozoNombre, monto: paymentForm.monto, concepto: paymentForm.concepto, fecha: simulatedDate }),
+      });
+      if (res.ok) {
+        const { id } = await res.json();
+        const newPayment = { id, mozoNombre: paymentForm.mozoNombre, monto: parseFloat(paymentForm.monto), concepto: paymentForm.concepto, fecha: simulatedDate };
+        setStaffPayments(prev => [newPayment, ...prev]);
+      }
+    } catch {
+      const newPayment = { id: Date.now(), mozoNombre: paymentForm.mozoNombre, monto: parseFloat(paymentForm.monto) || 0, concepto: paymentForm.concepto, fecha: simulatedDate };
+      const updated = [newPayment, ...staffPayments];
+      setStaffPayments(updated);
+      localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
+    }
     setPaymentForm({ mozoNombre: mozosList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
     setTimeout(() => setToastMessage(null), 3000);
   };
 
   const handleDeletePayment = async (id: string) => {
-    const updated = staffPayments.filter((p: any) => String(p.id) !== String(id));
-    setStaffPayments(updated);
-    localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
+    try {
+      await fetch(`/api/reportes/payments?id=${id}`, { method: 'DELETE' });
+    } catch {}
+    setStaffPayments(prev => prev.filter((p: any) => String(p.id) !== String(id)));
   };
 
   // Helper to extract top dishes data dynamically from the orders list
@@ -467,7 +515,7 @@ export default function DashboardPage() {
     setTimeout(() => setToastMessage(null), 3000);
   };
 
-  // Add new order — guarda en Firebase
+  // Add new order — guarda en MySQL via API
   const handleCreateOrder = async () => {
     const menu = platosMenuDynamic.length ? platosMenuDynamic : platosMenu;
     const selectedItem = menu[newOrder.platoIndex];
@@ -477,32 +525,50 @@ export default function DashboardPage() {
     const now = new Date();
     const horaStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
 
-    const newPedidoObj: Pedido = {
-      id: Date.now(),
-      item: selectedItem.name,
-      cantidad: newOrder.cantidad,
-      mesa: newOrder.mesa,
-      precio: selectedItem.price,
-      estado: 'Pendiente',
-      hora: horaStr,
-      notas: newOrder.notas,
-      category: selectedItem.category,
-      fecha: simulatedDate,
-      mozoId: mozo.id,
-      mozoNombre: mozo.nombre,
-    };
-    const updatedPedidos = [newPedidoObj, ...pedidos];
-    setPedidos(updatedPedidos);
-    localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updatedPedidos));
+    try {
+      const res = await fetch('/api/pedidos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mesa_nombre: newOrder.mesa,
+          mozo_id: mozo.id,
+          mozo_nombre: mozo.nombre,
+          items: [{ nombre: selectedItem.name, cantidad: newOrder.cantidad, precio: selectedItem.price, categoria: selectedItem.category, notas: newOrder.notas }],
+          fecha: simulatedDate,
+          hora: horaStr,
+        }),
+      });
+      if (res.ok) {
+        // Recargar pedidos desde API
+        const pedRes = await fetch('/api/pedidos');
+        if (pedRes.ok) {
+          const data = await pedRes.json();
+          const normalized = data.flatMap((c: any) =>
+            (c.items || []).map((item: any) => ({
+              id: `${c.id}-${item.id}`, item: item.nombre, cantidad: item.cantidad,
+              mesa: c.mesa, precio: item.precio, estado: c.estado, hora: c.hora,
+              notas: item.notas, mozoId: c.mozo_id || '', mozoNombre: c.mozo_nombre || '',
+              fecha: c.fecha, category: item.categoria || 'comida', comandaId: String(c.id),
+            }))
+          );
+          setPedidos(normalized);
+        }
+      }
+    } catch {
+      // Fallback localStorage
+      const newPedidoObj: Pedido = {
+        id: Date.now(), item: selectedItem.name, cantidad: newOrder.cantidad,
+        mesa: newOrder.mesa, precio: selectedItem.price, estado: 'Pendiente',
+        hora: horaStr, notas: newOrder.notas, category: selectedItem.category,
+        fecha: simulatedDate, mozoId: mozo.id, mozoNombre: mozo.nombre,
+      };
+      const updatedPedidos = [newPedidoObj, ...pedidos];
+      setPedidos(updatedPedidos);
+      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updatedPedidos));
+    }
 
     setShowAddModal(false);
-    setNewOrder({
-      mozoId: mozosList[0]?.id ?? '',
-      mesa: 'Mesa 1',
-      platoIndex: 0,
-      cantidad: 1,
-      notas: '',
-    });
+    setNewOrder({ mozoId: mozosList[0]?.id ?? '', mesa: 'Mesa 1', platoIndex: 0, cantidad: 1, notas: '' });
     setToastMessage(`Pedido registrado para ${mozo.nombre} en ${newOrder.mesa}.`);
     setTimeout(() => setToastMessage(null), 4500);
   };
@@ -511,16 +577,21 @@ export default function DashboardPage() {
     orderId: string,
     nextStatus: 'Pendiente' | 'En preparación' | 'Listo'
   ) => {
+    // Extraer el ID de comanda del formato "comandaId-itemId"
+    const comandaId = orderId.includes('-') ? orderId.split('-')[0] : orderId;
+    try {
+      await fetch(`/api/pedidos/${comandaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: nextStatus }),
+      });
+    } catch {}
     const updated = pedidos.map((p: any) =>
       String(p.id) === String(orderId) ? { ...p, estado: nextStatus } : p
     );
     setPedidos(updated);
-    localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updated));
     if (selectedMozo) {
-      const mozoOrders = updated.filter(
-        (p: any) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id
-      );
-      setSelectedMozo({ ...selectedMozo, pedidos: mozoOrders });
+      setSelectedMozo({ ...selectedMozo, pedidos: updated.filter((p: any) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id) });
     }
   };
 

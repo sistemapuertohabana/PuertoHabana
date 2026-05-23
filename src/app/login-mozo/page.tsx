@@ -3,50 +3,71 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Users, ArrowLeft, Mail } from 'lucide-react';
+import { Users, ArrowLeft, Mail, Loader2 } from 'lucide-react';
 
 export default function LoginMozoPage() {
-  const router = useRouter();
-  const [input, setInput] = useState('');
-  const [error, setError] = useState('');
+  const router  = useRouter();
+  const [input,   setInput]   = useState('');
+  const [error,   setError]   = useState('');
   const [loading, setLoading] = useState(false);
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
 
+    const val = input.trim().toLowerCase();
+
+    try {
+      // 1. Intentar desde la API (MySQL)
+      const res = await fetch('/api/personal');
+      if (res.ok) {
+        const personal: any[] = await res.json();
+        // Sincronizar para uso offline
+        localStorage.setItem('ph_personal', JSON.stringify(personal));
+
+        const user = personal.find(p =>
+          p.rol === 'mozo' &&
+          (p.email?.toLowerCase() === val || p.nombre?.toLowerCase() === val)
+        );
+
+        if (!user) {
+          setError('No se encontró un mozo con ese Gmail o nombre. Pídele al admin que te registre.');
+          setLoading(false);
+          return;
+        }
+
+        localStorage.setItem('ph_mozo_session', JSON.stringify({
+          id: user.id, nombre: user.nombre, email: user.email,
+          rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+        }));
+        router.push('/mozo');
+        return;
+      }
+    } catch {}
+
+    // 2. Fallback: buscar en localStorage (caché de ph_personal)
     try {
       const personal: any[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
-      const val = input.trim().toLowerCase();
-
-      // Busca por email o por nombre (case-insensitive), rol mozo
       const user = personal.find(p =>
         p.rol === 'mozo' &&
         (p.email?.toLowerCase() === val || p.nombre?.toLowerCase() === val)
       );
 
-      if (!user) {
+      if (user) {
+        localStorage.setItem('ph_mozo_session', JSON.stringify({
+          id: user.id, nombre: user.nombre, email: user.email,
+          rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+        }));
+        router.push('/mozo');
+      } else {
         setError('No se encontró un mozo con ese Gmail o nombre. Pídele al admin que te registre.');
-        setLoading(false);
-        return;
       }
-
-      // Guardar sesión con todos los datos del empleado
-      localStorage.setItem('ph_mozo_session', JSON.stringify({
-        id:     user.id,
-        nombre: user.nombre,
-        email:  user.email,
-        rol:    user.rol,
-        salario_monto: user.salario_monto,
-        salario_tipo:  user.salario_tipo,
-      }));
-
-      router.push('/mozo');
     } catch {
       setError('Error al procesar el inicio de sesión.');
-      setLoading(false);
     }
+
+    setLoading(false);
   };
 
   return (
@@ -73,9 +94,7 @@ export default function LoginMozoPage() {
               Gmail o Nombre registrado
             </label>
             <input
-              type="text"
-              required
-              value={input}
+              type="text" required value={input}
               onChange={e => setInput(e.target.value)}
               placeholder="tu@gmail.com  o  Tu Nombre"
               autoComplete="off"
@@ -87,17 +106,12 @@ export default function LoginMozoPage() {
           </div>
 
           {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">
-              {error}
-            </div>
+            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
           )}
 
-          <button
-            type="submit"
-            disabled={loading}
-            className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm"
-          >
-            {loading ? 'Verificando...' : 'Entrar a Mesas'}
+          <button type="submit" disabled={loading}
+            className="w-full bg-blue-600 text-white font-bold py-3.5 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-60 text-sm flex items-center justify-center gap-2">
+            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Entrar a Mesas'}
           </button>
         </form>
       </div>
