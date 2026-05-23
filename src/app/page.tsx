@@ -16,7 +16,7 @@ export default function WelcomePortal() {
         />
         <h1 className="text-5xl font-extrabold tracking-tight text-gray-800">Puerto Habana</h1>
         <p className="text-gray-500 uppercase tracking-wider">Selecciona tu portal de acceso</p>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8 max-w-3xl mx-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mt-8 max-w-4xl mx-auto">
           {/* Mozo */}
           <Link
             href="/login-mozo"
@@ -39,6 +39,17 @@ export default function WelcomePortal() {
               <p className="text-sm text-gray-500">Control y visualización de órdenes.</p>
             </div>
           </Link>
+          {/* Lavaplatos */}
+          <Link
+            href="/login-lavaplato"
+            className="group relative p-8 bg-white/60 backdrop-blur-lg rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all hover:-translate-y-1"
+          >
+            <div className="flex flex-col items-center space-y-4">
+              <Droplets size={48} className="text-cyan-600 group-hover:text-cyan-700 transition-colors" />
+              <h2 className="text-xl font-semibold text-gray-800">Lavaplatos</h2>
+              <p className="text-sm text-gray-500">Panel de área de lavado.</p>
+            </div>
+          </Link>
           {/* Admin */}
           <Link
             href="/login-admin"
@@ -51,12 +62,9 @@ export default function WelcomePortal() {
             </div>
           </Link>
         </div>
-        <div className="flex flex-wrap justify-center gap-4 mt-12">
-          <Link href="/login-lavaplato" className="flex items-center gap-2 text-sm text-gray-500 hover:text-blue-600 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-            <Droplets size={16} /> Acceso Lavaplatos
-          </Link>
-          <Link href="/dev" className="flex items-center gap-2 text-sm text-gray-500 hover:text-red-600 transition-colors bg-white px-4 py-2 rounded-full shadow-sm border border-gray-100">
-            <Code2 size={16} /> Panel de Desarrollador
+        <div className="flex justify-center mt-12">
+          <Link href="/desarrollador" className="flex items-center gap-2 text-xs text-gray-400 hover:text-red-500 transition-colors px-4 py-2 rounded-full">
+            <Code2 size={14} /> Acceso Desarrollador
           </Link>
         </div>
       </div>
