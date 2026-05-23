@@ -1,7 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { DollarSign, Search, Calendar } from 'lucide-react';
-import { DollarSign, Search, Calendar } from 'lucide-react';
 export default function PagosLavaplatoPage() {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
