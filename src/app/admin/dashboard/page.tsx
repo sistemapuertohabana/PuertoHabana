@@ -41,7 +41,7 @@ type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
 type RangoHistorial = 'dia' | 'semana' | 'mes';
 
 interface Pedido {
-  id: number;
+  id: number | string;
   item: string;
   cantidad: number;
   mesa: string;
@@ -56,6 +56,51 @@ interface Pedido {
   comandaId?: string;
   mesaId?: number;
   metodo_pago?: 'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro';
+}
+
+interface InsumoWaste {
+  id: number | string;
+  descripcion: string;
+  costo: number;
+  fecha: string;
+}
+
+interface StaffPayment {
+  id: number | string;
+  mozoNombre: string;
+  monto: number;
+  concepto: string;
+  fecha: string;
+}
+
+interface Personal {
+  id: string;
+  nombre: string;
+  rol: string;
+  salario_monto?: number;
+  salario_tipo?: string;
+}
+
+interface Comanda {
+  id: number | string;
+  mesa: string;
+  mesa_nombre?: string;
+  mozo_id?: string;
+  mozo_nombre?: string;
+  estado: string;
+  hora: string;
+  fecha: string;
+  metodo_pago?: 'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro';
+  items?: ComandaItem[];
+}
+
+interface ComandaItem {
+  id: number | string;
+  nombre: string;
+  cantidad: number;
+  precio: number;
+  categoria?: string;
+  notas?: string;
 }
 
 const platosMenu = [
@@ -93,9 +138,9 @@ export default function DashboardPage() {
   const [currentTime, setCurrentTime] = useState<string>('');
 
   // Reports State
-  const [insumosWasted, setInsumosWasted] = useState<any[]>([]);
+  const [insumosWasted, setInsumosWasted] = useState<InsumoWaste[]>([]);
   
-  const [staffPayments, setStaffPayments] = useState<any[]>([]);
+  const [staffPayments, setStaffPayments] = useState<StaffPayment[]>([]);
 
 
   // Forms state
@@ -118,31 +163,47 @@ export default function DashboardPage() {
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(2026, 4, 19)); // May 2026
   const [searchQuery, setSearchQuery] = useState('');
 
-  useEffect(() => {
-    setMounted(true);
-    const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
-    if (savedColorMode) setColorMode(savedColorMode);
-
-    // Load active tab from localStorage (UI preference only)
-    const savedActiveTab = localStorage.getItem('puerto_habana_active_tab') as TabType;
-    if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'reportes'].includes(savedActiveTab)) {
-      setActiveTab(savedActiveTab);
+  // Date Formatting helper
+  const formatDate = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+      const year = parseInt(parts[0]);
+      const month = parseInt(parts[1]) - 1;
+      const day = parseInt(parts[2]);
+      const d = new Date(year, month, day);
+      return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
     }
+    return dateStr;
+  };
 
-    // Fecha simulada (UI preference only)
+  useEffect(() => {
+    // Initialize all state from localStorage in a single batch
+    const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
+    const savedActiveTab = localStorage.getItem('puerto_habana_active_tab') as TabType;
     const savedSimDate = localStorage.getItem('puerto_habana_simulated_date');
     const manualSimFlag = localStorage.getItem('puerto_habana_is_manual_sim') === 'true';
-    setIsManualSim(manualSimFlag);
-    let activeSimDate = savedSimDate || getLocalDateString();
-    const realTodayStr = getLocalDateString();
-    if (!manualSimFlag && activeSimDate !== realTodayStr) {
-      activeSimDate = realTodayStr;
-      localStorage.setItem('puerto_habana_simulated_date', realTodayStr);
-    }
-    setSimulatedDate(activeSimDate);
-    setSelectedDateForHistory(activeSimDate);
-    const parts = activeSimDate.split('-');
-    setCalendarMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
+
+    // Batch state updates to avoid cascading renders
+    requestAnimationFrame(() => {
+      if (savedColorMode) setColorMode(savedColorMode);
+      setMounted(true);
+
+      if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'reportes'].includes(savedActiveTab)) {
+        setActiveTab(savedActiveTab);
+      }
+
+      setIsManualSim(manualSimFlag);
+      let activeSimDate = savedSimDate || getLocalDateString();
+      const realTodayStr = getLocalDateString();
+      if (!manualSimFlag && activeSimDate !== realTodayStr) {
+        activeSimDate = realTodayStr;
+        localStorage.setItem('puerto_habana_simulated_date', realTodayStr);
+      }
+      setSimulatedDate(activeSimDate);
+      setSelectedDateForHistory(activeSimDate);
+      const parts = activeSimDate.split('-');
+      setCalendarMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
+    });
 
     // ── Cargar datos desde MySQL API ──────────────────────────────────────
     const loadAll = async () => {
@@ -152,16 +213,16 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           localStorage.setItem('ph_personal', JSON.stringify(data)); // sync para logins
-          const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
-          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
+          const mozos = data.filter((x: Personal) => x.rol === 'mozo').map((x: Personal) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: Personal) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
           setAllStaffList(allStaff);
           if (mozos.length) {
             setMozosList(mozos);
             setSelectedWaiterId((prev: string) => prev || mozos[0].id);
-            setNewOrder((n: any) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
+            setNewOrder((n: typeof newOrder) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
           }
           if (allStaff.length) {
-            setPaymentForm((f: any) => ({ 
+            setPaymentForm((f: typeof paymentForm) => ({ 
               ...f, 
               mozoNombre: allStaff[0].nombre,
               monto: allStaff[0].salario_monto ? String(allStaff[0].salario_monto) : '',
@@ -173,8 +234,8 @@ export default function DashboardPage() {
         // Fallback localStorage
         try {
           const data = JSON.parse(localStorage.getItem('ph_personal') || '[]');
-          const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
-          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
+          const mozos = data.filter((x: Personal) => x.rol === 'mozo').map((x: Personal) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: Personal) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
           setAllStaffList(allStaff);
           if (mozos.length) { setMozosList(mozos); setSelectedWaiterId(mozos[0].id); }
         } catch {}
@@ -202,8 +263,8 @@ export default function DashboardPage() {
         if (res.ok) {
           const data = await res.json();
           // Normalizar formato para compatibilidad con el dashboard
-          const normalized = data.flatMap((c: any) =>
-            (c.items || []).map((item: any) => ({
+          const normalized = data.flatMap((c: Comanda) =>
+            (c.items || []).map((item: ComandaItem) => ({
               id: `${c.id}-${item.id}`,
               item: item.nombre,
               cantidad: item.cantidad,
@@ -277,19 +338,6 @@ export default function DashboardPage() {
     return null;
   }
 
-  // Date Formatting helper
-  const formatDate = (dateStr: string) => {
-    const parts = dateStr.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0]);
-      const month = parseInt(parts[1]) - 1;
-      const day = parseInt(parts[2]);
-      const d = new Date(year, month, day);
-      return d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short', year: 'numeric' });
-    }
-    return dateStr;
-  };
-
   // Simulate Day Close / End of Day (00:00 AM Reset)
   const handleNextDaySimulate = () => {
     const parts = simulatedDate.split('-');
@@ -360,16 +408,26 @@ export default function DashboardPage() {
     try {
       await fetch(`/api/reportes/wastes?id=${id}`, { method: 'DELETE' });
     } catch {}
-    setInsumosWasted(prev => prev.filter((w: any) => String(w.id) !== String(id)));
+    setInsumosWasted(prev => prev.filter((w: InsumoWaste) => String(w.id) !== String(id)));
   };
 
   const handleAddPayment = async () => {
     if (!paymentForm.concepto || !paymentForm.monto) return;
+    
+    // Find the staff member to get their ID
+    const staff = allStaffList.find(s => s.nombre === paymentForm.mozoNombre);
+    
     try {
       const res = await fetch('/api/reportes/payments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nombre: paymentForm.mozoNombre, monto: paymentForm.monto, concepto: paymentForm.concepto, fecha: simulatedDate }),
+        body: JSON.stringify({ 
+          nombre: paymentForm.mozoNombre, 
+          monto: paymentForm.monto, 
+          concepto: paymentForm.concepto, 
+          fecha: simulatedDate,
+          usuario_id: staff?.id || null
+        }),
       });
       if (res.ok) {
         const { id } = await res.json();
@@ -377,7 +435,6 @@ export default function DashboardPage() {
         setStaffPayments(prev => [newPayment, ...prev]);
 
         // Enviar notificacion al usuario pagado
-        const staff = allStaffList.find(s => s.nombre === paymentForm.mozoNombre);
         if (staff) {
           fetch('/api/notificaciones', {
             method: 'POST',
@@ -410,7 +467,7 @@ export default function DashboardPage() {
     try {
       await fetch(`/api/reportes/payments?id=${id}`, { method: 'DELETE' });
     } catch {}
-    setStaffPayments(prev => prev.filter((p: any) => String(p.id) !== String(id)));
+    setStaffPayments(prev => prev.filter((p: StaffPayment) => String(p.id) !== String(id)));
   };
 
   // Helper to extract top dishes data dynamically from the orders list
@@ -570,8 +627,8 @@ export default function DashboardPage() {
         const pedRes = await fetch('/api/pedidos');
         if (pedRes.ok) {
           const data = await pedRes.json();
-          const normalized = data.flatMap((c: any) =>
-            (c.items || []).map((item: any) => ({
+          const normalized = data.flatMap((c: Comanda) =>
+            (c.items || []).map((item: ComandaItem) => ({
               id: `${c.id}-${item.id}`, item: item.nombre, cantidad: item.cantidad,
               mesa: c.mesa, precio: item.precio, estado: c.estado, hora: c.hora,
               notas: item.notas, mozoId: c.mozo_id || '', mozoNombre: c.mozo_nombre || '',
@@ -613,12 +670,12 @@ export default function DashboardPage() {
         body: JSON.stringify({ estado: nextStatus }),
       });
     } catch {}
-    const updated = pedidos.map((p: any) =>
+    const updated = pedidos.map((p: Pedido) =>
       String(p.id) === String(orderId) ? { ...p, estado: nextStatus } : p
     );
     setPedidos(updated);
     if (selectedMozo) {
-      setSelectedMozo({ ...selectedMozo, pedidos: updated.filter((p: any) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id) });
+      setSelectedMozo({ ...selectedMozo, pedidos: updated.filter((p: Pedido) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id) });
     }
   };
 
@@ -1102,14 +1159,25 @@ export default function DashboardPage() {
                         <div key={idx} className={`flex justify-between items-center py-2.5 border-b last:border-0 ${
                           colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-100'
                         }`}>
-                          <div>
+                          <div className="flex-1">
                             <div className="flex items-center gap-1.5">
                               <p className={`text-sm font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.item}</p>
                               <span className={`w-1.5 h-1.5 rounded-full ${
                                 pedido.estado === 'Listo' ? 'bg-green-500' : pedido.estado === 'En preparación' ? 'bg-yellow-500' : 'bg-gray-400'
                               }`}></span>
                             </div>
-                            <p className={`text-xs ${colorMode === 'oscuro' ? 'text-gray-500' : 'text-gray-500'}`}>{pedido.mesa} • {pedido.hora}</p>
+                            <div className="flex items-center gap-2 mt-1">
+                              <p className={`text-xs ${colorMode === 'oscuro' ? 'text-gray-500' : 'text-gray-500'}`}>{pedido.mesa} • {pedido.hora}</p>
+                              {pedido.metodo_pago && (
+                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
+                                  pedido.metodo_pago === 'Yape' ? 'bg-purple-100 text-purple-700' :
+                                  pedido.metodo_pago === 'Efectivo' ? 'bg-green-100 text-green-700' :
+                                  'bg-gray-100 text-gray-600'
+                                }`}>
+                                  {pedido.metodo_pago === 'Yape' ? '📱' : pedido.metodo_pago === 'Efectivo' ? '💵' : ''} {pedido.metodo_pago}
+                                </span>
+                              )}
+                            </div>
                           </div>
                           <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
                             colorMode === 'oscuro' ? 'text-white bg-gray-800' : 'text-gray-800 bg-gray-100'
@@ -1965,6 +2033,11 @@ export default function DashboardPage() {
                 >
                   🧾 Imprimir Boleta
                 </button>
+              </div>
+            )}
+          </div>
+        </Modal>
+      )}
 
       {/* Boleta de consumo */}
       {showBoleta && selectedMozo && selectedMozo.pedidos.length > 0 && (
