@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User, LogOut, DollarSign } from 'lucide-react';
+import { LayoutDashboard, User, LogOut, DollarSign, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 const menuItems = [
-  { href: '/lavaplato',        icon: LayoutDashboard, label: 'Inicio' },
-  { href: '/lavaplato/pagos',  icon: DollarSign,      label: 'Pagos'  },
-  { href: '/lavaplato/perfil', icon: User,            label: 'Perfil' },
+  { href: '/lavaplato',               icon: LayoutDashboard, label: 'Inicio' },
+  { href: '/lavaplato/pagos',         icon: DollarSign,      label: 'Pagos'  },
+  { href: '/lavaplato/perfil',        icon: User,            label: 'Perfil' },
+  { href: '/lavaplato/configuracion', icon: Settings,        label: 'Ajustes'},
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {

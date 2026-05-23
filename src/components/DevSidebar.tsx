@@ -2,16 +2,17 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, User, LogOut, DollarSign, DatabaseZap } from 'lucide-react';
+import { DatabaseZap, User, LogOut, Settings, DollarSign } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 const menuItems = [
-  { href: '/desarrollador',        icon: DatabaseZap,  label: 'Panel'  },
-  { href: '/desarrollador/pagos',  icon: DollarSign,   label: 'Pagos'  },
-  { href: '/desarrollador/perfil', icon: User,         label: 'Perfil' },
+  { href: '/desarrollador',               icon: DatabaseZap,  label: 'Panel'    },
+  { href: '/desarrollador/pagos',         icon: DollarSign,   label: 'Pagos'    },
+  { href: '/desarrollador/perfil',        icon: User,         label: 'Perfil'   },
+  { href: '/desarrollador/configuracion', icon: Settings,     label: 'Ajustes'  },
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {

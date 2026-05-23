@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock } from 'lucide-react';
+import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
@@ -12,7 +12,8 @@ const menuItems = [
   { href: '/mozo',          icon: LayoutGrid,    label: 'Mesas'    },
   { href: '/mozo/reservas', icon: CalendarClock, label: 'Reservas' },
   { href: '/mozo/historial',icon: ListOrdered,   label: 'Historial'},
-  { href: '/mozo/perfil',   icon: User,          label: 'Perfil'   },
+  { href: '/mozo/perfil',        icon: User,          label: 'Perfil'   },
+  { href: '/mozo/configuracion', icon: Settings,      label: 'Ajustes'  },
 ];
 
 function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.ReactNode }) {

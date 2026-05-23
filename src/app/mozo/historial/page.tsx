@@ -22,7 +22,8 @@ function getLocalDateString() {
 export default function MozoHistorialPage() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [loading,  setLoading]  = useState(true);
-  const [pagoModalId, setPagoModalId] = useState<number | null>(null);
+  const [pagoModalData, setPagoModalData] = useState<Comanda | null>(null);
+  const [pagoInputs, setPagoInputs] = useState({ yape: '', efectivo: '' });
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
@@ -77,7 +78,8 @@ export default function MozoHistorialPage() {
         body: JSON.stringify({ estado: 'Entregado', metodo_pago: metodo }),
       });
       loadComandas();
-      setPagoModalId(null);
+      setPagoModalData(null);
+      setPagoInputs({ yape: '', efectivo: '' });
       
       // Intentar enviar notificación al admin
       fetch('/api/notificaciones', {
@@ -94,8 +96,14 @@ export default function MozoHistorialPage() {
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       localStorage.setItem('puerto_habana_pedidos', JSON.stringify(all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)));
       loadComandas();
-      setPagoModalId(null);
+      setPagoModalData(null);
+      setPagoInputs({ yape: '', efectivo: '' });
     }
+  };
+
+  const handlePagoModalOpen = (c: Comanda) => {
+    setPagoModalData(c);
+    setPagoInputs({ yape: '', efectivo: '' });
   };
 
   const total = comandas.reduce((s, c) => s + Number(c.total), 0);
@@ -164,23 +172,94 @@ export default function MozoHistorialPage() {
                     🖨️ Imprimir
                   </a>
                   {c.estado === 'Listo' && (
-                    <button onClick={() => setPagoModalId(c.id)}
+                    <button onClick={() => handlePagoModalOpen(c)}
                       className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
                       <CheckCircle2 size={16} /> Cobrar
                     </button>
                   )}
                 </div>
 
-                {/* Modal de Pago */}
-                {pagoModalId === c.id && (
-                  <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
-                      <h3 className="text-xl font-bold mb-6 text-center text-gray-900">¿Método de Pago?</h3>
-                      <div className="flex gap-4">
-                        <button onClick={() => confirmarCobro(c.id, 'Yape')} className="flex-1 bg-[#7408B6] text-white py-4 rounded-2xl font-bold text-lg hover:bg-[#5C0691] transition-colors shadow-lg">Yape</button>
-                        <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-green-700 transition-colors shadow-lg">Efectivo</button>
+                {/* Modal de Pago Mixto / Vuelto */}
+                {pagoModalData?.id === c.id && (
+                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
+                      <h3 className="text-xl font-bold mb-1 text-center text-gray-900">Cobrar Mesa {c.mesa}</h3>
+                      <p className="text-center text-3xl font-black text-blue-600 mb-6">S/ {Number(c.total).toFixed(2)}</p>
+
+                      <div className="space-y-4 mb-6">
+                        {/* Pago Rápido Completo */}
+                        <div className="flex gap-3">
+                          <button onClick={() => confirmarCobro(c.id, 'Yape')} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md">Todo Yape</button>
+                          <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md">Todo Efectivo</button>
+                        </div>
+                        
+                        <div className="relative flex items-center py-2">
+                          <div className="flex-grow border-t border-gray-200"></div>
+                          <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-semibold uppercase">O pago mixto / calcular vuelto</span>
+                          <div className="flex-grow border-t border-gray-200"></div>
+                        </div>
+
+                        {/* Entradas Mixtas */}
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
+                              <input type="number" step="0.10" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="text-xs font-bold text-gray-600 uppercase">Efectivo Recibido</label>
+                            <div className="relative mt-1">
+                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
+                              <input type="number" step="0.10" value={pagoInputs.efectivo} onChange={e => setPagoInputs({...pagoInputs, efectivo: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-green-600 focus:outline-none" placeholder="0.00" />
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Cálculo */}
+                        {(() => {
+                          const t = Number(c.total);
+                          const y = Number(pagoInputs.yape) || 0;
+                          const e = Number(pagoInputs.efectivo) || 0;
+                          const abonado = y + e;
+                          const faltante = t - abonado;
+                          const vuelto = abonado > t ? abonado - t : 0;
+                          
+                          return (
+                            <div className={`p-4 rounded-xl border ${faltante > 0 ? 'bg-orange-50 border-orange-100' : 'bg-green-50 border-green-100'}`}>
+                              {faltante > 0 ? (
+                                <p className="text-orange-700 font-bold text-center">Falta cobrar: S/ {faltante.toFixed(2)}</p>
+                              ) : (
+                                <p className="text-green-700 font-black text-center text-lg">Vuelto: S/ {vuelto.toFixed(2)}</p>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
-                      <button onClick={() => setPagoModalId(null)} className="w-full mt-6 py-3 text-gray-500 font-bold hover:bg-gray-100 rounded-2xl transition-colors">Cancelar</button>
+
+                      <div className="flex gap-3 mt-6">
+                        <button onClick={() => setPagoModalData(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">Cancelar</button>
+                        <button 
+                          disabled={((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < Number(c.total)}
+                          onClick={() => {
+                            const t = Number(c.total);
+                            const y = Number(pagoInputs.yape) || 0;
+                            const e = Number(pagoInputs.efectivo) || 0;
+                            // El efectivo cobrado real es (total - yape)
+                            const efectivoCobrado = Math.max(0, t - y);
+                            let metodo: any = 'Efectivo';
+                            if (y > 0 && e > 0) {
+                              metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
+                            } else if (y > 0) {
+                              metodo = 'Yape';
+                            }
+                            confirmarCobro(c.id, metodo);
+                          }}
+                          className="flex-1 py-3.5 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
+                          Confirmar
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
