@@ -1864,7 +1864,7 @@ export default function DashboardPage() {
                     </span>
                   </div>
                   
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs mb-4">
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs mb-4">
                     <div>
                       <p className="text-gray-400">Cantidad</p>
                       <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.cantidad}</p>
@@ -1884,10 +1884,32 @@ export default function DashboardPage() {
                           ? 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400' 
                           : pedido.estado === 'En preparación'
                           ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400'
+                          : pedido.estado === 'Entregado'
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400'
                           : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
                       }`}>
                         {pedido.estado}
                       </span>
+                    </div>
+                    <div>
+                      <p className="text-gray-400">Pago</p>
+                      {pedido.metodo_pago ? (
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full mt-1 ${
+                          pedido.metodo_pago === 'Yape' ? 'bg-purple-100 text-purple-700' :
+                          pedido.metodo_pago === 'Efectivo' ? 'bg-green-100 text-green-700' :
+                          pedido.metodo_pago === 'Otro' ? 'bg-orange-100 text-orange-700' :
+                          'bg-gray-100 text-gray-600'
+                        }`}>
+                          {pedido.metodo_pago === 'Yape' ? '📱 Yape' :
+                           pedido.metodo_pago === 'Efectivo' ? '💵 Efectivo' :
+                           pedido.metodo_pago === 'Otro' ? '🔀 Mixto' :
+                           pedido.metodo_pago}
+                        </span>
+                      ) : (
+                        <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 bg-gray-100 text-gray-400">
+                          Sin cobrar
+                        </span>
+                      )}
                     </div>
                   </div>
 
