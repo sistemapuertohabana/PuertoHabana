@@ -1,98 +1,134 @@
 # 📄 Propuesta del Sistema **Puerto Habana**
 
-## 1️⃣ Requerimientos del proyecto
-
-| Área | Funcionalidad solicitada | Detalle |
-|------|--------------------------|---------|
-| **Unificación de paneles** | Dashboard homogéneo y premium para **Mozo**, **Cocina**, **Lavaplato**, **Desarrollador** y **Admin** | Navegación, colores, tipografías, micro‑animaciones y diseño “glassmorphism”. |
-| **Sincronización de pagos** | El **Admin** registra pagos → se reflejan automáticamente en la sección **Pagos** del empleado correspondiente (Mozo, Cocina, Lavaplato y Desarrollador). |
-| **Perfil y rol correctos** | Cada usuario ve su nombre real y el rol adecuado (ej. “Desarrollador”). |
-| **Inventario dinámico** | Los ítems del inventario se cargan desde la API y se actualizan en tiempo real; el stock se descuenta al registrar un pedido. |
-| **Modo offline** | Cuando el internet falla, la app sigue operativa usando **localStorage** como respaldo y guarda en cola los cambios para sincronizarlos al reconectar. |
-| **Seguridad básica** | Acceso a cada portal mediante URLs privadas y validación de sesión en localStorage. |
-| **Estética premium** | Paleta de colores armoniosa, tipografía **Inter**, sombras suaves, efectos hover y transiciones fluidas. |
-| **Escalabilidad** | Código modular y preparado para añadir nuevos módulos o integrar Firebase/ Supabase sin romper la arquitectura. |
+Este documento detalla los requerimientos, la arquitectura y los costos del proyecto **Puerto Habana**, un sistema de gestión integral para restaurantes con 4 portales principales más un panel de administración.
 
 ---
 
-## 2️⃣ Cómo usar la aplicación
+## 1️⃣ Tablas de Requerimientos
 
-1. **Login**
-   - Cada rol tiene su propia página de login (`/login‑mozo`, `/login‑cocina`, `/login‑lavaplato`, `/login‑desarrollador`, `/login‑admin`).
-   - Se guarda la sesión en `localStorage` (`ph_<portal>_session`).
+### 1.1 Requerimientos Funcionales (RF)
+Los requerimientos funcionales definen lo que el sistema debe hacer para cada tipo de usuario.
 
-2. **Dashboard**
-   - Al ingresar, el usuario ve su **dashboard** con barra de navegación y accesos a:
-     - **Perfil** (editar nombre, foto, datos de contacto).
-     - **Pagos** (ver historial y detalle de ingresos).
-     - **Inventario** (solo Mozo y Admin pueden crear/editar ítems).
+| ID | Módulo | Funcionalidad | Descripción |
+|---|---|---|---|
+| **RF-01** | Autenticación | Login por Portal | Cada empleado (Mozo, Cocina, Lavaplato, Desarrollador) debe iniciar sesión en un portal específico (`/login-mozo`, etc.) usando su email. |
+| **RF-02** | Dashboard | Perfil de Usuario | Todo el personal debe poder visualizar y editar sus datos personales (teléfono, turno, etc.) desde su panel. |
+| **RF-03** | Dashboard | Registro de Pagos | Los empleados pueden ver un historial de todos los pagos que el restaurante les ha realizado. |
+| **RF-04** | Ventas (Mozo) | Toma de Pedidos | El Mozo debe poder registrar pedidos de mesas mediante un menú digital cargado desde el inventario. |
+| **RF-05** | Cocina | Gestión de Órdenes | La Cocina debe visualizar los pedidos entrantes en tiempo real, cambiar su estado a "Entregado" y ver su historial diario. |
+| **RF-06** | Inventario | Sincronización Real | Al realizarse una venta desde el portal del Mozo, el stock de comida, bebidas y tapers se debe descontar automáticamente. |
+| **RF-07** | Admin | Gestión de Personal | El Administrador puede dar de alta a nuevos empleados, asignar salarios y roles específicos. |
+| **RF-08** | Admin | Control de Pagos | El Administrador puede realizar y registrar pagos al personal. El sistema debe autocompletar el monto base del empleado. |
+| **RF-09** | Notificaciones | Pedidos (Mozo a Cocina) | Al registrar un pedido, la Cocina y el Administrador reciben una notificación push. |
+| **RF-10** | Notificaciones | Pedidos Listos (Cocina a Mozo) | Al terminar un pedido, la Cocina envía una notificación push únicamente al Mozo que lo solicitó. |
+| **RF-11** | Notificaciones | Pagos de Salario | Al registrar un pago, el empleado específico (Mozo, Cocina, Lavaplato, Dev) recibe una notificación de que su pago fue realizado. |
+| **RF-12** | Notificaciones | Recordatorio de Cierre | El sistema debe enviar una notificación push automática al Administrador a las 17:00 hrs para recordarle generar el reporte del día. |
 
-3. **Registrar un pedido (Mozo)**
-   - Selecciona el plato/bebida/taper desde el **menú cargado dinámicamente**.
-   - Al confirmar, se envía un `PATCH` a `/api/inventario/:seccion` con `{ id, delta: -1 }` para descontar stock.
+### 1.2 Requerimientos No Funcionales (RNF)
+Los requerimientos no funcionales definen cómo el sistema realiza sus funciones (calidad, experiencia, seguridad).
 
-4. **Registrar un pago (Admin)**
-   - En **Admin → Registro de pagos**, selecciona al personal → el salario y concepto se autocompletan.
-   - Si la conexión está caída, el pago se guarda en `localStorage` y se sincroniza automáticamente cuando haya red.
-
-5. **Modo offline**
-   - La UI sigue funcionando; cualquier cambio (nuevo ítem, pago, edición de perfil) se guarda localmente.
-   - Al volver a estar online, la app detecta el evento `ph_store_update` y envía los datos pendientes al servidor.
+| ID | Categoría | Descripción |
+|---|---|---|
+| **RNF-01** | **Interfaz (UI/UX)** | Diseño premium "Glassmorphism" con tipografía moderna (Inter), paleta de colores coherente y retroalimentación interactiva (hover, micro-animaciones). |
+| **RNF-02** | **Disponibilidad Offline** | El sistema debe funcionar en un 80% si se cae el internet. El inventario, personal y menú se almacenan en `localStorage` (caché local). |
+| **RNF-03** | **Sincronización Diferida** | Las acciones realizadas sin internet (ej. registrar un pago) se guardarán en local y se enviarán automáticamente a Supabase al recuperar la red. |
+| **RNF-04** | **Seguridad** | Rutas protegidas mediante validación de sesión (Tokens en Storage). |
 
 ---
 
-## 3️⃣ Arquitectura y flujo de datos
+## 2️⃣ Arquitectura y Diagramas UML
 
+### 2.1 Diagrama de Casos de Uso
+A continuación, se muestra el modelo de interacción de los actores principales con el sistema:
+
+```mermaid
+usecaseDiagram
+    actor "Administrador" as admin
+    actor "Mozo" as mozo
+    actor "Cocina" as cocina
+    actor "Lavaplato/Dev" as staff
+    
+    package "Sistema Puerto Habana" {
+        usecase "Gestionar Inventario" as UC1
+        usecase "Gestionar Personal y Pagos" as UC2
+        usecase "Tomar Pedidos de Clientes" as UC3
+        usecase "Descontar Stock" as UC4
+        usecase "Preparar Órdenes" as UC5
+        usecase "Consultar Historial de Pagos" as UC6
+        usecase "Recibir Notificaciones Personalizadas" as UC7
+    }
+    
+    admin --> UC1
+    admin --> UC2
+    admin --> UC7
+    
+    mozo --> UC3
+    UC3 ..> UC4 : <<include>>
+    mozo --> UC7
+    
+    cocina --> UC5
+    cocina --> UC7
+    
+    staff --> UC6
+    staff --> UC7
+    mozo --> UC6
+    cocina --> UC6
 ```
-┌───────────────┐   fetch/POST/PATCH   ┌─────────────────────┐
-│   Front‑End   │ ──────────────────► │  Supabase API / DB  │
-│ (Next.js 13) │   (REST)            │  (usuarios, pagos,  │
-├───────────────┤                     │   inventario)       │
-│   localStorage│ ◄───────────────────│  (fallback offline) │
-│   (caché)    │   sync on reconnect │                     │
-└───────────────┘                     └─────────────────────┘
+
+### 2.2 Diagrama de Secuencia: Sincronización y Modo Offline
+Este diagrama muestra cómo el sistema maneja la red y el fallback (plan de respaldo) con el `localStorage`.
+
+```mermaid
+sequenceDiagram
+    actor Usuario
+    participant Interfaz as UI (Next.js)
+    participant Local as LocalStorage
+    participant Servidor as Supabase API
+    
+    Usuario->>Interfaz: Ingresa al Inventario / Menú
+    Interfaz->>Servidor: Petición GET /api/inventario
+    
+    alt Internet Conectado (Online)
+        Servidor-->>Interfaz: Retorna JSON con datos actualizados
+        Interfaz->>Local: Guarda copia de seguridad (ph_inventario)
+        Interfaz-->>Usuario: Muestra datos reales
+    else Internet Caído (Offline)
+        Servidor--xInterfaz: Error Timeout / Fetch Failed
+        Interfaz->>Local: Solicita respaldo de datos
+        Local-->>Interfaz: Retorna copia de seguridad
+        Interfaz-->>Usuario: Muestra datos desde caché (Offline Mode)
+    end
 ```
-- Cada vista usa **hooks** (`useEffect`, `subscribeInventario`) que escuchan el evento `ph_store_update`.
-- Los **datos críticos** (personal, inventario, pagos) se persisten en `localStorage` con la clave `ph_inventario`.
-- El **router** de Next.js (app router) gestiona rutas protegidas mediante la comprobación de la sesión en `localStorage`.
 
 ---
 
-## 4️⃣ Los 4 dashboards funcionales
+## 3️⃣ Funcionamiento y Uso de los Portales
 
-| Dashboard | Módulos principales | Comentario de UI |
-|-----------|---------------------|------------------|
-| **Mozo** | - Menú dinámico (comida, bebidas, tapers)  <br> - Historial de pedidos  <br> - Perfil y pagos | Barra de navegación azul‑gris, tarjetas con sombra ligera, micro‑animaciones al hacer click. |
-| **Cocina** | - Lista de órdenes pendientes  <br> - Detalle de cada orden  <br> - Historial de platos preparados | Fondo oscuro con acentos naranja, resaltado de órdenes nuevas con efecto “pulse”. |
-| **Lavaplato** | - Inventario de utensilios y platos  <br> - Registro de pagos del personal de lavado  <br> - Perfil | Paleta cian‑gris, cajas con efecto glassmorphism y bordes redondeados. |
-| **Desarrollador** | - Perfil del dev (nombre, foto, rol)  <br> - Pagos del dev  <br> - Acceso a herramientas de depuración (solo interno) | Tema morado‑indigo, tipografía Inter, iconos de “code” en hover. |
-| **Admin** | - Registro y edición de personal (incl. rol *dev*)  <br> - Registro de pagos al personal  <br> - Inventario global  <br> - Reportes de ingresos/gastos | Diseño premium con gradientes violetas‑azules, botones con sombra “elevada”, tabla con colores de rol. |
+1. **Dashboard Mozo:** Menú dinámico que carga el inventario real. Permite tomar la orden, agrupar mesas, facturar y revisar los pagos recibidos.
+2. **Dashboard Cocina:** Panel oscuro de alto contraste diseñado para estar siempre en pantalla. Las órdenes aparecen y el cocinero las marca como completadas.
+3. **Dashboard Lavaplato:** Panel simplificado y claro enfocado exclusivamente en revisar su información de contacto y sus pagos recientes.
+4. **Dashboard Desarrollador:** Espacio técnico privado (con estética púrpura) donde el programador puede verificar sus pagos y acceder a su perfil sin que los clientes vean el link.
+5. **Dashboard Administrador:** El "cerebro" de todo. Puede registrar empleados (incluyendo al dev), pagar salarios, ver reportes de ventas, ingresos, y ajustar el inventario.
 
 ---
 
-## 5️⃣ Estimación de costos (Soles) 
+## 4️⃣ Estimación y Presupuesto Comercial
 
-| Concepto | Detalle | Costo (S/.) |
-|----------|---------|-------------|
-| **Desarrollo** | 4 dashboards + sincronización de pagos, inventario offline, UI premium, pruebas | **1 200 S/.** |
-| **Diseño UI/UX** | Tipografía, paleta, micro‑animaciones, mock‑ups | **300 S/.** |
-| **Integración Supabase** (esquema, reglas de seguridad, pruebas) |  | **200 S/.** |
-| **Gestión de proyecto y QA** | Reuniones, documentación, pruebas finales | **200 S/.** |
-| **Margen de contingencia** (cambios menores) |  | **100 S/.** |
-| **Total estimado** |  | **2 000 S/.** |
+El proyecto tiene un alcance de **4 portales funcionales para el staff** + **1 portal completo de administración**, integración con base de datos real (Supabase), funcionamiento offline y un diseño UI/UX Premium.
 
-> El precio final se ha redondeado a **S/. 2000** (equivalente a **≈ $540** al tipo de cambio actualizado 1 USD ≈ 3.70 S/.)
+| Concepto | Detalle del Trabajo | Costo Estimado |
+|----------|---------------------|----------------|
+| **Desarrollo Front-End** | 5 Dashboards interactivos, ruteo privado, diseño responsivo y lógica de negocio en Next.js. | S/ 800.00 |
+| **Diseño Premium UI/UX** | Sistema de diseño Glassmorphism, animaciones, tipografía estandarizada. | S/ 300.00 |
+| **Sistemas de Notificaciones Push**| Implementación de notificaciones en tiempo real, personalizadas por empleado y tareas automáticas. | S/ 300.00 |
+| **Desarrollo Back-End y Base de Datos** | Endpoints de Supabase, gestión de tablas relacionales (Inventario, Usuarios, Pagos, Pedidos). | S/ 200.00 |
+| **Ingeniería Offline** | Lógica de respaldo en `localStorage`, sincronización de datos diferida y tolerancia a fallos. | S/ 200.00 |
+| **Despliegue y QA** | Pruebas de flujo completo, resolución de bugs, alojamiento y puesta en marcha. | S/ 200.00 |
+| **TOTAL A PAGAR** | **Cotización preferencial acordada para el dueño** | **S/ 2,000.00** |
 
----
-
-## 6️⃣ Próximos pasos
-
-1. **Validar la propuesta** (confirmar alcance y presupuesto). 
-2. **Crear tickets de tareas** en GitHub (Dashboard UI, Inventario API, Pagos, Modo offline). 
-3. **Kick‑off** (reunión de 1 h para alinear prioridades). 
-4. **Entregas parciales** cada 2 semanas con demo de cada dashboard.
+> **Nota Adicional:** El sistema se entrega completamente operativo. El uso de la base de datos a través de Supabase está en su capa gratuita, por lo que **no hay costos de mantenimiento mensual de servidores** para el dueño del local en esta etapa.
 
 ---
 
-### 📬 ¡Listos para seguir!
-Si todo está de acuerdo, podemos planificar la primera entrega y abrir el repositorio para comenzar.
+### 📬 Próximos pasos
+Si se aprueba este documento técnico y comercial, procederemos con las últimas pruebas integrales del sistema y la entrega final de las credenciales de administración.
