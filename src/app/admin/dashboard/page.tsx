@@ -76,6 +76,7 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
+  const [allStaffList, setAllStaffList] = useState<{ id: string; nombre: string }[]>([]);
   const [platosMenuDynamic, setPlatosMenuDynamic] = useState(platosMenu);
   
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -150,11 +151,15 @@ export default function DashboardPage() {
           const data = await res.json();
           localStorage.setItem('ph_personal', JSON.stringify(data)); // sync para logins
           const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          setAllStaffList(allStaff);
           if (mozos.length) {
             setMozosList(mozos);
             setSelectedWaiterId((prev: string) => prev || mozos[0].id);
             setNewOrder((n: any) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
-            setPaymentForm((f: any) => ({ ...f, mozoNombre: mozos[0].nombre }));
+          }
+          if (allStaff.length) {
+            setPaymentForm((f: any) => ({ ...f, mozoNombre: allStaff[0].nombre }));
           }
         }
       } catch {
@@ -162,6 +167,8 @@ export default function DashboardPage() {
         try {
           const data = JSON.parse(localStorage.getItem('ph_personal') || '[]');
           const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          setAllStaffList(allStaff);
           if (mozos.length) { setMozosList(mozos); setSelectedWaiterId(mozos[0].id); }
         } catch {}
       }
@@ -367,7 +374,7 @@ export default function DashboardPage() {
       setStaffPayments(updated);
       localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
     }
-    setPaymentForm({ mozoNombre: mozosList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
+    setPaymentForm({ mozoNombre: allStaffList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -1680,11 +1687,9 @@ export default function DashboardPage() {
                       colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   >
-                    {mozosList.map(m => (
+                    {allStaffList.map(m => (
                       <option key={m.id} value={m.nombre}>{m.nombre}</option>
                     ))}
-                    <option value="Administración">Administración</option>
-                    <option value="Cocina">Cocina</option>
                   </select>
                   <input 
                     type="text" 
