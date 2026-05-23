@@ -116,8 +116,9 @@ const platosMenu = [
 
 
 export default function DashboardPage() {
-  const colorMode: ColorMode = 'claro';
-  const setColorMode = () => {};
+  const colorMode = 'claro' as ColorMode;
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const setColorMode = (_mode: ColorMode) => {};
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
