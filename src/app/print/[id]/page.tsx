@@ -2,14 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { useRouter as useAppRouter } from 'next/navigation';
-import { useRouter } from 'next/navigation';
-import { useRouter } from 'next/navigation';
 import { useParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Loader2 } from 'lucide-react';
 
 export default function PrintTicket() {
+  const router = useRouter();
   const { id } = useParams();
   const comandaId = Number(id);
   const [comanda, setComanda] = useState<any>(null);
@@ -139,7 +137,6 @@ export default function PrintTicket() {
       <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto shadow-sm print:shadow-none print:m-0 print:p-0 print:w-[80mm]">
         {/* Cabecera */}
           <p className="text-xs">{config.direccion || 'Av. Colonización 1115'}</p>
-        </p>
         <p className="text-xs">RUC: {config.ruc || '10429025546'}</p>
         <p className="text-xs">TELF: {config.telefono || '+51 123 456 789'}</p>
         <div className="border-b border-black border-dashed my-2" />
@@ -201,7 +198,6 @@ export default function PrintTicket() {
           `,
         }}
       />
-      </div>
     </div>
   );
 }
