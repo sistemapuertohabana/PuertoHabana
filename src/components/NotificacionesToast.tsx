@@ -1,10 +1,40 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { BellRing } from 'lucide-react';
 
 export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: string, rol: string }) {
   const [notificacion, setNotificacion] = useState<any>(null);
+  const [activado, setActivado] = useState(false);
+
+  // Intentar cargar estado de activación desde sessionStorage
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const permiso = sessionStorage.getItem('notificaciones_activas');
+      if (permiso === 'true') {
+        setActivado(true);
+      }
+    }
+  }, []);
+
+  const habilitarAlertas = async () => {
+    // Pedir permiso nativo al navegador
+    if ('Notification' in window) {
+      await Notification.requestPermission();
+    }
+    // Reproducir un sonido vacío para desbloquear el AudioContext en el navegador
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0; // silenciado
+      await audio.play();
+    } catch (e) {}
+
+    sessionStorage.setItem('notificaciones_activas', 'true');
+    setActivado(true);
+  };
 
   useEffect(() => {
+    if (!activado) return;
+
     // Revisar notificaciones nuevas cada 10 segundos
     const checkNotifs = async () => {
       try {
@@ -16,41 +46,81 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
         if (!res.ok) return;
         const data = await res.json();
         
-        // Asumiendo que la API retorna un array con leida: 0
         const nueva = data[0]; 
         if (nueva && (!notificacion || notificacion.id !== nueva.id)) {
           setNotificacion(nueva);
           
+          // Lanzar Notificación Nativa del Navegador si el usuario aceptó
+          if ('Notification' in window && Notification.permission === 'granted') {
+            new Notification(nueva.titulo, {
+              body: nueva.mensaje,
+              icon: '/icon.png' // Puedes cambiar el icono en public/
+            });
+          }
+
           // Reproducir sonido!
           try {
-            const audio = new Audio('/notification.mp3'); // Require an audio file to exist
+            const audio = new Audio('/notification.mp3'); 
+            audio.volume = 1;
             audio.play().catch(() => {});
           } catch (e) {}
           
-          // Marcar como leída en la BD (asincronamente)
+          // Marcar como leída en la BD asíncronamente
           fetch(`/api/notificaciones/${nueva.id}/leida`, { method: 'POST' }).catch(() => {});
         }
       } catch (e) {}
     };
     
-    // Check initial and then every 10s
     checkNotifs();
     const interval = setInterval(checkNotifs, 10000);
     return () => clearInterval(interval);
-  }, [usuarioId, rol, notificacion]);
+  }, [usuarioId, rol, notificacion, activado]);
+
+  // Pantalla de bloqueo obligatorio si no ha activado las notificaciones
+  if (!activado) {
+    return (
+      <div className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center p-4 backdrop-blur-md">
+        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
+            <BellRing size={40} strokeWidth={2.5} />
+          </div>
+          <h2 className="text-2xl font-bold text-gray-900 mb-3">Activar Notificaciones</h2>
+          <p className="text-gray-500 mb-8 leading-relaxed text-sm px-4">
+            Para que recibas las alertas de nuevos pedidos y pagos en tiempo real con sonido, necesitas activar este permiso. Es obligatorio para usar el sistema.
+          </p>
+          <button 
+            onClick={habilitarAlertas}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/30 text-lg flex items-center justify-center gap-2"
+          >
+            <BellRing size={20} />
+            Activar Ahora
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   if (!notificacion) return null;
 
   return (
-    <div className="fixed top-4 right-4 bg-white border-l-4 border-blue-500 shadow-xl rounded-lg p-4 z-[9999] animate-[slideIn_0.3s_ease-out_forwards]">
-      <h4 className="font-bold text-gray-900">{notificacion.titulo}</h4>
-      <p className="text-sm text-gray-600 mt-1">{notificacion.mensaje}</p>
-      <button 
-        onClick={() => setNotificacion(null)} 
-        className="mt-3 text-xs text-blue-600 font-bold uppercase hover:text-blue-800 transition-colors"
-      >
-        Cerrar
-      </button>
+    <div className="fixed top-6 right-6 bg-white border-l-4 border-blue-500 shadow-2xl rounded-2xl p-5 z-[9999] max-w-sm animate-in slide-in-from-right-8 duration-300">
+      <div className="flex items-start gap-4">
+        <div className="mt-1 w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
+          <BellRing size={20} />
+        </div>
+        <div>
+          <h4 className="font-bold text-gray-900 text-base">{notificacion.titulo}</h4>
+          <p className="text-sm text-gray-600 mt-1 leading-snug">{notificacion.mensaje}</p>
+        </div>
+      </div>
+      <div className="mt-5 flex justify-end">
+        <button 
+          onClick={() => setNotificacion(null)} 
+          className="text-xs bg-gray-100 text-gray-600 px-5 py-2.5 rounded-xl font-bold uppercase hover:bg-gray-200 transition-colors"
+        >
+          Entendido
+        </button>
+      </div>
     </div>
   );
 }
