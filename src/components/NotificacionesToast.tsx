@@ -35,7 +35,8 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   useEffect(() => {
     if (!activado) return;
 
-    // Revisar notificaciones nuevas cada 10 segundos
+    const dismissed = new Set<string>();
+
     const checkNotifs = async () => {
       try {
         const queryParams = new URLSearchParams();
@@ -46,16 +47,25 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
         if (!res.ok) return;
         const data = await res.json();
         
-        const nueva = data[0]; 
+        const nueva = data.find((n: any) => !dismissed.has(String(n.id))); 
+        
         if (nueva && (!notificacion || notificacion.id !== nueva.id)) {
           setNotificacion(nueva);
+          dismissed.add(String(nueva.id));
           
-          // Lanzar Notificación Nativa del Navegador si el usuario aceptó
+          // Lanzar Notificación Nativa (Soporte móvil Android/PWA)
           if ('Notification' in window && Notification.permission === 'granted') {
-            new Notification(nueva.titulo, {
-              body: nueva.mensaje,
-              icon: '/icon.png' // Puedes cambiar el icono en public/
-            });
+            if ('serviceWorker' in navigator) {
+              navigator.serviceWorker.getRegistration().then(reg => {
+                if (reg) {
+                  reg.showNotification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
+                } else {
+                  new Notification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
+                }
+              });
+            } else {
+              new Notification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
+            }
           }
 
           // Reproducir sonido!
@@ -74,7 +84,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     checkNotifs();
     const interval = setInterval(checkNotifs, 10000);
     return () => clearInterval(interval);
-  }, [usuarioId, rol, notificacion, activado]);
+  }, [usuarioId, rol, activado]); // Se removió notificacion de las dependencias para evitar bucles
 
   // Pantalla de bloqueo obligatorio si no ha activado las notificaciones
   if (!activado) {

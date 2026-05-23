@@ -8,7 +8,7 @@ export async function GET(request: Request) {
   const rol = searchParams.get('rol');
   const usuario_id = searchParams.get('usuario_id');
 
-  let query = sb.from('notificaciones').select('*').eq('leida', 0).order('created_at', { ascending: false }).limit(10);
+  let query = sb.from('notificaciones').select('*').eq('leida', false).order('created_at', { ascending: false }).limit(10);
 
   if (usuario_id && usuario_id !== 'null') {
     query = query.eq('usuario_id', usuario_id);
@@ -31,7 +31,7 @@ export async function POST(request: Request) {
     rol_destino: rol_destino || null,
     titulo,
     mensaje,
-    leida: 0
+    leida: false
   }]);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

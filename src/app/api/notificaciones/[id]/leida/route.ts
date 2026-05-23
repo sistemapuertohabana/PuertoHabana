@@ -6,7 +6,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const sb = getServiceSupabase();
   const { id } = await params;
 
-  const { error } = await sb.from('notificaciones').update({ leida: 1 }).eq('id', id);
+  const { error } = await sb.from('notificaciones').update({ leida: true }).eq('id', id);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   
   return NextResponse.json({ success: true });
