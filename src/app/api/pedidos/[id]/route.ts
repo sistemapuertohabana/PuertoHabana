@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // PATCH /api/pedidos/:id — actualizar estado
 export async function PATCH(request: Request, { params }: { params: Promise<{ id: string }> }) {
   const sb = getServiceSupabase();

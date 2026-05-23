@@ -37,10 +37,10 @@ export default function MozoHistorialPage() {
 
   const loadComandas = useCallback(async () => {
     try {
-      const res = await fetch(`/api/pedidos?fecha=${fecha}`);
+      const res = await fetch(`/api/pedidos?fecha=${fecha}&_=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error();
       const data: Comanda[] = await res.json();
-      // Filtrar por mozo si hay sesión
+      // Filtrar por mozo si hay sesión y excluir ya entregados del botón cobrar
       setComandas(mozoId ? data.filter((c: any) => c.mozo_id === mozoId || !mozoId) : data);
     } catch {
       // Fallback localStorage
@@ -70,18 +70,20 @@ export default function MozoHistorialPage() {
     return () => { clearInterval(interval); window.removeEventListener('storage', loadComandas); };
   }, [loadComandas]);
 
-  const confirmarCobro = async (id: number, metodo: 'Yape' | 'Efectivo') => {
+  const confirmarCobro = async (id: number, metodo: string) => {
+    // Cierra el modal de inmediato (optimistic UI)
+    setPagoModalData(null);
+    setPagoInputs({ yape: '', efectivo: '' });
+
     try {
-      await fetch(`/api/pedidos/${id}`, {
+      const res = await fetch(`/api/pedidos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'Entregado', metodo_pago: metodo }),
       });
-      loadComandas();
-      setPagoModalData(null);
-      setPagoInputs({ yape: '', efectivo: '' });
-      
-      // Intentar enviar notificación al admin
+      if (!res.ok) throw new Error('API error');
+
+      // Notificar al admin
       fetch('/api/notificaciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -91,13 +93,16 @@ export default function MozoHistorialPage() {
           mensaje: `La comanda fue cobrada con ${metodo}`
         })
       }).catch(() => {});
-      
+
     } catch {
+      // Fallback: marcar en localStorage
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)));
-      loadComandas();
-      setPagoModalData(null);
-      setPagoInputs({ yape: '', efectivo: '' });
+      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(
+        all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)
+      ));
+    } finally {
+      // Recargar después de un pequeño delay para asegurar que la BD actualizó
+      setTimeout(() => loadComandas(), 600);
     }
   };
 

@@ -34,9 +34,9 @@ export default function CocinaPage() {
   const loadPedidos = useCallback(async () => {
     try {
       const url = showHistory
-        ? '/api/pedidos?estado=Entregado'
-        : `/api/pedidos?fecha=${fecha}`;
-      const res = await fetch(url);
+        ? `/api/pedidos?fecha=${fecha}&estado=Entregado&_=${Date.now()}`
+        : `/api/pedidos?fecha=${fecha}&_=${Date.now()}`;
+      const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error();
       const data: Pedido[] = await res.json();
       setPedidos(showHistory ? data : data.filter(p => p.estado !== 'Entregado'));
@@ -81,7 +81,8 @@ export default function CocinaPage() {
         }
       }
 
-      loadPedidos();
+      // Reload after short delay to ensure DB committed
+      setTimeout(() => loadPedidos(), 600);
     } catch {
       // Fallback localStorage
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
+export const dynamic = 'force-dynamic';
+
 // GET /api/pedidos?fecha=YYYY-MM-DD&estado=Pendiente
 export async function GET(request: Request) {
   const sb = getServiceSupabase();
