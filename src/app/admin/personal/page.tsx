@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
 
-type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato';
+type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato' | 'dev';
 type SalarioTipo = 'diario' | 'semanal' | 'mensual';
 
 interface Personal {
@@ -22,6 +22,7 @@ const rolLabels: Record<string, string> = {
   cocina:          'Cocinero',
   ayudante_cocina: 'Ayudante de Cocina',
   lavaplato:       'Lavaplatos',
+  dev:             'Desarrollador',
 };
 
 const rolColors: Record<string, string> = {
@@ -30,6 +31,7 @@ const rolColors: Record<string, string> = {
   cocina:          'bg-orange-100 text-orange-700',
   ayudante_cocina: 'bg-yellow-100 text-yellow-700',
   lavaplato:       'bg-gray-100 text-gray-700',
+  dev:             'bg-indigo-100 text-indigo-700',
 };
 
 const emptyForm = {
@@ -234,6 +236,7 @@ export default function PersonalPage() {
                 <option value="cocina">Cocinero</option>
                 <option value="ayudante_cocina">Ayudante de Cocina</option>
                 <option value="lavaplato">Lavaplatos</option>
+                <option value="dev">Desarrollador</option>
               </select>
             </div>
             <div>
