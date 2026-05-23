@@ -1785,45 +1785,11 @@ export default function DashboardPage() {
 
                 <div className="space-y-4 text-xs font-medium">
                   
-                  {/* Daily forecast */}
-                  <div className={`p-3 rounded-lg border ${colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                    <span className="font-semibold block text-blue-600 dark:text-blue-400 uppercase tracking-widest text-[9px]">Pronóstico por Día de la Semana</span>
-                    <p className="mt-1">Lunes a Viernes: <span className="font-bold">Ceviche de Pescado</span> / Sábado y Domingo: <span className="font-bold">Ceviche Mixto</span></p>
-                    <p className="text-[10px] text-gray-400 mt-0.5">Se proyecta un incremento del 25% los fines de semana.</p>
-                  </div>
-
-                  {/* Weekly forecast */}
-                  <div className={`p-3 rounded-lg border ${colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                    <span className="font-semibold block text-teal-600 dark:text-teal-400 uppercase tracking-widest text-[9px]">Pronóstico Semanal (Volumen Proyectado)</span>
-                    <div className="grid grid-cols-2 gap-2 mt-1.5 font-medium">
-                      <div>1. Ceviche de Pescado: <span className="font-bold">~120 platos</span></div>
-                      <div>2. Arroz con Mariscos: <span className="font-bold">~85 platos</span></div>
-                      <div>3. Ceviche Mixto: <span className="font-bold">~75 platos</span></div>
-                      <div>4. Jalea Mixta: <span className="font-bold">~60 platos</span></div>
-                    </div>
-                  </div>
-
-                  {/* Monthly forecast percentages */}
-                  <div className={`p-3 rounded-lg border ${colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
-                    <span className="font-semibold block text-indigo-600 dark:text-indigo-400 uppercase tracking-widest text-[9px]">Participación Mensual Estimada</span>
-                    <div className="space-y-1.5 mt-2">
-                      <div className="flex justify-between items-center">
-                        <span>Ceviches (Categoría Estrella)</span>
-                        <span className="font-bold">42.5%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Mariscos y Arroces</span>
-                        <span className="font-bold">28.0%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Criollos (Lomo Saltado, etc.)</span>
-                        <span className="font-bold">18.5%</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span>Bebidas y Entradas</span>
-                        <span className="font-bold">11.0%</span>
-                      </div>
-                    </div>
+                  {/* Empty Data State */}
+                  <div className={`p-8 text-center rounded-lg border border-dashed ${colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                    <Sparkles size={24} className="mx-auto mb-2 opacity-50" />
+                    <p className="font-semibold uppercase tracking-widest text-[10px]">Recopilando Datos Reales</p>
+                    <p className="mt-1 text-xs font-normal">Las proyecciones de volumen y participación se generarán automáticamente a medida que el sistema procese más ventas históricas.</p>
                   </div>
 
                 </div>
