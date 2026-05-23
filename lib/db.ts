@@ -1,19 +1,19 @@
 // lib/db.ts
-// MySQL connection pool for Next.js (singleton).
-// Ensure you have installed mysql2: npm install mysql2
+// MySQL connection pool for Next.js API routes (singleton).
+// Uses variables from .env.local: DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME
 
 import mysql from 'mysql2/promise';
 
-// Create a pool that will be shared across the application.
 const pool = mysql.createPool({
-  host: process.env.MYSQL_HOST,
-  port: Number(process.env.MYSQL_PORT || 3306),
-  user: process.env.MYSQL_USER,
-  password: process.env.MYSQL_PASSWORD,
-  database: process.env.MYSQL_DATABASE,
+  host:     process.env.DB_HOST     || 'localhost',
+  port:     Number(process.env.DB_PORT || 3306),
+  user:     process.env.DB_USER     || 'root',
+  password: process.env.DB_PASSWORD || '',
+  database: process.env.DB_NAME     || 'SistemaPuertoHabana',
   waitForConnections: true,
-  connectionLimit: 10, // adjust as needed for your environment
+  connectionLimit: 10,
   queueLimit: 0,
+  charset: 'utf8mb4',
 });
 
 export default pool;
