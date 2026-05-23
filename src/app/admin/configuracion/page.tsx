@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check } from 'lucide-react';
+import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing } from 'lucide-react';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -86,6 +86,7 @@ export default function ConfiguracionPage() {
 
   const [sidebarDesign, setSidebarDesign] = useState<SidebarDesign>('normal');
   const [navbarStyle,   setNavbarStyle]   = useState<NavbarStyle>('original');
+  const [notifActivas, setNotifActivas] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [mounted,setMounted]= useState(false);
 
@@ -99,6 +100,9 @@ export default function ConfiguracionPage() {
     if (ns)  setNavbarStyle(ns);
     if (fp)  setConfig(p => ({ ...p, fotoPerfil: fp }));
     if (cfg) { try { setConfig(p => ({ ...p, ...JSON.parse(cfg) })); } catch {} }
+    
+    // Cargar estado de notificaciones
+    setNotifActivas(sessionStorage.getItem('notificaciones_activas') === 'true');
   }, []);
 
   /* Cambia sidebar en tiempo real */
@@ -310,6 +314,49 @@ export default function ConfiguracionPage() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Notificaciones Push ────────────────────────────────────────── */}
+        <section className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <BellRing size={16} className="text-gray-500" /> Notificaciones Push
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">Activa las alertas en tiempo real para recibir notificaciones sonoras</p>
+          <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${notifActivas ? 'bg-blue-100' : 'bg-gray-200'}`}>
+                <BellRing size={18} className={notifActivas ? 'text-blue-600' : 'text-gray-400'} />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {notifActivas ? 'Notificaciones activadas' : 'Notificaciones desactivadas'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {notifActivas ? 'Recibirás alertas de nuevos pedidos y pagos' : 'No recibirás alertas en tiempo real'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={async () => {
+                if (notifActivas) {
+                  sessionStorage.removeItem('notificaciones_activas');
+                  setNotifActivas(false);
+                } else {
+                  if ('Notification' in window) await Notification.requestPermission();
+                  try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
+                  sessionStorage.setItem('notificaciones_activas', 'true');
+                  setNotifActivas(true);
+                }
+              }}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                notifActivas
+                  ? 'bg-red-100 text-red-600 hover:bg-red-200'
+                  : 'bg-blue-600 text-white hover:bg-blue-700'
+              }`}
+            >
+              {notifActivas ? 'Desactivar' : 'Activar'}
+            </button>
           </div>
         </section>
 
