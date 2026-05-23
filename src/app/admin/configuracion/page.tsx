@@ -14,7 +14,7 @@ interface Configuracion {
 }
 
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal';
-type NavbarStyle   = 'original' | 'minimalista' | 'centrado' | 'grande';
+type NavbarStyle   = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 /* Aplica el valor a localStorage y dispara el evento para que los sidebars
    reaccionen en tiempo real sin necesidad de recargar. */
@@ -70,6 +70,12 @@ const navbarPreviews: Record<NavbarStyle, { bg: string; accent: string; label: s
     accent: 'text-blue-600',
     label: 'Grande',
     desc: 'Íconos grandes con etiqueta',
+  },
+  flotante: {
+    bg: 'bg-white rounded-full mx-4 mb-4 shadow-lg border-0',
+    accent: 'bg-blue-600 text-white rounded-full',
+    label: 'Flotante (Nuevo)',
+    desc: 'Bordes muy redondos, estilo flotante',
   },
 };
 
@@ -343,7 +349,7 @@ export default function ConfiguracionPage() {
                   sessionStorage.removeItem('notificaciones_activas');
                   setNotifActivas(false);
                 } else {
-                  if ('Notification' in window) await Notification.requestPermission();
+                  if ('Notification' in window) await Notification.requestPermission().catch(() => {});
                   try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                   sessionStorage.setItem('notificaciones_activas', 'true');
                   setNotifActivas(true);

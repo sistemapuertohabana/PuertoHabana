@@ -26,7 +26,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   const habilitarAlertas = async () => {
     // Pedir permiso nativo al navegador
     if ('Notification' in window) {
-      await Notification.requestPermission();
+      await Notification.requestPermission().catch(() => {});
     }
     // Reproducir un sonido vacío para desbloquear el AudioContext en el navegador
     try {
@@ -70,11 +70,11 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
             if ('serviceWorker' in navigator) {
               navigator.serviceWorker.getRegistration().then(reg => {
                 if (reg) {
-                  reg.showNotification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
+                  reg.showNotification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' }).catch(() => {});
                 } else {
                   new Notification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
                 }
-              });
+              }).catch(() => {});
             } else {
               new Notification(nueva.titulo, { body: nueva.mensaje, icon: '/icon.png' });
             }

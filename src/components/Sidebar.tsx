@@ -11,7 +11,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal';
-type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande';
+type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
 
 const menuItems = [
   { href: '/admin/dashboard',      icon: LayoutDashboard, label: 'Dashboard'      },
@@ -41,6 +41,7 @@ function sidebarItem(d: SidebarDesign, active: boolean) {
 }
 
 function navbarBg(s: NavbarStyle) {
+  if (s === 'flotante')    return 'bg-white border border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] mb-4 mx-4 rounded-full';
   if (s === 'minimalista') return 'bg-white border-t border-gray-100';
   if (s === 'centrado')    return 'bg-gray-50 border-t border-gray-200';
   if (s === 'grande')      return 'bg-white border-t-2 border-gray-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]';
@@ -48,6 +49,7 @@ function navbarBg(s: NavbarStyle) {
 }
 
 function navbarItem(s: NavbarStyle, active: boolean) {
+  if (s === 'flotante')    return active ? 'bg-blue-600 text-white shadow-md' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-50';
   if (s === 'minimalista') return active ? 'text-black' : 'text-gray-400 hover:text-gray-600';
   if (s === 'centrado')    return active ? 'text-black font-semibold' : 'text-gray-400 hover:text-gray-600';
   if (s === 'grande')      return active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600';
@@ -77,7 +79,7 @@ export default function Sidebar() {
     window.dispatchEvent(new Event('ph_store_update'));
   };
 
-  const layout = navbar === 'centrado' ? 'justify-center gap-6' : 'justify-around';
+  const layout = navbar === 'centrado' ? 'justify-center gap-6' : navbar === 'flotante' ? 'justify-between px-2' : 'justify-around';
 
   return (
     <>
@@ -107,9 +109,9 @@ export default function Sidebar() {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className={`flex flex-col items-center gap-1 px-2 py-1.5 rounded-xl transition-all min-w-[52px] ${navbarItem(navbar, active)}`}>
+                className={`flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all min-w-[52px] ${navbar === 'flotante' ? 'rounded-full w-14 h-14' : 'rounded-xl'} ${navbarItem(navbar, active)}`}>
                 <Icon size={navbarIconSize(navbar)} strokeWidth={active ? 2.5 : 1.8} />
-                <span className={`text-[10px] leading-none ${active ? 'font-semibold' : 'font-normal'}`}>{label}</span>
+                {navbar !== 'flotante' && <span className={`text-[10px] leading-none ${active ? 'font-semibold' : 'font-normal'}`}>{label}</span>}
               </Link>
             );
           })}
@@ -173,6 +175,7 @@ export default function Sidebar() {
               <option value="minimalista">Minimalista</option>
               <option value="centrado">Centrado</option>
               <option value="grande">Grande</option>
+              <option value="flotante">Flotante (Nuevo)</option>
             </select>
           </div>
         </div>

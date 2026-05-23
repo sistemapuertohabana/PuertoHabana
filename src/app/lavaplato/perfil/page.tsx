@@ -307,7 +307,7 @@ export default function LavaplatoPerfilPage() {
                     sessionStorage.removeItem('notificaciones_activas');
                     setNotifActivas(false);
                   } else {
-                    if ('Notification' in window) await Notification.requestPermission();
+                    if ('Notification' in window) await Notification.requestPermission().catch(() => {});
                     try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                     sessionStorage.setItem('notificaciones_activas', 'true');
                     setNotifActivas(true);
