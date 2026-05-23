@@ -76,7 +76,7 @@ export default function DashboardPage() {
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
-  const [allStaffList, setAllStaffList] = useState<{ id: string; nombre: string }[]>([]);
+  const [allStaffList, setAllStaffList] = useState<{ id: string; nombre: string; salario_monto?: number; salario_tipo?: string; rol?: string }[]>([]);
   const [platosMenuDynamic, setPlatosMenuDynamic] = useState(platosMenu);
   
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
@@ -151,7 +151,7 @@ export default function DashboardPage() {
           const data = await res.json();
           localStorage.setItem('ph_personal', JSON.stringify(data)); // sync para logins
           const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
-          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
           setAllStaffList(allStaff);
           if (mozos.length) {
             setMozosList(mozos);
@@ -159,7 +159,12 @@ export default function DashboardPage() {
             setNewOrder((n: any) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
           }
           if (allStaff.length) {
-            setPaymentForm((f: any) => ({ ...f, mozoNombre: allStaff[0].nombre }));
+            setPaymentForm((f: any) => ({ 
+              ...f, 
+              mozoNombre: allStaff[0].nombre,
+              monto: allStaff[0].salario_monto ? String(allStaff[0].salario_monto) : '',
+              concepto: allStaff[0].salario_tipo ? `Pago ${allStaff[0].salario_tipo}` : 'Jornal'
+            }));
           }
         }
       } catch {
@@ -167,7 +172,7 @@ export default function DashboardPage() {
         try {
           const data = JSON.parse(localStorage.getItem('ph_personal') || '[]');
           const mozos = data.filter((x: any) => x.rol === 'mozo').map((x: any) => ({ id: x.id, nombre: x.nombre }));
-          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre }));
+          const allStaff = data.map((x: any) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
           setAllStaffList(allStaff);
           if (mozos.length) { setMozosList(mozos); setSelectedWaiterId(mozos[0].id); }
         } catch {}
@@ -374,7 +379,12 @@ export default function DashboardPage() {
       setStaffPayments(updated);
       localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
     }
-    setPaymentForm({ mozoNombre: allStaffList[0]?.nombre ?? '', monto: '', concepto: '', fecha: '' });
+    setPaymentForm({ 
+      mozoNombre: allStaffList[0]?.nombre ?? '', 
+      monto: allStaffList[0]?.salario_monto ? String(allStaffList[0].salario_monto) : '', 
+      concepto: allStaffList[0]?.salario_tipo ? `Pago ${allStaffList[0].salario_tipo}` : 'Jornal', 
+      fecha: '' 
+    });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
     setTimeout(() => setToastMessage(null), 3000);
   };
@@ -1682,7 +1692,16 @@ export default function DashboardPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-4 gap-3 mb-4">
                   <select 
                     value={paymentForm.mozoNombre}
-                    onChange={e => setPaymentForm({ ...paymentForm, mozoNombre: e.target.value })}
+                    onChange={e => {
+                      const nombre = e.target.value;
+                      const staff = allStaffList.find(s => s.nombre === nombre);
+                      setPaymentForm({ 
+                        ...paymentForm, 
+                        mozoNombre: nombre,
+                        monto: staff?.salario_monto ? String(staff.salario_monto) : '',
+                        concepto: staff?.salario_tipo ? `Pago ${staff.salario_tipo}` : 'Jornal'
+                      });
+                    }}
                     className={`px-2 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
                       colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
