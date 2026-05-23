@@ -100,7 +100,13 @@ export default function CocinaPerfilPage() {
       setPhoto(url);
       saveProfilePhoto('cocina', url);
       const id = loadSession().id;
-      if (id) await supabase.from('usuarios').update({ foto_url: url }).eq('id', id);
+      if (id) {
+        await fetch(`/api/personal/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto_url: url })
+        });
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -109,12 +115,16 @@ export default function CocinaPerfilPage() {
     const id = record?.id ?? '';
     if (!id) return;
 
-    await supabase.from('usuarios').update({
-      turno: draft.turno,
-      area: draft.especialidad,
-      telefono: draft.telefono,
-      fecha_ingreso: draft.fecha_ingreso
-    }).eq('id', id);
+    await fetch(`/api/personal/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        turno: draft.turno,
+        area: draft.especialidad,
+        telefono: draft.telefono,
+        fecha_ingreso: draft.fecha_ingreso
+      })
+    });
 
     setExtra(draft);
     setEditing(false);

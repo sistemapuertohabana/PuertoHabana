@@ -143,13 +143,18 @@ export default function MozoHistorialPage() {
                     ))}
                   </ul>
                 )}
-
-                {c.estado === 'Listo' && (
-                  <button onClick={() => marcarEntregado(c.id)}
-                    className="w-full bg-gray-900 text-white px-6 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
-                    <CheckCircle2 size={16} /> Marcar Entregado
-                  </button>
-                )}
+                
+                <div className="flex gap-2">
+                  <a href={`/print/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm">
+                    🖨️ Imprimir
+                  </a>
+                  {c.estado === 'Listo' && (
+                    <button onClick={() => marcarEntregado(c.id)}
+                      className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
+                      <CheckCircle2 size={16} /> Entregado
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>

@@ -164,14 +164,14 @@ INSERT INTO inventario (seccion, nombre, categoria, precio, cantidad, unidad, mi
 
 INSERT INTO configuracion (clave, valor) VALUES
   ('nombreEmpresa','Puerto Habana Cevicheria'),
-  ('direccion',    'Av. Principal 123'),
+  ('direccion',    'Av. Colonización 1115'),
   ('telefono',     '+51 123 456 789'),
   ('email',        'contacto@puertohabana.com'),
   ('horarioMañana','09:00 - 14:00'),
   ('horarioTarde', '15:00 - 23:00'),
   ('sidebarDesign','normal'),
   ('navbarStyle',  'original'),
-  ('ruc',          '20XXXXXXXXX');
+  ('ruc',          '10429025546');
 
 -- ============================================================
 -- FUNCIÓN UPSERT VENTAS DIARIAS (la llama /api/pedidos)

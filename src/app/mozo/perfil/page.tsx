@@ -107,7 +107,13 @@ export default function MozoPerfilPage() {
       setPhoto(url);
       saveProfilePhoto('mozo', url); // fallback local
       const id = loadSession().id;
-      if (id) await supabase.from('usuarios').update({ foto_url: url }).eq('id', id);
+      if (id) {
+        await fetch(`/api/personal/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ foto_url: url })
+        });
+      }
     };
     reader.readAsDataURL(file);
   };
@@ -116,13 +122,17 @@ export default function MozoPerfilPage() {
     const id = record?.id ?? '';
     if (!id) return;
     
-    // Guardar en Supabase
-    await supabase.from('usuarios').update({
-      turno: draft.turno,
-      area: draft.area,
-      telefono: draft.telefono,
-      fecha_ingreso: draft.fecha_ingreso
-    }).eq('id', id);
+    // Guardar vía API para asegurar permisos
+    await fetch(`/api/personal/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        turno: draft.turno,
+        area: draft.area,
+        telefono: draft.telefono,
+        fecha_ingreso: draft.fecha_ingreso
+      })
+    });
 
     setExtra(draft);
     setEditing(false);
