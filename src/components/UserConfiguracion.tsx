@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react';
 import { Settings, BellRing, Palette, Check } from 'lucide-react';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
-type SidebarDesign = 'minimalista' | 'bonito' | 'normal';
-type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
+type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
+type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
 
 const navbarPreviews = {
   original: {
@@ -37,6 +37,12 @@ const navbarPreviews = {
     accent: 'bg-blue-600 text-white rounded-full',
     label: 'Flotante (Nuevo)',
     desc: 'Bordes muy redondos, estilo flotante',
+  },
+  flotante_blue_new: {
+    bg: 'bg-blue-600 rounded-full mx-4 mb-4 shadow-lg border-0',
+    accent: 'bg-white text-blue-600 rounded-full',
+    label: 'FLOTANTE BLUE NEW',
+    desc: 'Fondo azul, botones blancos',
   },
 };
 
@@ -121,6 +127,7 @@ export default function UserConfiguracion({ role }: { role: string }) {
               { id: 'normal', label: 'Estándar', desc: 'Menú limpio y clásico' },
               { id: 'bonito', label: 'Elegante', desc: 'Bordes suaves, íconos grandes' },
               { id: 'minimalista', label: 'Minimalista', desc: 'Solo íconos, moderno' },
+              { id: 'azul', label: 'Azul (Nuevo)', desc: 'Fondo azul, botones blancos' },
             ].map(d => {
               const active = sidebarDesign === d.id;
               return (
@@ -158,6 +165,10 @@ export default function UserConfiguracion({ role }: { role: string }) {
                     ) : key === 'grande' ? (
                       <div className="flex justify-around w-full">
                         {[0,1,2,3].map(i => <div key={i} className={`w-4 h-4 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-gray-200'}`} />)}
+                      </div>
+                    ) : key === 'flotante_blue_new' ? (
+                      <div className="flex justify-around w-full">
+                        {[0,1,2,3].map(i => <div key={i} className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-white' : 'bg-blue-400'}`} />)}
                       </div>
                     ) : (
                       <div className="flex justify-around w-full">
