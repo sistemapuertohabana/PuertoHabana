@@ -40,6 +40,7 @@ export default function LoginMozoPage() {
         localStorage.setItem('ph_mozo_session', JSON.stringify({
           id: user.id, nombre: user.nombre, email: user.email,
           rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+          turno: user.turno || '', foto_url: user.foto_url || '',
         }));
         router.push('/mozo');
         return;
@@ -58,6 +59,7 @@ export default function LoginMozoPage() {
         localStorage.setItem('ph_mozo_session', JSON.stringify({
           id: user.id, nombre: user.nombre, email: user.email,
           rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+          turno: user.turno || '', foto_url: user.foto_url || '',
         }));
         router.push('/mozo');
       } else {

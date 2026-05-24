@@ -36,8 +36,7 @@ export default function Boleta({
   const [printError, setPrintError] = useState('');
 
   const subtotal = items.reduce((sum, i) => sum + i.precio * i.cantidad, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const total = subtotal;
 
   const formatFecha = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -145,7 +144,6 @@ export default function Boleta({
             ))}
             <div className="border-t border-dashed border-gray-400 my-2" />
             <div className="flex justify-between"><span>Subtotal:</span><span>S/ {subtotal.toFixed(2)}</span></div>
-            <div className="flex justify-between"><span>IGV (18%):</span><span>S/ {igv.toFixed(2)}</span></div>
             <div className="border-t border-dashed border-gray-400 my-2" />
             <div className="flex justify-between font-bold text-sm">
               <span>TOTAL:</span>

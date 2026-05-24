@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, CheckCircle2, Clock } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X } from 'lucide-react';
+import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
 interface Comanda {
   id: number;
@@ -11,7 +12,7 @@ interface Comanda {
   hora: string;
   fecha: string;
   total: number;
-  items?: { nombre: string; cantidad: number; precio: number }[];
+  items?: { nombre: string; cantidad: number; precio: number; categoria?: string }[];
 }
 
 function getLocalDateString() {
@@ -24,11 +25,21 @@ export default function MozoHistorialPage() {
   const [loading,  setLoading]  = useState(true);
   const [pagoModalData, setPagoModalData] = useState<Comanda | null>(null);
   const [pagoInputs, setPagoInputs] = useState({ yape: '', efectivo: '' });
+  const [tapers, setTapers] = useState<InventarioItem[]>([]);
+  const [taperModalData, setTaperModalData] = useState<Comanda | null>(null);
+  const [taperCart, setTaperCart] = useState<{ nombre: string; precio: number; qty: number }[]>([]);
+  const [taperSuccess, setTaperSuccess] = useState(false);
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
       : getLocalDateString()
   );
+
+  // Suscribirse a tapers del inventario
+  useEffect(() => {
+    const unsub = subscribeInventario('tapers', (data) => setTapers(data));
+    return () => unsub();
+  }, []);
 
   // Solo muestra las comandas del mozo logueado
   const mozoId = typeof window !== 'undefined'
@@ -176,6 +187,12 @@ export default function MozoHistorialPage() {
                   <a href={`/print/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm">
                     🖨️ Imprimir
                   </a>
+                  {c.estado === 'Entregado' && tapers.length > 0 && (
+                    <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
+                      className="flex-shrink-0 bg-emerald-100 text-emerald-700 px-3 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-200 transition-colors text-xs">
+                      <Package size={14} /> + Tapers
+                    </button>
+                  )}
                   {c.estado === 'Listo' && (
                     <button onClick={() => handlePagoModalOpen(c)}
                       className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
@@ -185,6 +202,113 @@ export default function MozoHistorialPage() {
                 </div>
 
                 {/* Modal de Pago Mixto / Vuelto */}
+                {/* Modal de Tapers para comandas Entregado */}
+                {taperModalData?.id === c.id && (
+                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[80vh] flex flex-col">
+                      <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-xl font-bold text-gray-900">Agregar Tapers a {c.mesa}</h3>
+                        <button onClick={() => setTaperModalData(null)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                          <X size={20} className="text-gray-400" />
+                        </button>
+                      </div>
+
+                      {taperSuccess && (
+                        <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+                          ✓ Tapers agregados correctamente
+                        </div>
+                      )}
+
+                      <div className="flex-1 overflow-y-auto space-y-2 mb-4">
+                        {tapers.length === 0 ? (
+                          <p className="text-sm text-gray-400 text-center py-8">No hay tapers disponibles en inventario</p>
+                        ) : (
+                          tapers.map(t => {
+                            const qty = taperCart.find(tc => tc.nombre === t.nombre)?.qty || 0;
+                            return (
+                              <div key={t.nombre} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
+                                <div>
+                                  <p className="font-medium text-sm text-gray-900">{t.nombre}</p>
+                                  <p className="text-xs text-gray-500">S/ {Number(t.precio).toFixed(2)}</p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                  <button onClick={() => setTaperCart(prev => {
+                                    const existing = prev.find(tc => tc.nombre === t.nombre);
+                                    if (existing) {
+                                      if (existing.qty <= 1) return prev.filter(tc => tc.nombre !== t.nombre);
+                                      return prev.map(tc => tc.nombre === t.nombre ? {...tc, qty: tc.qty - 1} : tc);
+                                    }
+                                    return prev;
+                                  })} disabled={qty === 0}
+                                    className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30">
+                                    <Minus size={12} />
+                                  </button>
+                                  <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                                  <button onClick={() => setTaperCart(prev => {
+                                    const existing = prev.find(tc => tc.nombre === t.nombre);
+                                    if (existing) return prev.map(tc => tc.nombre === t.nombre ? {...tc, qty: tc.qty + 1} : tc);
+                                    return [...prev, { nombre: t.nombre, precio: t.precio, qty: 1 }];
+                                  })}
+                                    className="w-7 h-7 rounded-full bg-emerald-600 text-white flex items-center justify-center">
+                                    <Plus size={12} />
+                                  </button>
+                                </div>
+                              </div>
+                            );
+                          })
+                        )}
+                      </div>
+
+                      {taperCart.length > 0 && (
+                        <div className="border-t border-gray-200 pt-3 mb-3">
+                          <p className="text-xs text-gray-500 mb-2">
+                            {taperCart.reduce((s, tc) => s + tc.qty, 0)} tapers · S/ {taperCart.reduce((s, tc) => s + tc.precio * tc.qty, 0).toFixed(2)}
+                          </p>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3">
+                        <button onClick={() => { setTaperModalData(null); setTaperCart([]); setTaperSuccess(false); }}
+                          className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">
+                          Cancelar
+                        </button>
+                        <button
+                          disabled={taperCart.length === 0}
+                          onClick={async () => {
+                            try {
+                              const res = await fetch(`/api/pedidos/${c.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  items: taperCart.map(tc => ({
+                                    nombre: tc.nombre,
+                                    cantidad: tc.qty,
+                                    precio: tc.precio,
+                                    categoria: 'tapers',
+                                  }))
+                                }),
+                              });
+                              if (!res.ok) throw new Error('Error al agregar tapers');
+                              setTaperSuccess(true);
+                              setTaperCart([]);
+                              setTimeout(() => {
+                                setTaperModalData(null);
+                                setTaperSuccess(false);
+                                loadComandas();
+                              }, 1500);
+                            } catch {
+                              alert('Error al agregar tapers. Intente de nuevo.');
+                            }
+                          }}
+                          className="flex-1 py-3 bg-emerald-600 text-white font-bold hover:bg-emerald-700 rounded-2xl transition-colors disabled:opacity-50 shadow-md"
+                        >
+                          Agregar a Comanda
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 {pagoModalData?.id === c.id && (
                   <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">

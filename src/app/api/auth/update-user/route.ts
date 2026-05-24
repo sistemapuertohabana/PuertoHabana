@@ -4,11 +4,11 @@ import pool from '@/../lib/db';
 // PUT /api/auth/update-user
 export async function PUT(request: Request) {
   try {
-    const { id, nombre, email, dni, rol, salario_monto, salario_tipo, activo } = await request.json();
+    const { id, nombre, email, dni, rol, salario_monto, salario_tipo, activo, foto_url, turno } = await request.json();
     if (!id) return NextResponse.json({ error: 'id requerido' }, { status: 400 });
 
     await pool.query(
-      `UPDATE usuarios SET nombre=?, email=?, dni=?, rol=?, salario_monto=?, salario_tipo=?, activo=?
+      `UPDATE usuarios SET nombre=?, email=?, dni=?, rol=?, salario_monto=?, salario_tipo=?, activo=?, foto_url=?, turno=?
        WHERE id=?`,
       [
         nombre,
@@ -18,6 +18,8 @@ export async function PUT(request: Request) {
         salario_monto || null,
         salario_tipo || null,
         activo ?? 1,
+        foto_url || null,
+        turno || null,
         id,
       ]
     );

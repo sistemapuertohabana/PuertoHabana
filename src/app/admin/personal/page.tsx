@@ -12,6 +12,7 @@ interface Personal {
   dni?: string;
   email?: string;
   rol: Rol;
+  turno?: string;
   salario_monto?: number;
   salario_tipo?: SalarioTipo;
 }
@@ -37,6 +38,7 @@ const rolColors: Record<string, string> = {
 const emptyForm = {
   nombre: '', dni: '', email: '',
   rol: 'mozo' as Rol,
+  turno: '',
   salario_monto: '',
   salario_tipo: 'mensual' as SalarioTipo,
 };
@@ -88,6 +90,7 @@ export default function PersonalPage() {
       dni:           p.dni ?? '',
       email:         p.email ?? '',
       rol:           p.rol,
+      turno:         p.turno ?? '',
       salario_monto: p.salario_monto?.toString() ?? '',
       salario_tipo:  p.salario_tipo ?? 'mensual',
     });
@@ -108,6 +111,7 @@ export default function PersonalPage() {
       dni:           formData.dni.trim() || undefined,
       email:         formData.email.trim() || undefined,
       rol:           formData.rol,
+      turno:         formData.turno || undefined,
       salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : undefined,
       salario_tipo:  formData.salario_tipo,
     };
@@ -238,6 +242,17 @@ export default function PersonalPage() {
                 <option value="lavaplato">Lavaplatos</option>
                 <option value="dev">Desarrollador</option>
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Turno</label>
+              <select value={formData.turno}
+                onChange={e => setFormData({ ...formData, turno: e.target.value })}
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-900">
+                <option value="">Sin turno</option>
+                <option value="mañana">Mañana</option>
+                <option value="noche">Noche</option>
+              </select>
+              <p className="text-xs text-gray-400 mt-1">El turno determinará el horario en que puede hacer pedidos.</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>

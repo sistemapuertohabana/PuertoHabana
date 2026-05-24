@@ -25,8 +25,7 @@ export function buildEscPosTicket(payload: BoletaPayload): string {
   };
 
   const subtotal = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-  const igv = subtotal * 0.18;
-  const total = subtotal + igv;
+  const total = subtotal;
 
   const LINE = '------------------------------------------------\n';
   const ROW = (left: string, right: string, width = 48) => {
@@ -61,7 +60,6 @@ export function buildEscPosTicket(payload: BoletaPayload): string {
 
   ticket += LINE;
   ticket += ROW('Subtotal:', `S/ ${subtotal.toFixed(2)}`);
-  ticket += ROW('IGV (18%):', `S/ ${igv.toFixed(2)}`);
   ticket += LINE;
   ticket += '\x1B\x21\x10';
   ticket += ROW('TOTAL:', `S/ ${total.toFixed(2)}`);

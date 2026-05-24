@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
 interface MesaConfig {
   id: string;
@@ -31,6 +32,94 @@ const MENU = [
   { name: 'Jugo de Naranja', price: 8.00, category: 'bebidas' as const },
 ];
 
+type MenuItem = { name: string; price: number; category: string };
+
+type DiaSemana = 'dom' | 'lun' | 'mar' | 'mie' | 'jue' | 'vie' | 'sab';
+
+const DIAS: DiaSemana[] = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'];
+const DIAS_LABEL: Record<DiaSemana, string> = {
+  dom: 'Domingo', lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
+  jue: 'Jueves', vie: 'Viernes', sab: 'Sábado',
+};
+
+interface TurnoHorario {
+  inicio: string;
+  fin: string;
+}
+
+interface TurnosConfig {
+  mañana: Record<DiaSemana, TurnoHorario | null>;
+  noche: Record<DiaSemana, TurnoHorario | null>;
+}
+
+const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
+  mañana: {
+    dom: { inicio: '08:00', fin: '17:00' },
+    lun: null, // descanso
+    mar: { inicio: '09:00', fin: '16:00' },
+    mie: { inicio: '09:00', fin: '16:00' },
+    jue: { inicio: '09:00', fin: '16:00' },
+    vie: { inicio: '09:00', fin: '16:00' },
+    sab: { inicio: '08:00', fin: '17:00' },
+  },
+  noche: {
+    dom: { inicio: '17:00', fin: '23:00' },
+    lun: { inicio: '16:00', fin: '23:00' },
+    mar: { inicio: '16:00', fin: '23:00' },
+    mie: { inicio: '16:00', fin: '23:00' },
+    jue: { inicio: '16:00', fin: '23:00' },
+    vie: { inicio: '16:00', fin: '23:00' },
+    sab: { inicio: '17:00', fin: '23:00' },
+  },
+};
+
+function getTurnosConfig(): TurnosConfig {
+  try {
+    const raw = localStorage.getItem('ph_turnos_config');
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return TURNOS_CONFIG_DEFAULT;
+}
+
+function getHoraMinutos(h: string): number {
+  const [hor, min] = h.split(':').map(Number);
+  return hor * 60 + min;
+}
+
+function validarTurnoActivo(turno: string | undefined | null): { activo: boolean; mensaje: string } {
+  if (!turno || (turno !== 'mañana' && turno !== 'noche')) {
+    return { activo: true, mensaje: '' }; // sin turno asignado = permitir
+  }
+  
+  const config = getTurnosConfig();
+  const horarios = config[turno as 'mañana' | 'noche'];
+  if (!horarios) return { activo: true, mensaje: '' };
+  
+  const ahora = new Date();
+  const diaSemana = DIAS[ahora.getDay()]; // 0=domingo
+  const hoyHorario = horarios[diaSemana];
+  
+  if (!hoyHorario) {
+    return {
+      activo: false,
+      mensaje: `Hoy (${DIAS_LABEL[diaSemana]}) es descanso para turno ${turno === 'mañana' ? 'Mañana' : 'Noche'}`,
+    };
+  }
+  
+  const ahoraMin = ahora.getHours() * 60 + ahora.getMinutes();
+  const inicioMin = getHoraMinutos(hoyHorario.inicio);
+  const finMin = getHoraMinutos(hoyHorario.fin);
+  
+  if (ahoraMin < inicioMin || ahoraMin >= finMin) {
+    return {
+      activo: false,
+      mensaje: `Fuera de horario (turno ${turno === 'mañana' ? 'Mañana' : 'Noche'}: ${hoyHorario.inicio} - ${hoyHorario.fin})`,
+    };
+  }
+  
+  return { activo: true, mensaje: '' };
+}
+
 function getLocalDateString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -41,12 +130,31 @@ export default function MozoPage() {
   const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string }[]>([]);
   const [success, setSuccess] = useState(false);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
+  const [tapers, setTapers] = useState<InventarioItem[]>([]);
   
   // Config mode
   const [isConfigMode, setIsConfigMode] = useState(false);
   const [mesas, setMesas] = useState<MesaConfig[]>([]);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const [editingSillas, setEditingSillas] = useState<string | null>(null);
+  const [turnoInfo, setTurnoInfo] = useState<{ activo: boolean; mensaje: string }>({ activo: true, mensaje: '' });
+  const [mozoSession, setMozoSession] = useState<{ id?: string; nombre?: string; turno?: string }>({});
+
+  useEffect(() => {
+    const unsub = subscribeInventario('tapers', (data) => setTapers(data));
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    // Cargar sesión del mozo para obtener el turno asignado
+    try {
+      const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+      setMozoSession(session);
+      if (session.turno) {
+        setTurnoInfo(validarTurnoActivo(session.turno));
+      }
+    } catch {}
+  }, []);
 
   useEffect(() => {
     try {
@@ -93,7 +201,9 @@ export default function MozoPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const updateCart = (item: typeof MENU[0], delta: number) => {
+  const allItems: MenuItem[] = [...MENU, ...tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))];
+
+  const updateCart = (item: MenuItem, delta: number) => {
     setCart(prev => {
       const existing = prev.find(c => c.name === item.name);
       if (existing) {
@@ -110,6 +220,13 @@ export default function MozoPage() {
 
   const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
+    
+    // Validar turno activo
+    if (!turnoInfo.activo && mozoSession.turno) {
+      alert(`❌ ${turnoInfo.mensaje}. No puedes realizar pedidos fuera de tu horario.`);
+      return;
+    }
+    
     const fecha = typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
       : getLocalDateString();
@@ -248,6 +365,14 @@ export default function MozoPage() {
         </div>
       )}
 
+      {/* Aviso de turno inactivo */}
+      {!turnoInfo.activo && mozoSession.turno && (
+        <div className="mx-4 mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
+          <span>⚠️</span>
+          <span>{turnoInfo.mensaje} — No puedes realizar pedidos hasta que inicie tu turno.</span>
+        </div>
+      )}
+
       {/* Grid de mesas */}
       {!activeMesa && (
         <div className="p-4">
@@ -354,35 +479,47 @@ export default function MozoPage() {
           </div>
 
           <div className="flex-1 overflow-y-auto p-4 space-y-6">
-            {(['comida', 'bebidas'] as const).map(cat => (
-              <div key={cat}>
-                <h3 className="text-xs font-bold uppercase text-gray-400 mb-3 tracking-wider">{cat}</h3>
-                <div className="space-y-2">
-                  {MENU.filter(m => m.category === cat).map(item => {
-                    const qty = cart.find(c => c.name === item.name)?.qty || 0;
-                    return (
-                      <div key={item.name} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
-                        <div>
-                          <p className="font-medium text-sm text-gray-900">{item.name}</p>
-                          <p className="text-xs text-gray-500">S/ {Number(item.price).toFixed(2)}</p>
+            {['comida', 'bebidas', 'tapers'].map(cat => {
+              const items = cat === 'tapers'
+                ? tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))
+                : MENU.filter(m => m.category === cat);
+              if (items.length === 0) return null;
+              return (
+                <div key={cat}>
+                  <div className="flex items-center gap-2 mb-3">
+                    {cat === 'tapers' && <Package size={14} className="text-gray-400" />}
+                    <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+                      {cat === 'tapers' ? 'Envases / Tapers' : cat}
+                    </h3>
+                    <span className="text-[10px] text-gray-300">({items.length})</span>
+                  </div>
+                  <div className="space-y-2">
+                    {items.map(item => {
+                      const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                      return (
+                        <div key={item.name} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
+                          <div>
+                            <p className="font-medium text-sm text-gray-900">{item.name}</p>
+                            <p className="text-xs text-gray-500">S/ {Number(item.price).toFixed(2)}</p>
+                          </div>
+                          <div className="flex items-center gap-3">
+                            <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
+                              className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30">
+                              <Minus size={12} />
+                            </button>
+                            <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                            <button onClick={() => updateCart(item, 1)}
+                              className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center">
+                              <Plus size={12} />
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex items-center gap-3">
-                          <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
-                            className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30">
-                            <Minus size={12} />
-                          </button>
-                          <span className="w-5 text-center font-semibold text-sm">{qty}</span>
-                          <button onClick={() => updateCart(item, 1)}
-                            className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center">
-                            <Plus size={12} />
-                          </button>
-                        </div>
-                      </div>
-                    );
-                  })}
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
 
           <div className="p-4 border-t border-gray-200 bg-white">

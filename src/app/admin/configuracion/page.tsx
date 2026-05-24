@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing } from 'lucide-react';
+import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon } from 'lucide-react';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -13,8 +13,46 @@ interface Configuracion {
   fotoPerfil: string;
 }
 
+type DiaSemana = 'lun' | 'mar' | 'mie' | 'jue' | 'vie' | 'sab' | 'dom';
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
 type NavbarStyle   = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
+
+interface TurnoHorario {
+  inicio: string;
+  fin: string;
+}
+
+interface TurnosConfig {
+  mañana: Record<DiaSemana, TurnoHorario | null>;
+  noche: Record<DiaSemana, TurnoHorario | null>;
+}
+
+const DIAS_ORDEN: DiaSemana[] = ['lun', 'mar', 'mie', 'jue', 'vie', 'sab', 'dom'];
+const DIAS_LABEL: Record<DiaSemana, string> = {
+  lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
+  jue: 'Jueves', vie: 'Viernes', sab: 'Sábado', dom: 'Domingo',
+};
+
+const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
+  mañana: {
+    dom: { inicio: '08:00', fin: '17:00' },
+    lun: null,
+    mar: { inicio: '09:00', fin: '16:00' },
+    mie: { inicio: '09:00', fin: '16:00' },
+    jue: { inicio: '09:00', fin: '16:00' },
+    vie: { inicio: '09:00', fin: '16:00' },
+    sab: { inicio: '08:00', fin: '17:00' },
+  },
+  noche: {
+    dom: { inicio: '17:00', fin: '23:00' },
+    lun: { inicio: '16:00', fin: '23:00' },
+    mar: { inicio: '16:00', fin: '23:00' },
+    mie: { inicio: '16:00', fin: '23:00' },
+    jue: { inicio: '16:00', fin: '23:00' },
+    vie: { inicio: '16:00', fin: '23:00' },
+    sab: { inicio: '17:00', fin: '23:00' },
+  },
+};
 
 /* Aplica el valor a localStorage y dispara el evento para que los sidebars
    reaccionen en tiempo real sin necesidad de recargar. */
@@ -107,6 +145,7 @@ export default function ConfiguracionPage() {
   const [notifActivas, setNotifActivas] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [mounted,setMounted]= useState(false);
+  const [turnosConfig, setTurnosConfig] = useState<TurnosConfig>(TURNOS_CONFIG_DEFAULT);
 
   useEffect(() => {
     setMounted(true);
@@ -114,10 +153,12 @@ export default function ConfiguracionPage() {
     const ns  = localStorage.getItem('navbarStyle_admin')   as NavbarStyle   | null;
     const fp  = localStorage.getItem('fotoPerfil');
     const cfg = localStorage.getItem('ph_config');
+    const tc  = localStorage.getItem('ph_turnos_config');
     if (sd)  setSidebarDesign(sd);
     if (ns)  setNavbarStyle(ns);
     if (fp)  setConfig(p => ({ ...p, fotoPerfil: fp }));
     if (cfg) { try { setConfig(p => ({ ...p, ...JSON.parse(cfg) })); } catch {} }
+    if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     
     // Cargar estado de notificaciones
     setNotifActivas(sessionStorage.getItem('notificaciones_activas') === 'true');
@@ -147,6 +188,7 @@ export default function ConfiguracionPage() {
       horarioMañana: config.horarioMañana,
       horarioTarde:  config.horarioTarde,
     }));
+    localStorage.setItem('ph_turnos_config', JSON.stringify(turnosConfig));
     window.dispatchEvent(new Event('ph_store_update'));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -161,6 +203,18 @@ export default function ConfiguracionPage() {
       setConfig(p => ({ ...p, fotoPerfil: url }));
       localStorage.setItem('fotoPerfil', url);
       window.dispatchEvent(new Event('ph_store_update'));
+      
+      // Guardar también en BD para sincronizar entre dispositivos
+      try {
+        const session = JSON.parse(localStorage.getItem('ph_admin_session') || '{}');
+        if (session.id && session.id !== 'admin') {
+          fetch('/api/auth/update-user', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ id: session.id, foto_url: url }),
+          }).catch(() => {});
+        }
+      } catch {}
     };
     reader.readAsDataURL(file);
   };
@@ -211,20 +265,83 @@ export default function ConfiguracionPage() {
                 className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             </div>
           </div>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Turno Mañana</label>
-              <input type="text" value={config.horarioMañana} placeholder="09:00 - 14:00"
-                onChange={e => setConfig(p => ({ ...p, horarioMañana: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+        </section>
+
+        {/* ── Horarios de Turnos ──────────────────────────────────────────── */}
+        <section className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <Clock size={16} className="text-gray-500" /> Horarios de Turnos
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">Define los horarios para cada turno. Los mozos con turno asignado solo podrán hacer pedidos dentro de su horario.</p>
+          
+          {(['mañana', 'noche'] as const).map(turno => (
+            <div key={turno} className="mb-5 last:mb-0">
+              <div className="flex items-center gap-2 mb-3">
+                {turno === 'mañana' ? (
+                  <Sun size={16} className="text-amber-500" />
+                ) : (
+                  <Moon size={16} className="text-indigo-500" />
+                )}
+                <h3 className="text-sm font-semibold text-gray-700 capitalize">{turno}</h3>
+              </div>
+              <div className="space-y-2">
+                {DIAS_ORDEN.map(dia => {
+                  const horario = turnosConfig[turno][dia];
+                  return (
+                    <div key={dia} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
+                      <span className="w-20 text-sm font-medium text-gray-700">{DIAS_LABEL[dia]}</span>
+                      <label className="flex items-center gap-2 text-xs text-gray-500">
+                        <input type="checkbox" checked={horario !== null}
+                          onChange={e => {
+                            const newConfig = { ...turnosConfig };
+                            if (e.target.checked) {
+                              newConfig[turno] = {
+                                ...newConfig[turno],
+                                [dia]: { inicio: '09:00', fin: '17:00' },
+                              };
+                            } else {
+                              newConfig[turno] = {
+                                ...newConfig[turno],
+                                [dia]: null,
+                              };
+                            }
+                            setTurnosConfig(newConfig);
+                          }}
+                          className="rounded"
+                        />
+                        Laboral
+                      </label>
+                      {horario && (
+                        <>
+                          <input type="time" value={horario.inicio}
+                            onChange={e => {
+                              const newConfig = { ...turnosConfig };
+                              newConfig[turno] = {
+                                ...newConfig[turno],
+                                [dia]: { ...horario, inicio: e.target.value },
+                              };
+                              setTurnosConfig(newConfig);
+                            }}
+                            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                          <span className="text-gray-400 text-xs">a</span>
+                          <input type="time" value={horario.fin}
+                            onChange={e => {
+                              const newConfig = { ...turnosConfig };
+                              newConfig[turno] = {
+                                ...newConfig[turno],
+                                [dia]: { ...horario, fin: e.target.value },
+                              };
+                              setTurnosConfig(newConfig);
+                            }}
+                            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
+                        </>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1.5">Turno Tarde / Noche</label>
-              <input type="text" value={config.horarioTarde} placeholder="15:00 - 23:00"
-                onChange={e => setConfig(p => ({ ...p, horarioTarde: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
-            </div>
-          </div>
+          ))}
         </section>
 
         {/* ── Foto de perfil ───────────────────────────────────────────────── */}

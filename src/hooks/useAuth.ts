@@ -25,6 +25,38 @@ export function useAuth() {
     try {
       const sess = JSON.parse(localStorage.getItem(key) || 'null');
       setProfile(sess);
+      
+      // Si la sesión tiene ID pero no foto_url, intentar obtener datos actualizados
+      // Esto permite que la foto de perfil se sincronice entre dispositivos
+      if (sess?.id && !sess.foto_url) {
+        if (sess.rol === 'admin') {
+          // Admin usa MySQL — endpoint admin-exists
+          fetch('/api/auth/admin-exists')
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data?.foto_url) {
+                const updated = { ...sess, foto_url: data.foto_url };
+                setProfile(updated);
+                localStorage.setItem(key, JSON.stringify(updated));
+              }
+            })
+            .catch(() => {});
+        } else {
+          // Mozo, cocina, etc. usan Supabase
+          fetch(`/api/personal/${sess.id}`)
+            .then(res => res.ok ? res.json() : null)
+            .then(data => {
+              if (data && (data.foto_url || data.turno)) {
+                const updated = { ...sess };
+                if (data.foto_url) updated.foto_url = data.foto_url;
+                if (data.turno) updated.turno = data.turno;
+                setProfile(updated);
+                localStorage.setItem(key, JSON.stringify(updated));
+              }
+            })
+            .catch(() => {});
+        }
+      }
     } catch {
       setProfile(null);
     }

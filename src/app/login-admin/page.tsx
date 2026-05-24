@@ -47,10 +47,11 @@ export default function LoginAdminPage() {
           return;
         }
         localStorage.setItem('ph_admin_session', JSON.stringify({
-          id:     data.id ?? 'admin',
-          nombre: data.nombre ?? 'Admin',
-          email:  data.email,
-          rol:    'admin',
+          id:       data.id ?? 'admin',
+          nombre:   data.nombre ?? 'Admin',
+          email:    data.email,
+          rol:      'admin',
+          foto_url: data.foto_url || '',
         }));
         router.push('/admin/dashboard');
       } else {
