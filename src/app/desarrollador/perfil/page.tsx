@@ -56,6 +56,7 @@ export default function DevPerfilPage() {
   const [record,  setRecord]  = useState<PersonalRecord | null>(null);
   const [extra,   setExtra]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fecha_ingreso: '' });
   const [editing, setEditing] = useState(false);
+  const [editandoTurno, setEditandoTurno] = useState(false);
   const [draft,   setDraft]   = useState<MozoExtra>({ turno: '', area: '', telefono: '', fecha_ingreso: '' });
   const [saved,   setSaved]   = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -128,7 +129,6 @@ export default function DevPerfilPage() {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        turno: draft.turno,
         area: draft.area,
         telefono: draft.telefono,
         fecha_ingreso: draft.fecha_ingreso
@@ -144,6 +144,20 @@ export default function DevPerfilPage() {
   const handleCancel = () => {
     setDraft(extra);
     setEditing(false);
+  };
+
+  const handleTurnoChange = async (nuevoTurno: string) => {
+    const id = record?.id ?? '';
+    if (!id) return;
+    const turnoFinal = nuevoTurno === 'sin-turno' ? '' : nuevoTurno;
+    setExtra(prev => ({ ...prev, turno: turnoFinal }));
+    setDraft(prev => ({ ...prev, turno: turnoFinal }));
+    setEditandoTurno(false);
+    await fetch(`/api/personal/${id}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ turno: turnoFinal }),
+    }).catch(() => {});
   };
 
   if (!mounted) return null;
@@ -185,11 +199,46 @@ export default function DevPerfilPage() {
           </div>
 
           {/* Nombre y rol */}
-          <div className="mb-5">
+          <div className="mb-3">
             <h2 className="text-2xl font-bold text-gray-900">{nombre}</h2>
-            <span className="inline-block mt-1 px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
-              {rolLabel}
-            </span>
+            <div className="flex flex-wrap items-center gap-2 mt-1">
+              <span className="px-2.5 py-0.5 bg-blue-100 text-blue-700 text-xs font-semibold rounded-full">
+                {rolLabel}
+              </span>
+              {/* Turno editable en header */}
+              <div className="relative">
+                <button
+                  onClick={() => setEditandoTurno(!editandoTurno)}
+                  onBlur={() => setTimeout(() => setEditandoTurno(false), 200)}
+                  className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border transition-colors ${
+                    extra.turno
+                      ? extra.turno === 'Mañana'
+                        ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200'
+                        : 'bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-200'
+                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
+                  }`}
+                >
+                  {extra.turno || 'Sin turno'} {editandoTurno ? '▲' : '▼'}
+                </button>
+                {editandoTurno && (
+                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 min-w-[130px]">
+                    {['Mañana', 'Noche', 'sin-turno'].map(op => (
+                      <button
+                        key={op}
+                        onClick={() => handleTurnoChange(op)}
+                        className={`block w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
+                          (op === 'sin-turno' && !extra.turno) || op === extra.turno
+                            ? 'bg-blue-50 text-blue-700'
+                            : 'text-gray-700 hover:bg-gray-50'
+                        }`}
+                      >
+                        {op === 'sin-turno' ? 'Sin turno' : op}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
 
           {/* ── Datos del admin (solo lectura) ──────────────────────────── */}
@@ -235,10 +284,6 @@ export default function DevPerfilPage() {
                   value={draft.telefono}
                   onChange={v => setDraft(d => ({ ...d, telefono: v }))}
                   placeholder="+51 999 999 999" />
-                <EditField label="Turno" icon={<Clock size={14} />}
-                  value={draft.turno}
-                  onChange={v => setDraft(d => ({ ...d, turno: v }))}
-                  placeholder="Ej. Tarde" />
                 <EditField label="Área Asignada" icon={<MapPin size={14} />}
                   value={draft.area}
                   onChange={v => setDraft(d => ({ ...d, area: v }))}
@@ -251,7 +296,6 @@ export default function DevPerfilPage() {
             ) : (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <InfoRow icon={<Phone size={15} />}   label="Teléfono"        value={extra.telefono    || '—'} />
-                <InfoRow icon={<Clock size={15} />}   label="Turno"           value={extra.turno       || '—'} />
                 <InfoRow icon={<MapPin size={15} />}  label="Área Asignada"   value={extra.area        || '—'} />
                 <InfoRow icon={<Calendar size={15} />}label="Fecha de Ingreso"value={extra.fecha_ingreso || '—'} />
               </div>
