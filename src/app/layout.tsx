@@ -3,7 +3,7 @@ import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
-import { ColorModeProvider } from "@/contexts/ColorModeContext";
+
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -30,30 +30,11 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
-      suppressHydrationWarning
-    >
-      <head>
-        <script
-          dangerouslySetInnerHTML={{
-            __html: `
-              (function() {
-                try {
-                  var mode = localStorage.getItem('colorMode');
-                  if (mode === 'oscuro') {
-                    document.documentElement.classList.add('dark');
-                  }
-                } catch(e) {}
-              })();
-            `,
-          }}
-        />
-      </head>
+      suppressHydrationWarning><head></head>
       <body className="min-h-full flex flex-col overflow-x-hidden w-full">
-        <ColorModeProvider>
           {children}
           <PWAInstallPrompt />
           <ServiceWorkerRegister />
-        </ColorModeProvider>
       </body>
     </html>
   );

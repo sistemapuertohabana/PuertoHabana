@@ -1,9 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, BellRing, Palette, Check, Moon, Sun, Monitor } from 'lucide-react';
+import { Settings, BellRing, Palette, Check } from 'lucide-react';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
-import { useColorMode } from '@/contexts/ColorModeContext';
 
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
 type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
@@ -48,7 +47,6 @@ const navbarPreviews = {
 };
 
 export default function UserConfiguracion({ role }: { role: string }) {
-  const { colorMode, setColorMode } = useColorMode();
   const [sidebarDesign, setSidebarDesign] = useState<SidebarDesign>('normal');
   const [navbarStyle, setNavbarStyle] = useState<NavbarStyle>('original');
   const [notifActivas, setNotifActivas] = useState(false);
@@ -85,44 +83,6 @@ export default function UserConfiguracion({ role }: { role: string }) {
       </div>
 
       <div className="space-y-6">
-        {/* Modo Oscuro */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
-          <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
-            <Monitor size={18} className="text-gray-500" /> Modo Oscuro
-          </h2>
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-3">
-              {colorMode === 'oscuro' ? (
-                <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center shrink-0">
-                  <Moon size={18} className="text-white" />
-                </div>
-              ) : (
-                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
-                  <Sun size={18} className="text-amber-600" />
-                </div>
-              )}
-              <div>
-                <p className="text-sm font-semibold text-gray-900">
-                  {colorMode === 'oscuro' ? 'Modo Oscuro Activado' : 'Modo Claro Activado'}
-                </p>
-                <p className="text-xs text-gray-500">
-                  {colorMode === 'oscuro' ? 'Fondo negro puro para toda la app' : 'Fondo claro estándar'}
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => setColorMode(colorMode === 'oscuro' ? 'claro' : 'oscuro')}
-              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
-                colorMode === 'oscuro'
-                  ? 'bg-gray-800 text-white hover:bg-gray-700'
-                  : 'bg-gray-900 text-white hover:bg-gray-800'
-              }`}
-            >
-              {colorMode === 'oscuro' ? 'Desactivar' : 'Activar'}
-            </button>
-          </div>
-        </section>
-
         {/* Notificaciones */}
         <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
           <h2 className="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">

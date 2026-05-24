@@ -1,27 +1,8 @@
 @import "tailwindcss";
 
-:root {
-  --background: #f9f9f9;
-  --foreground: #000000;
-  --border: #e5e5e5;
-  --muted: #737373;
-  --muted-foreground: #a3a3a3;
-}
-
-.dark {
-  --background: #000000;
-  --foreground: #ffffff;
-  --border: #1f1f1f;
-  --muted: #a3a3a3;
-  --muted-foreground: #525252;
-}
+@import "tailwindcss";
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-border: var(--border);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-mono);
 }
@@ -31,16 +12,10 @@ html {
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
   overflow-x: hidden;
   width: 100%;
   position: relative;
-}
-
-* {
-  border-color: var(--border);
 }
 
 /* Prevent horizontal scroll on all containers */

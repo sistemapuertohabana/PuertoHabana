@@ -2,10 +2,9 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarSign, Moon, Sun } from 'lucide-react';
+import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarSign } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
-import { useColorMode, type ColorMode } from '@/contexts/ColorModeContext';
 
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
@@ -24,14 +23,13 @@ function ProfileAvatar({ photo, fallback }: { photo: string; fallback: React.Rea
   return <>{fallback}</>;
 }
 
-function navbarBg(s: NavbarStyle, colorMode: ColorMode) {
-  const isDark = colorMode === 'oscuro';
-  if (s === 'flotante')          return isDark ? 'bg-[#111] border-gray-800 shadow-[0_-4px_20px_rgba(0,0,0,0.4)] mb-4 mx-4 rounded-full' : 'bg-white border border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] mb-4 mx-4 rounded-full';
+function navbarBg(s: NavbarStyle) {
+  if (s === 'flotante')          return 'bg-white border border-gray-200 shadow-[0_-4px_20px_rgba(0,0,0,0.08)] mb-4 mx-4 rounded-full';
   if (s === 'flotante_blue_new') return 'bg-blue-600 shadow-[0_-4px_20px_rgba(37,99,235,0.4)] mb-4 mx-4 rounded-full';
-  if (s === 'minimalista')       return isDark ? 'bg-[#111] border-t border-gray-800' : 'bg-white border-t border-gray-100';
-  if (s === 'centrado')          return isDark ? 'bg-[#0a0a0a] border-t border-gray-800' : 'bg-gray-50 border-t border-gray-200';
-  if (s === 'grande')            return isDark ? 'bg-[#111] border-t-2 border-gray-800 shadow-[0_-2px_8px_rgba(0,0,0,.3)]' : 'bg-white border-t-2 border-gray-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]';
-  return isDark ? 'bg-[#111]/90 backdrop-blur-md border-t border-gray-800' : 'bg-white/90 backdrop-blur-md border-t border-gray-200';
+  if (s === 'minimalista')       return 'bg-white border-t border-gray-100';
+  if (s === 'centrado')          return 'bg-gray-50 border-t border-gray-200';
+  if (s === 'grande')            return 'bg-white border-t-2 border-gray-300 shadow-[0_-2px_8px_rgba(0,0,0,.06)]';
+  return 'bg-white/90 backdrop-blur-md border-t border-gray-200';
 }
 
 function navbarItem(s: NavbarStyle, active: boolean) {
@@ -67,7 +65,7 @@ function sidebarItem(d: SidebarDesign, active: boolean) {
 export default function MozoSidebar() {
   const pathname   = usePathname();
   const { profile, signOut } = useAuth();
-  const { colorMode, toggleColorMode } = useColorMode();
+
   const localPhoto = useProfilePhoto('mozo');
   const photo      = profile?.foto_url ?? localPhoto;
   const design     = useLocalStorageValue('sidebarDesign_mozo', 'normal') as SidebarDesign;
@@ -79,7 +77,7 @@ export default function MozoSidebar() {
   return (
     <>
       {/* MOBILE TOP BAR */}
-      <nav className={`lg:hidden fixed top-0 inset-x-0 z-50 border-b ${colorMode === 'oscuro' ? 'bg-black border-gray-800' : 'bg-white border-gray-200'}`}>
+      <nav className="lg:hidden fixed top-0 inset-x-0 z-50 border-b bg-white border-gray-200">
         <div className="flex items-center justify-between px-4 py-3">
           <div className="flex items-center gap-3">
             <div className="w-9 h-9 rounded-full overflow-hidden border-2 bg-gray-100 border-gray-200 flex items-center justify-center">
@@ -91,9 +89,6 @@ export default function MozoSidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={toggleColorMode} className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-500 hover:text-gray-700">
-              {colorMode === 'oscuro' ? <Sun size={16} /> : <Moon size={16} />}
-            </button>
             <button onClick={signOut} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
             </button>
@@ -102,7 +97,7 @@ export default function MozoSidebar() {
       </nav>
 
       {/* MOBILE BOTTOM NAV */}
-      <nav className={`lg:hidden fixed bottom-0 inset-x-0 z-50 ${navbarBg(navbar, colorMode)}`}>
+      <nav className={`lg:hidden fixed bottom-0 inset-x-0 z-50 ${navbarBg(navbar)}`}>
         <div className={`flex ${layout} items-center py-2 px-1`}>
           {menuItems.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
@@ -142,19 +137,6 @@ export default function MozoSidebar() {
             );
           })}
         </nav>
-        <div className="px-3 pb-2">
-          <button onClick={toggleColorMode}
-            className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium ${
-              design === 'azul'
-                ? 'text-blue-200 hover:bg-blue-700'
-                : colorMode === 'oscuro'
-                ? 'text-gray-300 hover:bg-gray-800'
-                : 'text-gray-500 hover:bg-gray-100'
-            }`}>
-            {colorMode === 'oscuro' ? <Sun size={15} /> : <Moon size={15} />}
-            {colorMode === 'oscuro' ? 'Modo Claro' : 'Modo Oscuro'}
-          </button>
-        </div>
         <div className={`px-3 pb-4 border-t pt-3 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
           <button onClick={signOut} className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium ${design === 'azul' ? 'text-red-300 hover:bg-blue-700' : 'text-red-500 hover:bg-red-50'}`}>
             <LogOut size={15} /> Cerrar Sesión

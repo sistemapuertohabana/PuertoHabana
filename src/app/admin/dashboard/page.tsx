@@ -6,7 +6,7 @@ import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
-import { useColorMode } from '@/contexts/ColorModeContext';
+
 
 // Helper para obtener fecha local en formato YYYY-MM-DD
 function getLocalDateString(d: Date = new Date()) {
@@ -36,7 +36,6 @@ import {
   Trash2
 } from 'lucide-react';
 
-type ColorMode = 'claro' | 'oscuro';
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
 type RangoHistorial = 'dia' | 'semana' | 'mes';
 
@@ -118,7 +117,6 @@ const platosMenu = [
 
 
 export default function DashboardPage() {
-  const { colorMode, setColorMode } = useColorMode();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
@@ -177,14 +175,12 @@ export default function DashboardPage() {
 
   useEffect(() => {
     // Initialize all state from localStorage in a single batch
-    const savedColorMode = localStorage.getItem('colorMode') as ColorMode;
     const savedActiveTab = localStorage.getItem('puerto_habana_active_tab') as TabType;
     const savedSimDate = localStorage.getItem('puerto_habana_simulated_date');
     const manualSimFlag = localStorage.getItem('puerto_habana_is_manual_sim') === 'true';
 
     // Batch state updates to avoid cascading renders
     requestAnimationFrame(() => {
-      if (savedColorMode) setColorMode(savedColorMode);
       setMounted(true);
 
       if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'reportes'].includes(savedActiveTab)) {
@@ -859,9 +855,7 @@ export default function DashboardPage() {
     
     return (
       <div className={`p-3.5 sm:p-5 rounded-2xl border transition-all duration-200 ${
-        colorMode === 'oscuro' 
-          ? 'bg-gray-900 border-gray-800 text-white' 
-          : 'bg-white border-gray-200 text-gray-900 shadow-sm'
+        'bg-white border-gray-200 text-gray-900 shadow-sm'
       }`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="font-semibold text-sm tracking-wide">
@@ -871,9 +865,7 @@ export default function DashboardPage() {
             <button 
               onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
               className={`p-2 rounded-lg border transition-colors ${
-                colorMode === 'oscuro' 
-                  ? 'border-gray-800 hover:bg-gray-800 hover:text-white text-gray-400' 
-                  : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                'border-gray-200 hover:bg-gray-50 text-gray-600'
               }`}
             >
               <ChevronLeft size={16} />
@@ -881,9 +873,7 @@ export default function DashboardPage() {
             <button 
               onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
               className={`p-2 rounded-lg border transition-colors ${
-                colorMode === 'oscuro' 
-                  ? 'border-gray-800 hover:bg-gray-800 hover:text-white text-gray-400' 
-                  : 'border-gray-200 hover:bg-gray-50 text-gray-600'
+                'border-gray-200 hover:bg-gray-50 text-gray-600'
               }`}
             >
               <ChevronRight size={16} />
@@ -918,12 +908,8 @@ export default function DashboardPage() {
                   isSelected 
                     ? 'bg-blue-600 text-white font-medium shadow-sm' 
                     : isSimDate
-                    ? colorMode === 'oscuro' 
-                      ? 'bg-gray-800 text-blue-400 border border-blue-500/50' 
-                      : 'bg-blue-50 text-blue-600 border border-blue-200'
-                    : colorMode === 'oscuro' 
-                      ? 'bg-gray-950 border border-gray-900 hover:border-gray-800 text-gray-300' 
-                      : 'bg-gray-50 border border-gray-100 hover:bg-white hover:border-gray-300 text-gray-800'
+                    ? 'bg-blue-50 text-blue-600 border border-blue-200'
+                    : 'bg-gray-50 border border-gray-100 hover:bg-white hover:border-gray-300 text-gray-800'
                 }`}
               >
                 <div className="flex justify-between w-full">
@@ -968,14 +954,14 @@ export default function DashboardPage() {
   };
 
   return (
-    <div className={`animate-in fade-in duration-300 overflow-x-hidden w-full ${colorMode === 'oscuro' ? 'bg-black min-h-screen text-white' : 'text-gray-900'}`}>
+    <div className={`animate-in fade-in duration-300 overflow-x-hidden w-full text-gray-900`}>
       <NotificacionesToast rol="admin" />
       
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom duration-300">
           <div className={`p-4 rounded-xl border shadow-xl max-w-sm flex items-start gap-3 ${
-            colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800 text-white shadow-black/50' : 'bg-white border-gray-200 text-gray-800 shadow-gray-200/50'
+            'bg-white border-gray-200 text-gray-800 shadow-gray-200/50'
           }`}>
             <div className="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
               <Sparkles size={16} />
@@ -991,10 +977,10 @@ export default function DashboardPage() {
       {/* Header Panel */}
       <div className="flex flex-col lg:flex-row lg:justify-between lg:items-start mb-8 gap-4 border-b pb-6 border-gray-150 dark:border-gray-800">
         <div>
-          <h1 className={`text-3xl md:text-4xl font-medium tracking-tight ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+          <h1 className={`text-3xl md:text-4xl font-medium tracking-tight text-gray-900`}>
             Puerto Habana
           </h1>
-          <p className={`text-sm mt-1.5 flex items-center gap-1.5 ${colorMode === 'oscuro' ? 'text-gray-400' : 'text-gray-500'}`}>
+          <p className={`text-sm mt-1.5 flex items-center gap-1.5 text-gray-500`}>
             <Clock size={15} />
             Fecha de operación: <span className="font-semibold text-blue-600">{formatDate(simulatedDate)}</span>
           </p>
@@ -1002,7 +988,7 @@ export default function DashboardPage() {
         
         {/* Time Simulator Panel */}
         <div className={`p-3 rounded-xl border flex flex-col md:flex-row items-center gap-3 shrink-0 ${
-          colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+          'bg-white border-gray-200 shadow-sm'
         }`}>
           <div className="text-center md:text-left">
             <span className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest block">Control de Fecha/Hora</span>
@@ -1025,7 +1011,7 @@ export default function DashboardPage() {
               <button
                 onClick={handleResetDate}
                 className={`px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-colors ${
-                  colorMode === 'oscuro' ? 'border-gray-800 hover:bg-gray-800 text-gray-300' : 'border-gray-200 hover:bg-gray-50 text-gray-700'
+                  'border-gray-200 hover:bg-gray-50 text-gray-700'
                 }`}
               >
                 Restablecer
@@ -1037,21 +1023,21 @@ export default function DashboardPage() {
 
       {/* Tabs Navigation */}
       <div className={`flex border-b mb-8 overflow-x-auto gap-2 -mx-4 px-4 sm:mx-0 sm:px-0 ${
-        colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-200'
+        'border-gray-200'
       }`}>
         <button
           onClick={() => { setActiveTab('activos'); localStorage.setItem('puerto_habana_active_tab', 'activos'); }}
           className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'activos'
-              ? colorMode === 'oscuro' ? 'border-white text-white font-semibold' : 'border-blue-600 text-blue-600 font-semibold'
-              : colorMode === 'oscuro' ? 'border-transparent text-gray-400 hover:text-white' : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-blue-600 text-blue-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
           }`}
         >
           <Clock size={16} />
           Pedidos Activos
           {activeOrdersForSimDate.length > 0 && (
             <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-              colorMode === 'oscuro' ? 'bg-blue-900/30 text-blue-400' : 'bg-blue-100 text-blue-800'
+              'bg-blue-100 text-blue-800'
             }`}>
               {activeOrdersForSimDate.length}
             </span>
@@ -1061,8 +1047,8 @@ export default function DashboardPage() {
           onClick={() => { setActiveTab('historial'); localStorage.setItem('puerto_habana_active_tab', 'historial'); }}
           className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'historial'
-              ? colorMode === 'oscuro' ? 'border-white text-white font-semibold' : 'border-blue-600 text-blue-600 font-semibold'
-              : colorMode === 'oscuro' ? 'border-transparent text-gray-400 hover:text-white' : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-blue-600 text-blue-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
           }`}
         >
           <Calendar size={16} />
@@ -1072,8 +1058,8 @@ export default function DashboardPage() {
           onClick={() => { setActiveTab('ventas_mozo'); localStorage.setItem('puerto_habana_active_tab', 'ventas_mozo'); }}
           className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'ventas_mozo'
-              ? colorMode === 'oscuro' ? 'border-white text-white font-semibold' : 'border-blue-600 text-blue-600 font-semibold'
-              : colorMode === 'oscuro' ? 'border-transparent text-gray-400 hover:text-white' : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-blue-600 text-blue-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
           }`}
         >
           <Users size={16} />
@@ -1083,8 +1069,8 @@ export default function DashboardPage() {
           onClick={() => { setActiveTab('reportes'); localStorage.setItem('puerto_habana_active_tab', 'reportes'); }}
           className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
             activeTab === 'reportes'
-              ? colorMode === 'oscuro' ? 'border-white text-white font-semibold' : 'border-blue-600 text-blue-600 font-semibold'
-              : colorMode === 'oscuro' ? 'border-transparent text-gray-400 hover:text-white' : 'border-transparent text-gray-500 hover:text-gray-900'
+              ? 'border-blue-600 text-blue-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
           }`}
         >
           <TrendingUp size={16} />
@@ -1103,7 +1089,6 @@ export default function DashboardPage() {
                 title={data.title}
                 value={data.value}
                 icon={Icon}
-                colorMode={colorMode}
               />
             );
           })}
@@ -1115,7 +1100,7 @@ export default function DashboardPage() {
         <div className="space-y-6">
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
-              <h2 className={`text-xl md:text-2xl font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+              <h2 className={`text-xl md:text-2xl font-medium text-gray-900`}>
                 Pedidos por Mozo (En Vivo)
               </h2>
               <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitoreo de comandas activas del día.</p>
@@ -1134,17 +1119,17 @@ export default function DashboardPage() {
               <div 
                 key={mozo.id} 
                 className={`border rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${
-                  colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800 hover:border-gray-700' : 'bg-white border-gray-200 hover:border-gray-300 shadow-sm'
+                  'bg-white border-gray-200 hover:border-gray-300 shadow-sm'
                 }`}
                 onClick={() => setSelectedMozo(mozo)}
               >
                 <div>
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`text-base md:text-lg font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{mozo.nombre}</h3>
+                    <h3 className={`text-base md:text-lg font-medium text-gray-900`}>{mozo.nombre}</h3>
                     <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
                       mozo.pedidos.length > 0
-                        ? colorMode === 'oscuro' ? 'bg-blue-900/30 text-blue-400 border border-blue-500/20' : 'bg-blue-50 text-blue-600 border border-blue-100'
-                        : colorMode === 'oscuro' ? 'bg-gray-950 text-gray-500 border border-gray-900' : 'bg-gray-50 text-gray-400 border border-gray-100'
+                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                        : 'bg-gray-50 text-gray-400 border border-gray-100'
                     }`}>
                       {mozo.pedidos.length} {mozo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
                     </span>
@@ -1154,17 +1139,17 @@ export default function DashboardPage() {
                     <div className="space-y-2">
                       {mozo.pedidos.slice(0, 3).map((pedido, idx) => (
                         <div key={idx} className={`flex justify-between items-center py-2.5 border-b last:border-0 ${
-                          colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-100'
+                          'border-gray-100'
                         }`}>
                           <div className="flex-1">
                             <div className="flex items-center gap-1.5">
-                              <p className={`text-sm font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.item}</p>
+                              <p className={`text-sm font-medium text-gray-900`}>{pedido.item}</p>
                               <span className={`w-1.5 h-1.5 rounded-full ${
                                 pedido.estado === 'Listo' ? 'bg-green-500' : pedido.estado === 'En preparación' ? 'bg-yellow-500' : 'bg-gray-400'
                               }`}></span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                              <p className={`text-xs ${colorMode === 'oscuro' ? 'text-gray-500' : 'text-gray-500'}`}>{pedido.mesa} • {pedido.hora}</p>
+                              <p className={`text-xs text-gray-500`}>{pedido.mesa} • {pedido.hora}</p>
                               {pedido.metodo_pago && (
                                 <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
                                   pedido.metodo_pago === 'Yape' ? 'bg-purple-100 text-purple-700' :
@@ -1177,7 +1162,7 @@ export default function DashboardPage() {
                             </div>
                           </div>
                           <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                            colorMode === 'oscuro' ? 'text-white bg-gray-800' : 'text-gray-800 bg-gray-100'
+                            'text-gray-800 bg-gray-100'
                           }`}>{pedido.cantidad}</span>
                         </div>
                       ))}
@@ -1189,14 +1174,14 @@ export default function DashboardPage() {
                     </div>
                   ) : (
                     <div className="py-8 text-center">
-                      <p className={`text-sm ${colorMode === 'oscuro' ? 'text-gray-600' : 'text-gray-400'}`}>Sin pedidos para hoy</p>
+                      <p className={`text-sm text-gray-400`}>Sin pedidos para hoy</p>
                     </div>
                   )}
                 </div>
                 
                 {mozo.pedidos.length > 0 && (
                   <div className={`mt-4 pt-3 border-t flex justify-between items-center text-xs ${
-                    colorMode === 'oscuro' ? 'border-gray-800 text-gray-400' : 'border-gray-100 text-gray-500'
+                    'border-gray-100 text-gray-500'
                   }`}>
                     <span>Total ventas:</span>
                     <span className="font-semibold text-inherit dark:text-white">
@@ -1216,7 +1201,7 @@ export default function DashboardPage() {
           {/* Calendar Picker Panel */}
           <div className="lg:col-span-1 space-y-6">
             <div>
-              <h3 className={`text-lg font-medium mb-3 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>Navegar Fechas</h3>
+              <h3 className={`text-lg font-medium mb-3 text-gray-900`}>Navegar Fechas</h3>
               <p className="text-xs text-gray-500 leading-relaxed">Selecciona un día en el calendario para auditar su historial o cambiar la agrupación temporal.</p>
             </div>
             
@@ -1229,14 +1214,14 @@ export default function DashboardPage() {
             
             {/* Interval buttons */}
             <div className={`p-1.5 rounded-xl border flex gap-1 ${
-              colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'
+              'bg-white border-gray-200'
             }`}>
               <button
                 onClick={() => setRangoHistorial('dia')}
                 className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-colors ${
                   rangoHistorial === 'dia'
                     ? 'bg-blue-600 text-white'
-                    : colorMode === 'oscuro' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 Día
@@ -1246,7 +1231,7 @@ export default function DashboardPage() {
                 className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-colors ${
                   rangoHistorial === 'semana'
                     ? 'bg-blue-600 text-white'
-                    : colorMode === 'oscuro' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 Semana
@@ -1256,7 +1241,7 @@ export default function DashboardPage() {
                 className={`flex-1 text-center py-2 text-xs font-semibold rounded-lg transition-colors ${
                   rangoHistorial === 'mes'
                     ? 'bg-blue-600 text-white'
-                    : colorMode === 'oscuro' ? 'text-gray-400 hover:text-white' : 'text-gray-600 hover:bg-gray-50'
+                    : 'text-gray-600 hover:bg-gray-50'
                 }`}
               >
                 Mes
@@ -1268,7 +1253,7 @@ export default function DashboardPage() {
           <div className="lg:col-span-2 space-y-6">
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
               <div>
-                <h3 className={`text-lg font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-lg font-medium text-gray-900`}>
                   {getHistoryPeriodLabel()}
                 </h3>
                 <p className="text-xs text-gray-500 mt-1">Auditoría detallada de comandas en el período seleccionado.</p>
@@ -1283,7 +1268,7 @@ export default function DashboardPage() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   className={`w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                    colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800 text-white focus:border-white' : 'border-gray-200 focus:border-black bg-white'
+                    'border-gray-200 focus:border-black bg-white'
                   }`}
                 />
               </div>
@@ -1294,11 +1279,11 @@ export default function DashboardPage() {
               <>
                 {/* Desktop View Table */}
                 <div className={`hidden md:block border rounded-xl overflow-hidden w-full ${
-                  colorMode === 'oscuro' ? 'border-gray-800 bg-gray-950' : 'border-gray-200 bg-white shadow-sm'
+                  'border-gray-200 bg-white shadow-sm'
                 }`}>
                   <div className="overflow-x-auto w-full">
                     <table className="w-full text-sm">
-                      <thead className={`border-b ${colorMode === 'oscuro' ? 'bg-gray-900/50 border-gray-800' : 'bg-gray-50 border-gray-200'}`}>
+                      <thead className={`border-b bg-gray-50 border-gray-200`}>
                         <tr>
                           <th className="px-4 py-3 text-left font-medium text-xs text-gray-500 uppercase tracking-wider">Fecha / Hora</th>
                           <th className="px-4 py-3 text-left font-medium text-xs text-gray-500 uppercase tracking-wider">Mozo</th>
@@ -1308,7 +1293,7 @@ export default function DashboardPage() {
                           <th className="px-4 py-3 text-right font-medium text-xs text-gray-500 uppercase tracking-wider">Total</th>
                         </tr>
                       </thead>
-                      <tbody className={`divide-y ${colorMode === 'oscuro' ? 'divide-gray-900' : 'divide-gray-100'}`}>
+                      <tbody className={`divide-y divide-gray-100`}>
                         {filteredHistoryOrders.map((pedido) => (
                           <tr key={pedido.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
                             <td className="px-4 py-3.5 whitespace-nowrap text-xs">
@@ -1340,7 +1325,7 @@ export default function DashboardPage() {
                     <div 
                       key={pedido.id} 
                       className={`p-4 rounded-xl border flex flex-col gap-2.5 ${
-                        colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-800 shadow-sm'
+                        'bg-white border-gray-200 text-gray-800 shadow-sm'
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1357,7 +1342,7 @@ export default function DashboardPage() {
                       </div>
                       
                       <div className={`pt-2 border-t flex justify-between items-center text-xs ${
-                        colorMode === 'oscuro' ? 'border-gray-800 text-gray-400' : 'border-gray-100 text-gray-500'
+                        'border-gray-100 text-gray-500'
                       }`}>
                         <span>Mozo: <strong className="font-medium text-gray-700 dark:text-gray-300">{pedido.mozoNombre}</strong></span>
                         <span>Mesa: <strong className="font-semibold text-gray-700 dark:text-gray-300">{pedido.mesa}</strong></span>
@@ -1369,7 +1354,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <div className={`border rounded-xl py-16 text-center ${
-                colorMode === 'oscuro' ? 'border-gray-800 bg-gray-950/30' : 'border-gray-200 bg-white'
+                'border-gray-200 bg-white'
               }`}>
                 <ClipboardList size={36} className="mx-auto text-gray-300 dark:text-gray-700 mb-3" />
                 <p className="text-sm font-semibold text-gray-400">Sin datos de venta</p>
@@ -1384,7 +1369,7 @@ export default function DashboardPage() {
       {activeTab === 'ventas_mozo' && (
         <div className="space-y-8">
           <div>
-            <h2 className={`text-xl md:text-2xl font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-xl md:text-2xl font-medium text-gray-900`}>
               Rendimiento y Ventas por Mozo
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Análisis comparativo basado en el periodo: <span className="font-semibold text-blue-600">{getHistoryPeriodLabel()}</span></p>
@@ -1394,7 +1379,7 @@ export default function DashboardPage() {
             
             {/* Visual Charts / Performance rankings */}
             <div className={`lg:col-span-2 p-6 rounded-xl border ${
-              colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+              'bg-white border-gray-200 shadow-sm'
             }`}>
               <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-700 mb-6">Gráfico de Ventas Generadas (S/.)</h3>
               
@@ -1450,10 +1435,10 @@ export default function DashboardPage() {
             {/* Metrics cards & Top products */}
             <div className="space-y-6 lg:col-span-1">
               <div className={`p-6 rounded-xl border ${
-                colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+                'bg-white border-gray-200 shadow-sm'
               }`}>
                 <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-500 dark:text-gray-400 mb-4">Métricas del Período</h3>
-                <div className={`divide-y ${colorMode === 'oscuro' ? 'divide-gray-800' : 'divide-gray-150'}`}>
+                <div className={`divide-y divide-gray-150`}>
                   {waiterStats.map(stat => (
                     <div key={stat.id} className="py-3.5 flex justify-between items-start last:pb-0">
                       <div>
@@ -1474,11 +1459,11 @@ export default function DashboardPage() {
 
           {/* Detailed Waiter Orders Section */}
           <div className={`p-4 sm:p-6 rounded-xl border ${
-            colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200 shadow-sm'
+            'bg-white border-gray-200 shadow-sm'
           }`}>
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
               <div>
-                <h3 className={`text-base sm:text-lg font-semibold ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+                <h3 className={`text-base sm:text-lg font-semibold text-gray-900`}>
                   Detalle de Comandas por Mozo
                 </h3>
                 <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Lista pormenorizada de todos los pedidos atendidos en el rango seleccionado</p>
@@ -1495,8 +1480,6 @@ export default function DashboardPage() {
                       className={`flex-1 md:flex-none px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 text-center ${
                         isSelected
                           ? 'bg-blue-600 text-white shadow-sm'
-                          : colorMode === 'oscuro'
-                          ? 'bg-gray-850 text-gray-400 hover:bg-gray-800 hover:text-white'
                           : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-900'
                       }`}
                     >
@@ -1514,7 +1497,7 @@ export default function DashboardPage() {
                 <div className="hidden md:block overflow-x-auto">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead>
-                      <tr className={`border-b ${colorMode === 'oscuro' ? 'border-gray-800 text-gray-400' : 'border-gray-150 text-gray-500'} uppercase tracking-wider font-semibold text-[10px]`}>
+                      <tr className={`border-b border-gray-150 text-gray-500 uppercase tracking-wider font-semibold text-[10px]`}>
                         <th className="pb-3 pt-1 pl-1">Fecha/Hora</th>
                         <th className="pb-3 pt-1">Mesa</th>
                         <th className="pb-3 pt-1">Producto</th>
@@ -1525,7 +1508,7 @@ export default function DashboardPage() {
                         <th className="pb-3 pt-1 pr-1 text-right">Estado</th>
                       </tr>
                     </thead>
-                    <tbody className={`divide-y ${colorMode === 'oscuro' ? 'divide-gray-800/60' : 'divide-gray-100/80'}`}>
+                    <tbody className={`divide-y divide-gray-100/80`}>
                       {selectedWaiterOrders.map((pedido) => (
                         <tr key={pedido.id} className="hover:bg-gray-50/50 dark:hover:bg-gray-900/30 transition-colors">
                           <td className="py-3 pl-1 text-gray-500 dark:text-gray-400 font-medium">
@@ -1564,7 +1547,7 @@ export default function DashboardPage() {
                       ))}
                     </tbody>
                     <tfoot>
-                      <tr className={`border-t font-semibold ${colorMode === 'oscuro' ? 'border-gray-800 text-white' : 'border-gray-200 text-gray-900'}`}>
+                      <tr className={`border-t font-semibold border-gray-200 text-gray-900`}>
                         <td colSpan={3} className="py-4 pl-1 text-[10px] uppercase tracking-wider">Total Acumulado</td>
                         <td className="py-4 text-center font-bold">{selectedWaiterOrders.reduce((sum, p) => sum + p.cantidad, 0)}</td>
                         <td></td>
@@ -1583,7 +1566,7 @@ export default function DashboardPage() {
                     <div 
                       key={pedido.id} 
                       className={`p-4 rounded-xl border flex flex-col gap-2.5 ${
-                        colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800 text-white' : 'bg-gray-50 border-gray-150 text-gray-800 shadow-xs'
+                        'bg-gray-50 border-gray-150 text-gray-800 shadow-xs'
                       }`}
                     >
                       <div className="flex justify-between items-start">
@@ -1600,7 +1583,7 @@ export default function DashboardPage() {
                       </div>
                       
                       <div className={`pt-2 border-t flex justify-between items-center text-xs ${
-                        colorMode === 'oscuro' ? 'border-gray-800 text-gray-450' : 'border-gray-150 text-gray-500'
+                        'border-gray-150 text-gray-500'
                       }`}>
                         <span>Mesa: <strong className="font-semibold text-gray-850 dark:text-gray-250">{pedido.mesa}</strong></span>
                         <span>Cant: <strong className="font-bold text-gray-850 dark:text-gray-255">{pedido.cantidad}</strong></span>
@@ -1619,7 +1602,7 @@ export default function DashboardPage() {
 
                   {/* Mobile Total */}
                   <div className={`p-4 rounded-xl border flex justify-between items-center text-xs font-semibold ${
-                    colorMode === 'oscuro' ? 'bg-gray-950 border-gray-850 text-white' : 'bg-gray-100 border-gray-150 text-gray-900'
+                    'bg-gray-100 border-gray-150 text-gray-900'
                   }`}>
                     <span>Total Ventas Acumulado:</span>
                     <span className="text-base font-bold text-green-600 dark:text-green-500">
@@ -1630,7 +1613,7 @@ export default function DashboardPage() {
               </>
             ) : (
               <div className={`text-center py-10 rounded-xl border border-dashed ${
-                colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-200'
+                'border-gray-200'
               }`}>
                 <ClipboardList size={32} className="mx-auto text-gray-300 dark:text-gray-700 mb-2" />
                 <p className="text-xs font-semibold text-gray-400">Sin comandas registradas</p>
@@ -1646,7 +1629,7 @@ export default function DashboardPage() {
       {activeTab === 'reportes' && (
         <div className="space-y-8 animate-in fade-in duration-300">
           <div>
-            <h2 className={`text-xl md:text-2xl font-medium ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+            <h2 className={`text-xl md:text-2xl font-medium text-gray-900`}>
               Reportes y Estado de Resultados
             </h2>
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Análisis financiero y pronósticos en tiempo real basados en el historial.</p>
@@ -1654,25 +1637,25 @@ export default function DashboardPage() {
 
           {/* financial cards */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 w-full overflow-hidden">
-            <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+            <div className={`p-5 rounded-xl border bg-white border-gray-150 shadow-sm`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Ventas Brutas</span>
               <p className="text-2xl font-bold mt-2 text-blue-600 dark:text-blue-500">S/ {Number(totalVentas).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Basado en comandas registradas</p>
             </div>
             
-            <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+            <div className={`p-5 rounded-xl border bg-white border-gray-150 shadow-sm`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Pérdida de Insumos</span>
               <p className="text-2xl font-bold mt-2 text-red-600 dark:text-red-500">S/ {Number(totalInsumosLoss).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Descartes/vencidos ya pagados</p>
             </div>
 
-            <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+            <div className={`p-5 rounded-xl border bg-white border-gray-150 shadow-sm`}>
               <span className="text-[10px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-widest block">Pagos al Personal</span>
               <p className="text-2xl font-bold mt-2 text-amber-600 dark:text-amber-500">S/ {Number(totalStaffPayments).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Nóminas y comisiones de mozos</p>
             </div>
 
-            <div className={`p-5 rounded-xl border ${colorMode === 'oscuro' ? 'bg-blue-950/20 border-blue-900/30' : 'bg-blue-50/50 border-blue-100 shadow-sm'}`}>
+            <div className={`p-5 rounded-xl border bg-blue-50/50 border-blue-100 shadow-sm`}>
               <span className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-widest block">Ganancia Neta</span>
               <p className="text-2xl font-bold mt-2 text-green-600 dark:text-green-500">S/ {Number(netProfit).toFixed(2)}</p>
               <p className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">Nueva ganancia tras deducciones</p>
@@ -1681,7 +1664,7 @@ export default function DashboardPage() {
 
           {/* Export tools */}
           <div className={`p-5 rounded-xl border flex flex-col sm:flex-row justify-between items-center gap-4 ${
-            colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'
+            'bg-white border-gray-150 shadow-sm'
           }`}>
             <div>
               <h3 className="text-sm font-semibold">Exportar Documentos Administrativos</h3>
@@ -1711,7 +1694,7 @@ export default function DashboardPage() {
             <div className="space-y-6">
               
               {/* Insumos wastes management */}
-              <div className={`p-6 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+              <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
                   <span>Registro de Pérdida de Insumos</span>
                   <span className="text-xs text-red-500 font-normal">Resta de Ganancia</span>
@@ -1724,7 +1707,7 @@ export default function DashboardPage() {
                     value={wasteForm.descripcion}
                     onChange={e => setWasteForm({ ...wasteForm, descripcion: e.target.value })}
                     className={`px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
-                      colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
+                      'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   />
                   <input 
@@ -1733,7 +1716,7 @@ export default function DashboardPage() {
                     value={wasteForm.costo}
                     onChange={e => setWasteForm({ ...wasteForm, costo: e.target.value })}
                     className={`px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
-                      colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
+                      'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   />
                   <button 
@@ -1748,7 +1731,7 @@ export default function DashboardPage() {
                 <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
                   {insumosWasted.map(w => (
                     <div key={w.id} className={`flex justify-between items-center p-3 rounded-lg border text-xs ${
-                      colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'
+                      'bg-gray-50 border-gray-200'
                     }`}>
                       <div>
                         <p className="font-semibold">{w.descripcion}</p>
@@ -1769,7 +1752,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Staff payments management */}
-              <div className={`p-6 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+              <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex justify-between items-center">
                   <span>Registro de Pagos al Personal</span>
                   <span className="text-xs text-amber-500 font-normal">Resta de Ganancia</span>
@@ -1789,7 +1772,7 @@ export default function DashboardPage() {
                       });
                     }}
                     className={`px-2 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
-                      colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
+                      'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   >
                     {allStaffList.map(m => (
@@ -1802,7 +1785,7 @@ export default function DashboardPage() {
                     value={paymentForm.concepto}
                     onChange={e => setPaymentForm({ ...paymentForm, concepto: e.target.value })}
                     className={`px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
-                      colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
+                      'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   />
                   <input 
@@ -1811,7 +1794,7 @@ export default function DashboardPage() {
                     value={paymentForm.monto}
                     onChange={e => setPaymentForm({ ...paymentForm, monto: e.target.value })}
                     className={`px-3 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
-                      colorMode === 'oscuro' ? 'bg-gray-850 border-gray-750 text-white focus:border-white focus:ring-white' : 'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
+                      'bg-white border-gray-200 text-gray-800 focus:border-black focus:ring-black'
                     }`}
                   />
                   <button 
@@ -1826,7 +1809,7 @@ export default function DashboardPage() {
                 <div className="max-h-[200px] overflow-y-auto space-y-2 pr-1">
                   {staffPayments.map(p => (
                     <div key={p.id} className={`flex justify-between items-center p-3 rounded-lg border text-xs ${
-                      colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200'
+                      'bg-gray-50 border-gray-200'
                     }`}>
                       <div>
                         <p className="font-semibold">{p.mozoNombre} <span className="font-normal text-gray-400">({p.concepto})</span></p>
@@ -1852,7 +1835,7 @@ export default function DashboardPage() {
             <div className="space-y-6">
               
               {/* Platos más vendidos chart */}
-              <div className={`p-6 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+              <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4">Platos más Vendidos (Cantidad)</h3>
                 <div className="space-y-4">
                   {getTopDishesData().slice(0, 5).map((d, idx) => {
@@ -1864,7 +1847,7 @@ export default function DashboardPage() {
                           <span>{d.name}</span>
                           <span className="text-gray-400">{d.qty} u. (S/ {Number(d.revenue).toFixed(2)})</span>
                         </div>
-                        <div className={`w-full h-2 rounded-full overflow-hidden ${colorMode === 'oscuro' ? 'bg-gray-950' : 'bg-gray-100'}`}>
+                        <div className={`w-full h-2 rounded-full overflow-hidden bg-gray-100`}>
                           <div 
                             className="h-full bg-gradient-to-r from-blue-500 to-indigo-600 rounded-full transition-all duration-1000"
                             style={{ width: `${percent}%` }}
@@ -1880,7 +1863,7 @@ export default function DashboardPage() {
               </div>
 
               {/* Pronósticos y Inteligencia de Negocio */}
-              <div className={`p-6 rounded-xl border ${colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-150 shadow-sm'}`}>
+              <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
                   <Sparkles size={14} className="text-amber-500" />
                   Pronósticos y Proyección de Demanda
@@ -1889,7 +1872,7 @@ export default function DashboardPage() {
                 <div className="space-y-4 text-xs font-medium">
                   
                   {/* Empty Data State */}
-                  <div className={`p-8 text-center rounded-lg border border-dashed ${colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800 text-gray-500' : 'bg-gray-50 border-gray-200 text-gray-400'}`}>
+                  <div className={`p-8 text-center rounded-lg border border-dashed bg-gray-50 border-gray-200 text-gray-400`}>
                     <Sparkles size={24} className="mx-auto mb-2 opacity-50" />
                     <p className="font-semibold uppercase tracking-widest text-[10px]">Recopilando Datos Reales</p>
                     <p className="mt-1 text-xs font-normal">Las proyecciones de volumen y participación se generarán automáticamente a medida que el sistema procese más ventas históricas.</p>
@@ -1911,20 +1894,19 @@ export default function DashboardPage() {
           isOpen={!!selectedMozo}
           onClose={() => setSelectedMozo(null)}
           title={`Pedidos de ${selectedMozo.nombre}`}
-          colorMode={colorMode}
         >
           <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
             {selectedMozo.pedidos.length > 0 ? (
               selectedMozo.pedidos.map((pedido) => (
                 <div key={pedido.id} className={`rounded-xl p-4 border transition-all ${
-                  colorMode === 'oscuro' ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200 shadow-sm'
+                  'bg-gray-50 border-gray-200 shadow-sm'
                 }`}>
                   <div className="flex justify-between items-start mb-3">
                     <div>
-                      <h4 className={`text-base font-semibold ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.item}</h4>
-                      <p className={`text-xs ${colorMode === 'oscuro' ? 'text-gray-400' : 'text-gray-500'}`}>{pedido.mesa}</p>
+                      <h4 className={`text-base font-semibold text-gray-900`}>{pedido.item}</h4>
+                      <p className={`text-xs text-gray-500`}>{pedido.mesa}</p>
                     </div>
-                    <span className={`text-base font-bold ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>
+                    <span className={`text-base font-bold text-gray-900`}>
                       S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                     </span>
                   </div>
@@ -1932,15 +1914,15 @@ export default function DashboardPage() {
                   <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs mb-4">
                     <div>
                       <p className="text-gray-400">Cantidad</p>
-                      <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.cantidad}</p>
+                      <p className={`font-semibold mt-0.5 text-gray-900`}>{pedido.cantidad}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Precio Unit.</p>
-                      <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>S/ {Number(pedido.precio).toFixed(2)}</p>
+                      <p className={`font-semibold mt-0.5 text-gray-900`}>S/ {Number(pedido.precio).toFixed(2)}</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Hora</p>
-                      <p className={`font-semibold mt-0.5 ${colorMode === 'oscuro' ? 'text-white' : 'text-gray-900'}`}>{pedido.hora} hrs</p>
+                      <p className={`font-semibold mt-0.5 text-gray-900`}>{pedido.hora} hrs</p>
                     </div>
                     <div>
                       <p className="text-gray-400">Estado</p>
@@ -1979,7 +1961,7 @@ export default function DashboardPage() {
                   </div>
 
                   {pedido.notas && (
-                    <div className={`pt-3 border-t mb-4 ${colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-200'}`}>
+                    <div className={`pt-3 border-t mb-4 border-gray-200`}>
                       <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Notas Especiales</p>
                       <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-snug">{pedido.notas}</p>
                     </div>
@@ -2016,7 +1998,7 @@ export default function DashboardPage() {
             
             {selectedMozo.pedidos.length > 0 && (
               <div className={`border-t pt-4 mt-6 space-y-3 ${
-                colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-200'
+                'border-gray-200'
               }`}>
                 <div className="flex justify-between items-center">
                   <span className="text-sm font-semibold text-gray-500">Monto Acumulado Hoy</span>
@@ -2057,13 +2039,13 @@ export default function DashboardPage() {
       {showAddModal && (
         <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
           <div className={`w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border ${
-            colorMode === 'oscuro' ? 'bg-gray-900 border-gray-800 text-white' : 'bg-white border-gray-200 text-gray-800'
+            'bg-white border-gray-200 text-gray-800'
           }`}>
-            <div className={`p-6 border-b flex justify-between items-center ${colorMode === 'oscuro' ? 'border-gray-800' : 'border-gray-150'}`}>
+            <div className={`p-6 border-b flex justify-between items-center border-gray-150`}>
               <h2 className="text-lg font-semibold tracking-tight">Registrar Nueva Comanda</h2>
               <button 
                 onClick={() => setShowAddModal(false)}
-                className={`text-xs p-1 rounded-md ${colorMode === 'oscuro' ? 'hover:bg-gray-800' : 'hover:bg-gray-100'}`}
+                className={`text-xs p-1 rounded-md hover:bg-gray-100`}
               >
                 ✕
               </button>
@@ -2078,7 +2060,7 @@ export default function DashboardPage() {
                   value={newOrder.mozoId}
                   onChange={(e) => setNewOrder({ ...newOrder, mozoId: e.target.value })}
                   className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                    colorMode === 'oscuro' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+                    'bg-white border-gray-200 text-gray-800'
                   }`}
                 >
                   {mozosList.map(m => (
@@ -2095,7 +2077,7 @@ export default function DashboardPage() {
                     value={newOrder.mesa}
                     onChange={(e) => setNewOrder({ ...newOrder, mesa: e.target.value })}
                     className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                      colorMode === 'oscuro' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+                      'bg-white border-gray-200 text-gray-800'
                     }`}
                   >
                     {[1,2,3,4,5,6,7,8].map(n => (
@@ -2116,7 +2098,7 @@ export default function DashboardPage() {
                     value={newOrder.cantidad}
                     onChange={(e) => setNewOrder({ ...newOrder, cantidad: Math.max(1, parseInt(e.target.value) || 1) })}
                     className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                      colorMode === 'oscuro' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+                      'bg-white border-gray-200 text-gray-800'
                     }`}
                   />
                 </div>
@@ -2129,7 +2111,7 @@ export default function DashboardPage() {
                   value={newOrder.platoIndex}
                   onChange={(e) => setNewOrder({ ...newOrder, platoIndex: parseInt(e.target.value) })}
                   className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                    colorMode === 'oscuro' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+                    'bg-white border-gray-200 text-gray-800'
                   }`}
                 >
                   {platosMenu.map((p, idx) => (
@@ -2149,14 +2131,14 @@ export default function DashboardPage() {
                   onChange={(e) => setNewOrder({ ...newOrder, notas: e.target.value })}
                   rows={2}
                   className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                    colorMode === 'oscuro' ? 'bg-gray-800 border-gray-700 text-white' : 'bg-white border-gray-200 text-gray-800'
+                    'bg-white border-gray-200 text-gray-800'
                   }`}
                 />
               </div>
 
               {/* Total Calculation */}
               <div className={`p-4 rounded-xl flex justify-between items-center ${
-                colorMode === 'oscuro' ? 'bg-gray-950' : 'bg-gray-50'
+                'bg-gray-50'
               }`}>
                 <span className="text-xs font-semibold text-gray-500">Monto total estimado:</span>
                 <span className="text-base font-bold text-green-600 dark:text-green-500">
@@ -2174,7 +2156,7 @@ export default function DashboardPage() {
                 <button
                   onClick={() => setShowAddModal(false)}
                   className={`flex-1 py-3 rounded-xl transition-colors text-sm font-semibold border ${
-                    colorMode === 'oscuro' ? 'border-gray-800 text-gray-300 hover:bg-gray-800' : 'border-gray-200 text-gray-700 hover:bg-gray-50'
+                    'border-gray-200 text-gray-700 hover:bg-gray-50'
                   }`}
                 >
                   Cancelar
