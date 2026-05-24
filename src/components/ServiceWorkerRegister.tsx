@@ -75,11 +75,20 @@ export default function ServiceWorkerRegister() {
           failed.push(item);
           continue;
         }
-        const res = await fetch(item.url, {
-          method: item.method,
-          headers: { 'Content-Type': 'application/json' },
-          body: item.body ? JSON.stringify(item.body) : undefined,
-        });
+        // Timeout de 10s para evitar que un request colgado bloquee toda la cola
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000);
+        let res: Response;
+        try {
+          res = await fetch(item.url, {
+            method: item.method,
+            headers: { 'Content-Type': 'application/json' },
+            body: item.body ? JSON.stringify(item.body) : undefined,
+            signal: controller.signal,
+          });
+        } finally {
+          clearTimeout(timeoutId);
+        }
         if (res.ok || res.status === 409) {
           synced++;
         } else {

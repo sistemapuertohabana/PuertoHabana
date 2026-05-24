@@ -154,13 +154,17 @@ export default function ConfiguracionPage() {
     const fp  = localStorage.getItem('fotoPerfil');
     const cfg = localStorage.getItem('ph_config');
     const tc  = localStorage.getItem('ph_turnos_config');
-    if (sd)  setSidebarDesign(sd);
-    if (ns)  setNavbarStyle(ns);
-    if (fp)  setConfig(p => ({ ...p, fotoPerfil: fp }));
-    if (cfg) { try { setConfig(p => ({ ...p, ...JSON.parse(cfg) })); } catch {} }
-    if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     
-    // Cargar estado de notificaciones
+    // Leer configuración guardada y aplicar en lote
+    let configUpdate: Partial<Configuracion> = {};
+    if (fp) configUpdate.fotoPerfil = fp;
+    if (cfg) { try { configUpdate = { ...configUpdate, ...JSON.parse(cfg) }; } catch {} }
+    
+    // Batch de todas las actualizaciones en una sola pasada
+    if (sd) setSidebarDesign(sd);
+    if (ns) setNavbarStyle(ns);
+    setConfig(p => ({ ...p, ...configUpdate }));
+    if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
   }, []);
 
