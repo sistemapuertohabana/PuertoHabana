@@ -68,16 +68,29 @@ export default function MozoPage() {
   };
 
   useEffect(() => {
-    try {
-      const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
-      const mozoId = session.id || '';
-      const pedidos = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      const hoy = localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString();
-      const filtered = pedidos.filter((p: any) => p.fecha === hoy && p.estado !== 'Listo' && p.mozoId === mozoId);
-      setMesasOcupadas(new Set(filtered.map((p: any) => p.mesa)));
-    } catch {
-      setMesasOcupadas(new Set());
-    }
+    const fetchMesas = async () => {
+      try {
+        const fecha = localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString();
+        const res = await fetch(`/api/pedidos?fecha=${fecha}`);
+        if (!res.ok) throw new Error();
+        const data = await res.json();
+        const activas = data.filter((c: any) => c.estado !== 'Entregado');
+        setMesasOcupadas(new Set(activas.map((c: any) => c.mesa_nombre)));
+      } catch {
+        try {
+          const pedidos = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+          const hoy = localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString();
+          const filtered = pedidos.filter((p: any) => p.fecha === hoy && p.estado !== 'Entregado');
+          setMesasOcupadas(new Set(filtered.map((p: any) => p.mesa)));
+        } catch {
+          setMesasOcupadas(new Set());
+        }
+      }
+    };
+    
+    fetchMesas();
+    const interval = setInterval(fetchMesas, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const updateCart = (item: typeof MENU[0], delta: number) => {

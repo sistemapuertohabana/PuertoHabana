@@ -183,12 +183,6 @@ export default function CocinaPage() {
                       <Check size={16} /> Listo
                     </button>
                   )}
-                  {p.estado === 'Listo' && (
-                    <button onClick={() => updateEstado(p.id, 'Entregado')}
-                      className="flex-1 bg-gray-800 text-white py-2 rounded-xl text-sm font-semibold hover:bg-gray-900 transition-colors flex items-center justify-center gap-2">
-                      <Check size={16} /> Entregado
-                    </button>
-                  )}
                 </div>
               )}
             </div>

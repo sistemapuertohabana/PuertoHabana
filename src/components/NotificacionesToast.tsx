@@ -103,29 +103,8 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   // Evitar parpadeo (flash) del modal
   if (checking) return null;
 
-  // Pantalla de bloqueo obligatorio si no ha activado las notificaciones
-  if (!activado) {
-    return (
-      <div className="fixed inset-0 bg-black/70 z-[99999] flex items-center justify-center p-4 backdrop-blur-md">
-        <div className="bg-white rounded-3xl p-8 max-w-md w-full text-center shadow-2xl animate-in zoom-in-95 duration-300">
-          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6 text-blue-600">
-            <BellRing size={40} strokeWidth={2.5} />
-          </div>
-          <h2 className="text-2xl font-bold text-gray-900 mb-3">Activar Notificaciones</h2>
-          <p className="text-gray-500 mb-8 leading-relaxed text-sm px-4">
-            Para que recibas las alertas de nuevos pedidos y pagos en tiempo real con sonido, necesitas activar este permiso. Es obligatorio para usar el sistema.
-          </p>
-          <button
-            onClick={habilitarAlertas}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-4 rounded-2xl transition-all shadow-lg shadow-blue-600/30 text-lg flex items-center justify-center gap-2"
-          >
-            <BellRing size={20} />
-            Activar Ahora
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Si no está activado, no mostramos nada y dejamos que lo active en configuración
+  if (!activado) return null;
 
   if (!notificacion) return null;
 
