@@ -368,6 +368,7 @@ export default function InventarioPage() {
                           } else {
                             const newSelected = {...selectedInsumos};
                             delete newSelected[ins.id];
+                            setSelectedInsumos(newSelected);
                           }
                         }}
                       />

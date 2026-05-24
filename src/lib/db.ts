@@ -27,13 +27,13 @@ function lsRead(collection: string): InventarioItem[] {
   } catch { return []; }
 }
 
-function lsWrite(collection: string, items: InventarioItem[]) {
+function lsWrite(collection: string, items: InventarioItem[], dispatch = false) {
   if (typeof window === 'undefined') return;
   try {
     const store = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
     store[collection] = items;
     localStorage.setItem(LS_KEY, JSON.stringify(store));
-    window.dispatchEvent(new Event('ph_store_update'));
+    if (dispatch) window.dispatchEvent(new Event('ph_store_update'));
   } catch {}
 }
 
@@ -59,8 +59,8 @@ export function subscribeInventario(
       const res = await fetch(`/api/inventario/${collection}`);
       if (!res.ok) throw new Error('API error');
       const data: InventarioItem[] = await res.json();
-      // Sync to localStorage for offline fallback
-      lsWrite(collection, data);
+      // Sync to localStorage for offline fallback (no dispatch para evitar loop)
+      lsWrite(collection, data, false);
       if (active) callback(data);
     } catch {
       // Fallback to localStorage
@@ -104,7 +104,7 @@ export async function addInventarioItem(
     // Fallback localStorage
     const newItem = { ...item, id: genId(), seccion: collection } as InventarioItem;
     const current = lsRead(collection);
-    lsWrite(collection, [newItem, ...current]);
+    lsWrite(collection, [newItem, ...current], true);
     return newItem;
   }
 }
@@ -125,7 +125,7 @@ export async function updateInventarioItem(
   } catch {
     // Fallback localStorage
     const current = lsRead(collection);
-    lsWrite(collection, current.map(i => i.id === id ? { ...i, ...updates } : i));
+    lsWrite(collection, current.map(i => i.id === id ? { ...i, ...updates } : i), true);
   }
 }
 
@@ -140,6 +140,6 @@ export async function deleteInventarioItem(
   } catch {
     // Fallback localStorage
     const current = lsRead(collection);
-    lsWrite(collection, current.filter(i => i.id !== id));
+    lsWrite(collection, current.filter(i => i.id !== id), true);
   }
 }
