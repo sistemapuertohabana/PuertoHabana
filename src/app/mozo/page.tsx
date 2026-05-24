@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
@@ -138,6 +138,8 @@ export default function MozoPage() {
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
   const [editingSillas, setEditingSillas] = useState<string | null>(null);
   const [turnoInfo, setTurnoInfo] = useState<{ activo: boolean; mensaje: string }>({ activo: true, mensaje: '' });
+  const [showHorarioModal, setShowHorarioModal] = useState(false);
+  const [horarioMensaje, setHorarioMensaje] = useState('');
   const [mozoSession, setMozoSession] = useState<{ id?: string; nombre?: string; turno?: string }>({});
 
   useEffect(() => {
@@ -223,7 +225,8 @@ export default function MozoPage() {
     
     // Validar turno activo
     if (!turnoInfo.activo && mozoSession.turno) {
-      alert(`❌ ${turnoInfo.mensaje}. No puedes realizar pedidos fuera de tu horario.`);
+      setHorarioMensaje(turnoInfo.mensaje);
+      setShowHorarioModal(true);
       return;
     }
     
@@ -535,6 +538,41 @@ export default function MozoPage() {
               <CheckCircle size={20} />
               Enviar a Cocina
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* ── Modal de fuera de horario ──────────────────────────────────── */}
+      {showHorarioModal && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-white rounded-3xl shadow-2xl w-[90%] max-w-sm mx-auto overflow-hidden animate-in zoom-in-95 duration-200">
+            {/* Header decorativo */}
+            <div className="h-2 bg-gradient-to-r from-red-500 to-orange-400" />
+
+            <div className="px-6 pt-6 pb-8 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
+                <OctagonX size={36} className="text-red-500" />
+              </div>
+
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Fuera de Horario</h3>
+              
+              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
+                <p className="text-sm text-amber-800 font-medium">
+                  {horarioMensaje}
+                </p>
+              </div>
+
+              <p className="text-sm text-gray-500 mb-6">
+                No puedes realizar pedidos hasta que inicie tu turno. Consulta con el administrador si crees que esto es un error.
+              </p>
+
+              <button
+                onClick={() => setShowHorarioModal(false)}
+                className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-2xl hover:bg-gray-800 transition-colors"
+              >
+                Entendido
+              </button>
+            </div>
           </div>
         </div>
       )}

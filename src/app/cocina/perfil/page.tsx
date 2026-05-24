@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  User, Mail, Clock, Calendar, Briefcase,
-  Edit2, Save, X, Phone, DollarSign, BellRing,
+  User, Mail, Calendar, Briefcase,
+  Edit2, Phone, DollarSign, BellRing,
 } from 'lucide-react';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
@@ -53,10 +53,7 @@ export default function CocinaPerfilPage() {
   const [photo,   setPhoto]   = useState('');
   const [record,  setRecord]  = useState<PersonalRecord | null>(null);
   const [extra,   setExtra]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fecha_ingreso: '' });
-  const [editing, setEditing] = useState(false);
-  const [editandoTurno, setEditandoTurno] = useState(false);
-  const [draft,   setDraft]   = useState<CocinaExtra>({ turno: '', especialidad: '', telefono: '', fecha_ingreso: '' });
-  const [saved,   setSaved]   = useState(false);
+  // No editing — solo el admin edita desde su dashboard
   const [mounted, setMounted] = useState(false);
   const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -88,8 +85,7 @@ export default function CocinaPerfilPage() {
             telefono: data.telefono || '',
             fecha_ingreso: data.fecha_ingreso || '',
           };
-          setExtra(ex);
-          setDraft(ex);
+        setExtra(ex);
           setPhoto(data.foto_url || getProfilePhoto('cocina'));
         }
       } catch (err) {
@@ -120,40 +116,7 @@ export default function CocinaPerfilPage() {
     reader.readAsDataURL(file);
   };
 
-  const handleSave = async () => {
-    const id = record?.id ?? '';
-    if (!id) return;
-
-    await fetch(`/api/personal/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        area: draft.especialidad,
-        telefono: draft.telefono,
-        fecha_ingreso: draft.fecha_ingreso
-      })
-    });
-
-    setExtra(draft);
-    setEditing(false);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
-  };
-
-  const handleTurnoChange = async (nuevoTurno: string) => {
-    const id = record?.id ?? '';
-    if (!id) return;
-    const turnoFinal = nuevoTurno === 'sin-turno' ? '' : nuevoTurno;
-    setExtra(prev => ({ ...prev, turno: turnoFinal }));
-    setDraft(prev => ({ ...prev, turno: turnoFinal }));
-    setEditandoTurno(false);
-    await fetch(`/api/personal/${id}`, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ turno: turnoFinal }),
-    }).catch(() => {});
-  };
-
+  // Foto permitida (personal) | Datos personales solo los edita el admin
   if (!mounted) return null;
 
   const nombre   = record?.nombre ?? '—';
@@ -192,39 +155,16 @@ export default function CocinaPerfilPage() {
               <span className="px-2.5 py-0.5 bg-orange-100 text-orange-700 text-xs font-semibold rounded-full">
                 {rolLabel}
               </span>
-              {/* Turno editable en header */}
-              <div className="relative">
-                <button
-                  onClick={() => setEditandoTurno(!editandoTurno)}
-                  onBlur={() => setTimeout(() => setEditandoTurno(false), 200)}
-                  className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border transition-colors ${
-                    extra.turno
-                      ? extra.turno === 'Mañana'
-                        ? 'bg-amber-100 text-amber-700 border-amber-200 hover:bg-amber-200'
-                        : 'bg-indigo-100 text-indigo-700 border-indigo-200 hover:bg-indigo-200'
-                      : 'bg-gray-100 text-gray-500 border-gray-200 hover:bg-gray-200'
-                  }`}
-                >
-                  {extra.turno || 'Sin turno'} {editandoTurno ? '▲' : '▼'}
-                </button>
-                {editandoTurno && (
-                  <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-xl shadow-xl z-50 py-1 min-w-[130px]">
-                    {['Mañana', 'Noche', 'sin-turno'].map(op => (
-                      <button
-                        key={op}
-                        onClick={() => handleTurnoChange(op)}
-                        className={`block w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
-                          (op === 'sin-turno' && !extra.turno) || op === extra.turno
-                            ? 'bg-orange-50 text-orange-700'
-                            : 'text-gray-700 hover:bg-gray-50'
-                        }`}
-                      >
-                        {op === 'sin-turno' ? 'Sin turno' : op}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
+              {/* Turno (solo visual — admin edita desde dashboard) */}
+              <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
+                extra.turno
+                  ? extra.turno === 'Mañana'
+                    ? 'bg-amber-100 text-amber-700 border-amber-200'
+                    : 'bg-indigo-100 text-indigo-700 border-indigo-200'
+                  : 'bg-gray-100 text-gray-500 border-gray-200'
+              }`}>
+                {extra.turno || 'Sin turno'}
+              </span>
             </div>
           </div>
 
@@ -234,48 +174,15 @@ export default function CocinaPerfilPage() {
             {record?.dni && <InfoRow icon={<User size={15} />} label="DNI" value={record.dni} />}
           </div>
 
-          {/* Datos editables */}
+          {/* ── Datos del personal (solo lectura — admin edita desde dashboard) ── */}
           <div className="border-t border-gray-100 pt-5">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide">Información Personal</h3>
-              {!editing ? (
-                <button onClick={() => setEditing(true)}
-                  className="flex items-center gap-1.5 text-xs text-orange-600 hover:text-orange-700 font-medium px-3 py-1.5 rounded-lg hover:bg-orange-50 transition-colors">
-                  <Edit2 size={13} /> Editar
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button onClick={() => { setDraft(extra); setEditing(false); }}
-                    className="flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors">
-                    <X size={13} /> Cancelar
-                  </button>
-                  <button onClick={handleSave}
-                    className="flex items-center gap-1 text-xs text-white bg-orange-500 hover:bg-orange-600 px-3 py-1.5 rounded-lg transition-colors font-medium">
-                    <Save size={13} /> Guardar
-                  </button>
-                </div>
-              )}
+            <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">Información Personal</h3>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <InfoRow icon={<Phone size={15} />}    label="Teléfono"         value={extra.telefono     || '—'} />
+              <InfoRow icon={<Briefcase size={15} />}label="Especialidad"     value={extra.especialidad || '—'} />
+              <InfoRow icon={<Calendar size={15} />} label="Fecha de Ingreso" value={extra.fecha_ingreso|| '—'} />
             </div>
-
-            {saved && (
-              <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 text-green-700 text-xs rounded-lg font-medium">
-                ✓ Información guardada
-              </div>
-            )}
-
-            {editing ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <EditField label="Teléfono"        icon={<Phone size={14} />}    value={draft.telefono}     onChange={v => setDraft(d => ({ ...d, telefono: v }))}     placeholder="+51 999 999 999" />
-                <EditField label="Especialidad"    icon={<Briefcase size={14} />}value={draft.especialidad} onChange={v => setDraft(d => ({ ...d, especialidad: v }))} placeholder="Ej. Pescados y Mariscos" />
-                <EditField label="Fecha de Ingreso"icon={<Calendar size={14} />} value={draft.fecha_ingreso}onChange={v => setDraft(d => ({ ...d, fecha_ingreso: v }))} type="date" />
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <InfoRow icon={<Phone size={15} />}    label="Teléfono"         value={extra.telefono     || '—'} />
-                <InfoRow icon={<Briefcase size={15} />}label="Especialidad"     value={extra.especialidad || '—'} />
-                <InfoRow icon={<Calendar size={15} />} label="Fecha de Ingreso" value={extra.fecha_ingreso|| '—'} />
-              </div>
-            )}
+            <p className="text-[10px] text-gray-400 mt-3 italic">Estos datos los gestiona el administrador desde su panel.</p>
           </div>
 
           {/* Salario (solo lectura) */}
@@ -356,15 +263,3 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-function EditField({ label, icon, value, onChange, placeholder, type = 'text' }: {
-  label: string; icon: React.ReactNode; value: string;
-  onChange: (v: string) => void; placeholder?: string; type?: string;
-}) {
-  return (
-    <div>
-      <label className="flex items-center gap-1.5 text-xs font-semibold text-gray-600 mb-1.5">{icon} {label}</label>
-      <input type={type} value={value} onChange={e => onChange(e.target.value)} placeholder={placeholder}
-        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-orange-400/30 focus:border-orange-400 bg-white" />
-    </div>
-  );
-}
