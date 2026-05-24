@@ -161,7 +161,7 @@ export default function ConfiguracionPage() {
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     
     // Cargar estado de notificaciones
-    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
   }, []);
 
   /* Cambia sidebar en tiempo real */
@@ -497,13 +497,13 @@ export default function ConfiguracionPage() {
             <button
               onClick={async () => {
                 if (notifActivas) {
-                  localStorage.removeItem('notificaciones_activas');
+                  localStorage.setItem('notificaciones_activas', 'false');
                   setNotifActivas(false);
                 } else {
-                  if ('Notification' in window) await Notification.requestPermission().catch(() => {});
-                  try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                   localStorage.setItem('notificaciones_activas', 'true');
                   setNotifActivas(true);
+                  if ('Notification' in window) await Notification.requestPermission().catch(() => {});
+                  try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                 }
               }}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${

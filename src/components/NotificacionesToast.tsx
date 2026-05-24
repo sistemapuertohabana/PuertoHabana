@@ -11,7 +11,9 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const permiso = localStorage.getItem('notificaciones_activas');
-      if (permiso === 'true') {
+      // NOT activadas por defecto a menos que el usuario las haya desactivado explícitamente
+      if (permiso !== 'false') {
+        localStorage.setItem('notificaciones_activas', 'true');
         setActivado(true);
       }
       

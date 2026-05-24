@@ -56,7 +56,7 @@ export default function UserConfiguracion({ role }: { role: string }) {
     setMounted(true);
     setSidebarDesign((localStorage.getItem(`sidebarDesign_${role}`) as SidebarDesign) || 'normal');
     setNavbarStyle((localStorage.getItem(`navbarStyle_${role}`) as NavbarStyle) || 'original');
-    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
   }, []);
 
   const changeSidebar = (val: SidebarDesign) => {
@@ -96,13 +96,13 @@ export default function UserConfiguracion({ role }: { role: string }) {
             <button
               onClick={async () => {
                 if (notifActivas) {
-                  localStorage.removeItem('notificaciones_activas');
+                  localStorage.setItem('notificaciones_activas', 'false');
                   setNotifActivas(false);
                 } else {
-                  if ('Notification' in window) await Notification.requestPermission().catch(() => {});
-                  try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                   localStorage.setItem('notificaciones_activas', 'true');
                   setNotifActivas(true);
+                  if ('Notification' in window) await Notification.requestPermission().catch(() => {});
+                  try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
                 }
               }}
               className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
