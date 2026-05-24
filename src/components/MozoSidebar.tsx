@@ -6,6 +6,7 @@ import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarS
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
+type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
 
 const menuItems = [
@@ -46,11 +47,27 @@ function navbarIconSize(s: NavbarStyle) {
   return 24;
 }
 
+/* ─── sidebar design helpers ─────────────────────────────────────────────── */
+function sidebarBg(d: SidebarDesign) {
+  if (d === 'minimalista') return 'bg-white border-r border-gray-100';
+  if (d === 'bonito')      return 'bg-gradient-to-b from-blue-50 to-white border-r border-blue-100';
+  if (d === 'azul')        return 'bg-blue-600 border-r border-blue-700';
+  return 'bg-white border-r border-gray-200';
+}
+
+function sidebarItem(d: SidebarDesign, active: boolean) {
+  if (d === 'minimalista') return active ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-50';
+  if (d === 'bonito')      return active ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-blue-50';
+  if (d === 'azul')        return active ? 'bg-white text-blue-600' : 'text-white hover:bg-blue-700';
+  return active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50';
+}
+
 export default function MozoSidebar() {
   const pathname   = usePathname();
   const { profile, signOut } = useAuth();
   const localPhoto = useProfilePhoto('mozo');
   const photo      = profile?.foto_url ?? localPhoto;
+  const design     = useLocalStorageValue('sidebarDesign_mozo', 'normal') as SidebarDesign;
   const navbar     = useLocalStorageValue('navbarStyle_mozo', 'original') as NavbarStyle;
 
   const layout    = navbar === 'centrado' ? 'justify-center gap-6' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
@@ -93,32 +110,32 @@ export default function MozoSidebar() {
       </nav>
 
       {/* DESKTOP SIDEBAR */}
-      <aside className="hidden lg:flex flex-col w-64 min-h-screen fixed left-0 top-0 bg-white border-r border-gray-200">
-        <div className="p-5 border-b border-gray-100">
+      <aside className={`hidden lg:flex flex-col w-64 min-h-screen fixed left-0 top-0 ${sidebarBg(design)}`}>
+        <div className={`p-5 border-b ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full overflow-hidden border-2 bg-gray-100 border-gray-200 flex items-center justify-center shrink-0">
-              <ProfileAvatar photo={photo} fallback={<User size={20} className="text-gray-400" />} />
+            <div className={`w-10 h-10 rounded-full overflow-hidden border-2 flex items-center justify-center shrink-0 ${design === 'azul' ? 'bg-blue-700 border-blue-600' : 'bg-gray-100 border-gray-200'}`}>
+              <ProfileAvatar photo={photo} fallback={<User size={20} className={design === 'azul' ? 'text-white' : 'text-gray-400'} />} />
             </div>
             <div className="min-w-0">
-              <p className="text-sm font-semibold text-gray-900 truncate">Portal Mozo</p>
-              <p className="text-xs text-gray-400 truncate">{profile?.nombre ?? 'Puerto Habana'}</p>
+              <p className={`text-sm font-semibold truncate ${design === 'azul' ? 'text-white' : 'text-gray-900'}`}>Portal Mozo</p>
+              <p className={`text-xs truncate ${design === 'azul' ? 'text-blue-200' : 'text-gray-400'}`}>{profile?.nombre ?? 'Puerto Habana'}</p>
             </div>
           </div>
         </div>
-        <nav className="flex-1 mt-4 px-3 space-y-0.5">
+        <nav className="flex-1 mt-4 px-3 space-y-0.5 overflow-y-auto">
           {menuItems.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50'}`}>
+                className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${sidebarItem(design, active)}`}>
                 <Icon size={17} strokeWidth={active ? 2.5 : 2} />
                 <span className="text-sm font-medium">{label}</span>
               </Link>
             );
           })}
         </nav>
-        <div className="px-3 pb-4 border-t border-gray-100 pt-3">
-          <button onClick={signOut} className="flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium text-red-500 hover:bg-red-50">
+        <div className={`px-3 pb-4 border-t pt-3 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
+          <button onClick={signOut} className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium ${design === 'azul' ? 'text-red-300 hover:bg-blue-700' : 'text-red-500 hover:bg-red-50'}`}>
             <LogOut size={15} /> Cerrar Sesión
           </button>
         </div>
