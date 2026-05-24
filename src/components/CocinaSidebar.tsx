@@ -50,7 +50,7 @@ export default function CocinaSidebar() {
   const { profile } = useAuth();
   const localPhoto = useProfilePhoto('cocina');
   const photo      = profile?.foto_url ?? localPhoto;
-  const navbar     = useLocalStorageValue('navbarStyle', 'original') as NavbarStyle;
+  const navbar     = useLocalStorageValue('navbarStyle_cocina', 'original') as NavbarStyle;
 
   const layout    = navbar === 'centrado' ? 'justify-center gap-6' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
   const showLabel = navbar !== 'original' && navbar !== 'flotante' && navbar !== 'flotante_blue_new';

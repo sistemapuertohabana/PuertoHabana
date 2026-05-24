@@ -72,8 +72,8 @@ export default function Sidebar() {
   const pathname = usePathname();
   const { profile, signOut } = useAuth();
   const payments   = usePayments();
-  const design     = useLocalStorageValue('sidebarDesign', 'normal') as SidebarDesign;
-  const navbar     = useLocalStorageValue('navbarStyle',   'original') as NavbarStyle;
+  const design     = useLocalStorageValue('sidebarDesign_admin', 'normal') as SidebarDesign;
+  const navbar     = useLocalStorageValue('navbarStyle_admin',   'original') as NavbarStyle;
   const fotoLocal  = useLocalStorageValue('fotoPerfil', '');
   const foto       = profile?.foto_url ?? fotoLocal;
   const totalPagos = payments.reduce((s, p) => s + (p.monto || 0), 0);
@@ -163,7 +163,7 @@ export default function Sidebar() {
         <div className={`px-3 py-3 border-t space-y-2.5 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
           <div>
             <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${design === 'azul' ? 'text-blue-200' : 'text-gray-400'}`}>Diseño Sidebar</label>
-            <select value={design} onChange={e => save('sidebarDesign', e.target.value)}
+            <select value={design} onChange={e => save('sidebarDesign_admin', e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
               <option value="normal">Normal</option>
               <option value="minimalista">Minimalista</option>
@@ -173,7 +173,7 @@ export default function Sidebar() {
           </div>
           <div>
             <label className={`block text-[10px] font-semibold uppercase tracking-wider mb-1 ${design === 'azul' ? 'text-blue-200' : 'text-gray-400'}`}>Estilo Navbar</label>
-            <select value={navbar} onChange={e => save('navbarStyle', e.target.value)}
+            <select value={navbar} onChange={e => save('navbarStyle_admin', e.target.value)}
               className="w-full px-2.5 py-1.5 rounded-lg border text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
               <option value="original">Original</option>
               <option value="minimalista">Minimalista</option>

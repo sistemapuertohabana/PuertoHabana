@@ -110,8 +110,8 @@ export default function ConfiguracionPage() {
 
   useEffect(() => {
     setMounted(true);
-    const sd  = localStorage.getItem('sidebarDesign') as SidebarDesign | null;
-    const ns  = localStorage.getItem('navbarStyle')   as NavbarStyle   | null;
+    const sd  = localStorage.getItem('sidebarDesign_admin') as SidebarDesign | null;
+    const ns  = localStorage.getItem('navbarStyle_admin')   as NavbarStyle   | null;
     const fp  = localStorage.getItem('fotoPerfil');
     const cfg = localStorage.getItem('ph_config');
     if (sd)  setSidebarDesign(sd);
@@ -126,18 +126,18 @@ export default function ConfiguracionPage() {
   /* Cambia sidebar en tiempo real */
   const changeSidebar = (d: SidebarDesign) => {
     setSidebarDesign(d);
-    applyLive('sidebarDesign', d);
+    applyLive('sidebarDesign_admin', d);
   };
 
   /* Cambia navbar en tiempo real */
   const changeNavbar = (s: NavbarStyle) => {
     setNavbarStyle(s);
-    applyLive('navbarStyle', s);
+    applyLive('navbarStyle_admin', s);
   };
 
   const handleSave = () => {
-    applyLive('sidebarDesign', sidebarDesign);
-    applyLive('navbarStyle',   navbarStyle);
+    applyLive('sidebarDesign_admin', sidebarDesign);
+    applyLive('navbarStyle_admin',   navbarStyle);
     localStorage.setItem('fotoPerfil', config.fotoPerfil);
     localStorage.setItem('ph_config', JSON.stringify({
       nombreEmpresa: config.nombreEmpresa,
