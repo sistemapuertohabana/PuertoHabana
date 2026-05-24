@@ -5,6 +5,7 @@ import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import { useColorMode } from '@/contexts/ColorModeContext';
 
 // Helper para obtener fecha local en formato YYYY-MM-DD
 function getLocalDateString(d: Date = new Date()) {
@@ -116,9 +117,7 @@ const platosMenu = [
 
 
 export default function DashboardPage() {
-  const colorMode = 'claro' as ColorMode;
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const setColorMode = (_mode: ColorMode) => {};
+  const { colorMode, setColorMode } = useColorMode();
   const [mounted, setMounted] = useState(false);
   const [activeTab, setActiveTab] = useState<TabType>('activos');
   const [mozosList, setMozosList] = useState<{ id: string; nombre: string }[]>([]);
@@ -323,15 +322,6 @@ export default function DashboardPage() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [mounted]);
-
-  useEffect(() => {
-    if (colorMode === 'oscuro') {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  }, [colorMode]);
-
 
   if (!mounted) {
     return null;

@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon } from 'lucide-react';
+import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon, Monitor } from 'lucide-react';
+import { useColorMode } from '@/contexts/ColorModeContext';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -130,6 +131,7 @@ const navbarPreviews: Record<NavbarStyle, { bg: string; accent: string; label: s
 };
 
 export default function ConfiguracionPage() {
+  const { colorMode, setColorMode } = useColorMode();
   const [config, setConfig] = useState<Configuracion>({
     nombreEmpresa: 'Puerto Habana Cevicheria',
     direccion: 'Av. Principal 123',
@@ -292,16 +294,16 @@ export default function ConfiguracionPage() {
                 )}
                 <h3 className="text-sm font-semibold text-gray-700 capitalize">{turno}</h3>
               </div>
-              {/* Horizontal scroll container — invisible scrollbar */}
+              {/* Horizontal scroll en mobile, grid en desktop */}
               <div
-                className="overflow-x-auto scrollbar-hide -mx-2 px-2 pb-2"
+                className="overflow-x-auto md:overflow-visible scrollbar-hide -mx-2 px-2 pb-2"
                 style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
               >
-                <div className="flex gap-3 min-w-max">
+                <div className="flex gap-3 min-w-max md:min-w-0 md:grid md:grid-cols-7 md:gap-2">
                   {DIAS_ORDEN.map(dia => {
                     const horario = turnosConfig[turno][dia];
                     return (
-                      <div key={dia} className="flex-shrink-0 w-[170px] bg-gray-50 rounded-xl p-3.5 border border-gray-100 space-y-2.5">
+                      <div key={dia} className="flex-shrink-0 w-[170px] md:w-auto bg-gray-50 rounded-xl p-3.5 border border-gray-100 space-y-2.5">
                         <span className="block text-sm font-semibold text-gray-700 text-center">{DIAS_LABEL[dia]}</span>
                         <label className="flex items-center justify-center gap-1.5 text-xs text-gray-500 cursor-pointer">
                           <input type="checkbox" checked={horario !== null}
@@ -471,6 +473,45 @@ export default function ConfiguracionPage() {
                 </button>
               );
             })}
+          </div>
+        </section>
+
+        {/* ── Modo Oscuro ──────────────────────────────────────────────────── */}
+        <section className="bg-white border border-gray-200 rounded-xl p-6">
+          <h2 className="text-base font-semibold text-gray-900 mb-1 flex items-center gap-2">
+            <Monitor size={16} className="text-gray-500" /> Modo Oscuro
+          </h2>
+          <p className="text-xs text-gray-400 mb-4">Cambia entre modo claro y oscuro (negro puro) para toda la aplicación.</p>
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl p-4 border border-gray-200">
+            <div className="flex items-center gap-3">
+              {colorMode === 'oscuro' ? (
+                <div className="w-10 h-10 rounded-lg bg-black flex items-center justify-center">
+                  <Moon size={18} className="text-white" />
+                </div>
+              ) : (
+                <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center">
+                  <Sun size={18} className="text-amber-600" />
+                </div>
+              )}
+              <div>
+                <p className="text-sm font-semibold text-gray-900">
+                  {colorMode === 'oscuro' ? 'Modo Oscuro Activado' : 'Modo Claro Activado'}
+                </p>
+                <p className="text-xs text-gray-500">
+                  {colorMode === 'oscuro' ? 'Fondo negro puro, texto blanco' : 'Fondo claro, texto oscuro'}
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => setColorMode(colorMode === 'oscuro' ? 'claro' : 'oscuro')}
+              className={`px-4 py-2 rounded-xl text-sm font-bold transition-colors ${
+                colorMode === 'oscuro'
+                  ? 'bg-gray-800 text-white hover:bg-gray-700'
+                  : 'bg-gray-900 text-white hover:bg-gray-800'
+              }`}
+            >
+              {colorMode === 'oscuro' ? 'Desactivar' : 'Activar'}
+            </button>
           </div>
         </section>
 

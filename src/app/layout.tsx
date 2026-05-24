@@ -29,7 +29,24 @@ export default function RootLayout({
     <html
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased overflow-x-hidden`}
+      suppressHydrationWarning
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                try {
+                  var mode = localStorage.getItem('colorMode');
+                  if (mode === 'oscuro') {
+                    document.documentElement.classList.add('dark');
+                  }
+                } catch(e) {}
+              })();
+            `,
+          }}
+        />
+      </head>
       <body className="min-h-full flex flex-col overflow-x-hidden w-full">
         <ColorModeProvider>
           {children}

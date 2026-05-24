@@ -111,20 +111,21 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   if (!notificacion) return null;
 
   return (
-    <div className="fixed top-6 right-6 bg-white border-l-4 border-blue-500 shadow-2xl rounded-2xl p-5 z-[9999] max-w-sm animate-in slide-in-from-right-8 duration-300">
+    <div className="fixed top-6 right-6 border-l-4 border-blue-500 shadow-2xl rounded-2xl p-5 z-[9999] max-w-sm animate-in slide-in-from-right-8 duration-300" style={{ background: 'var(--background)' }}>
       <div className="flex items-start gap-4">
         <div className="mt-1 w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
           <BellRing size={20} />
         </div>
         <div>
-          <h4 className="font-bold text-gray-900 text-base">{notificacion.titulo}</h4>
-          <p className="text-sm text-gray-600 mt-1 leading-snug">{notificacion.mensaje}</p>
+          <h4 className="font-bold text-base" style={{ color: 'var(--foreground)' }}>{notificacion.titulo}</h4>
+          <p className="text-sm mt-1 leading-snug" style={{ color: 'var(--muted)' }}>{notificacion.mensaje}</p>
         </div>
       </div>
       <div className="mt-5 flex justify-end">
         <button
           onClick={() => setNotificacion(null)}
-          className="text-xs bg-gray-100 text-gray-600 px-5 py-2.5 rounded-xl font-bold uppercase hover:bg-gray-200 transition-colors"
+          className="text-xs px-5 py-2.5 rounded-xl font-bold uppercase transition-colors"
+          style={{ background: 'color-mix(in srgb, var(--background) 80%, white)', color: 'var(--muted)', border: '1px solid var(--border)' }}
         >
           Entendido
         </button>

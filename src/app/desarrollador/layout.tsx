@@ -11,7 +11,7 @@ export default function DevLayout({
 
   if (!mounted) {
     return (
-      <div className="flex min-h-screen overflow-x-hidden bg-gray-50">
+      <div className="flex min-h-screen overflow-x-hidden bg-gray-50 dark:bg-black">
         <div className="w-64 hidden lg:block"></div>
         <main className="flex-1 w-full lg:ml-64"></main>
       </div>
