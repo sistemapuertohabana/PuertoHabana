@@ -148,14 +148,46 @@ export default function MozoPage() {
   }, []);
 
   useEffect(() => {
-    // Cargar sesión del mozo para obtener el turno asignado
-    try {
-      const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
-      setMozoSession(session);
-      if (session.turno) {
-        setTurnoInfo(validarTurnoActivo(session.turno));
-      }
-    } catch {}
+    // Cargar sesión del mozo y actualizar desde la API para obtener el turno actual
+    const loadSession = async () => {
+      try {
+        const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+        
+        // Intentar obtener datos actualizados desde la API (turno puede cambiar)
+        try {
+          const res = await fetch('/api/personal');
+          if (res.ok) {
+            const personal: any[] = await res.json();
+            const updated = personal.find(p => p.id === session.id && p.rol === 'mozo');
+            if (updated) {
+              session.turno = updated.turno || session.turno;
+              session.nombre = updated.nombre || session.nombre;
+              // Guardar sesión actualizada
+              localStorage.setItem('ph_mozo_session', JSON.stringify(session));
+            }
+          }
+        } catch {}
+        
+        setMozoSession(session);
+        if (session.turno) {
+          setTurnoInfo(validarTurnoActivo(session.turno));
+        }
+      } catch {}
+    };
+    
+    loadSession();
+    
+    // Re-validar turno cada 30 segundos (detecta cambios de horario automáticamente)
+    const interval = setInterval(() => {
+      try {
+        const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+        if (session.turno) {
+          setTurnoInfo(validarTurnoActivo(session.turno));
+        }
+      } catch {}
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   useEffect(() => {

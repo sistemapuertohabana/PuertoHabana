@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ChefHat, ArrowLeft, Mail, Loader2 } from 'lucide-react';
+import { ChefHat, ArrowLeft, Mail, Loader2, LogIn } from 'lucide-react';
 
 export default function LoginCocinaPage() {
   const router  = useRouter();
@@ -19,7 +19,6 @@ export default function LoginCocinaPage() {
     const val = input.trim().toLowerCase();
 
     try {
-      // 1. Intentar desde la API (MySQL)
       const res = await fetch('/api/personal');
       if (res.ok) {
         const personal: any[] = await res.json();
@@ -45,7 +44,6 @@ export default function LoginCocinaPage() {
       }
     } catch {}
 
-    // 2. Fallback localStorage
     try {
       const personal: any[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
       const user = personal.find(p =>
@@ -70,49 +68,78 @@ export default function LoginCocinaPage() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-orange-50 to-amber-100 p-4">
-      <div className="bg-white rounded-3xl shadow-xl w-full max-w-md p-8 relative overflow-hidden">
-        <div className="absolute top-0 left-0 right-0 h-1.5 bg-orange-500 rounded-t-3xl" />
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 via-orange-50 to-white p-4 relative overflow-hidden">
+      {/* Fondo decorativo */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <div className="absolute -top-32 -right-32 w-96 h-96 bg-orange-100/40 rounded-full blur-3xl" />
+        <div className="absolute -bottom-32 -left-32 w-80 h-80 bg-amber-100/30 rounded-full blur-3xl" />
+      </div>
 
-        <Link href="/" className="inline-flex items-center text-sm font-medium text-gray-500 hover:text-gray-800 mb-6 transition-colors">
-          <ArrowLeft size={15} className="mr-1" /> Volver
+      <div className="relative w-full max-w-md">
+        <Link href="/" className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-700 mb-6 transition-colors group">
+          <ArrowLeft size={15} className="group-hover:-translate-x-0.5 transition-transform" />
+          Volver al inicio
         </Link>
 
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-orange-100 text-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4">
-            <ChefHat size={30} />
+        <div className="bg-white/90 backdrop-blur-sm rounded-3xl shadow-xl border border-gray-100 overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-500">
+          {/* Header */}
+          <div className="bg-gradient-to-r from-orange-600 to-amber-500 px-8 pt-8 pb-12 relative">
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_rgba(255,255,255,0.15),transparent_60%)]" />
+            <div className="relative">
+              <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mb-4 shadow-lg ring-1 ring-white/30">
+                <ChefHat size={28} className="text-white" />
+              </div>
+              <h1 className="text-2xl font-bold text-white">Acceso Cocina</h1>
+              <p className="text-orange-100 text-sm mt-1">Puerto Habana Cevicheria</p>
+            </div>
           </div>
-          <h1 className="text-2xl font-bold text-gray-900">Acceso Cocina</h1>
-          <p className="text-sm text-gray-500 mt-1">Puerto Habana Cevicheria</p>
+
+          <div className="px-8 pb-8 -mt-6">
+            <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 space-y-5">
+              <form onSubmit={handleLogin} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">
+                    <Mail size={13} className="inline mr-1.5" />
+                    Gmail o Nombre registrado
+                  </label>
+                  <input
+                    type="text" required value={input}
+                    onChange={e => setInput(e.target.value)}
+                    placeholder="ej: cocina@gmail.com  o  Luis"
+                    autoComplete="off"
+                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none text-sm transition-all duration-200 bg-gray-50/50 focus:bg-white"
+                  />
+                  <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
+                    <span className="inline-block w-1 h-1 rounded-full bg-orange-400" />
+                    Usa el Gmail o nombre registrado por el admin.
+                  </p>
+                </div>
+
+                {error && (
+                  <div className="p-3.5 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm flex items-start gap-2.5 animate-in fade-in slide-in-from-top-2 duration-200">
+                    <div className="w-5 h-5 rounded-full bg-red-100 flex items-center justify-center shrink-0 mt-0.5">
+                      <span className="text-red-500 text-xs font-bold">!</span>
+                    </div>
+                    {error}
+                  </div>
+                )}
+
+                <button type="submit" disabled={loading}
+                  className="w-full bg-gradient-to-r from-orange-600 to-amber-500 text-white font-bold py-3.5 rounded-xl hover:from-orange-700 hover:to-amber-600 transition-all duration-200 disabled:opacity-60 text-sm flex items-center justify-center gap-2 shadow-lg shadow-orange-200 hover:shadow-orange-300 active:scale-[0.98]">
+                  {loading ? (
+                    <Loader2 size={18} className="animate-spin" />
+                  ) : (
+                    <><LogIn size={16} /> Entrar a Comandas</>
+                  )}
+                </button>
+              </form>
+            </div>
+          </div>
         </div>
 
-        <form onSubmit={handleLogin} className="space-y-4">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              <Mail size={13} className="inline mr-1.5" />
-              Gmail o Nombre registrado
-            </label>
-            <input
-              type="text" required value={input}
-              onChange={e => setInput(e.target.value)}
-              placeholder="tu@gmail.com  o  Tu Nombre"
-              autoComplete="off"
-              className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-orange-500/30 focus:border-orange-500 focus:outline-none text-sm"
-            />
-            <p className="text-xs text-gray-400 mt-1.5">
-              Usa el Gmail o nombre que el admin registró para ti.
-            </p>
-          </div>
-
-          {error && (
-            <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm">{error}</div>
-          )}
-
-          <button type="submit" disabled={loading}
-            className="w-full bg-orange-600 text-white font-bold py-3.5 rounded-xl hover:bg-orange-700 transition-colors disabled:opacity-60 text-sm flex items-center justify-center gap-2">
-            {loading ? <Loader2 size={18} className="animate-spin" /> : 'Entrar a Comandas'}
-          </button>
-        </form>
+        <p className="text-center text-xs text-gray-400 mt-6">
+          Sistema de gestión — Puerto Habana
+        </p>
       </div>
     </div>
   );
