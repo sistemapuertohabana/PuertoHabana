@@ -10,7 +10,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   // Intentar cargar estado de activación desde sessionStorage
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      const permiso = sessionStorage.getItem('notificaciones_activas');
+      const permiso = localStorage.getItem('notificaciones_activas');
       if (permiso === 'true') {
         setActivado(true);
       }
@@ -35,12 +35,12 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
       await audio.play();
     } catch (e) {}
 
-    sessionStorage.setItem('notificaciones_activas', 'true');
+    localStorage.setItem('notificaciones_activas', 'true');
     setActivado(true);
   };
   const desactivar = () => {
     // Elimina flag y desactiva notificaciones
-    sessionStorage.removeItem('notificaciones_activas');
+    localStorage.removeItem('notificaciones_activas');
     setActivado(false);
     setNotificacion(null);
   };

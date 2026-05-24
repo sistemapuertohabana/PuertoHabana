@@ -45,7 +45,7 @@ const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
   },
   noche: {
     dom: { inicio: '17:00', fin: '23:00' },
-    lun: { inicio: '16:00', fin: '23:00' },
+    lun: null, // descanso
     mar: { inicio: '16:00', fin: '23:00' },
     mie: { inicio: '16:00', fin: '23:00' },
     jue: { inicio: '16:00', fin: '23:00' },
@@ -161,7 +161,7 @@ export default function ConfiguracionPage() {
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     
     // Cargar estado de notificaciones
-    setNotifActivas(sessionStorage.getItem('notificaciones_activas') === 'true');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
   }, []);
 
   /* Cambia sidebar en tiempo real */
@@ -481,12 +481,12 @@ export default function ConfiguracionPage() {
             <button
               onClick={async () => {
                 if (notifActivas) {
-                  sessionStorage.removeItem('notificaciones_activas');
+                  localStorage.removeItem('notificaciones_activas');
                   setNotifActivas(false);
                 } else {
                   if ('Notification' in window) await Notification.requestPermission().catch(() => {});
                   try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
-                  sessionStorage.setItem('notificaciones_activas', 'true');
+                  localStorage.setItem('notificaciones_activas', 'true');
                   setNotifActivas(true);
                 }
               }}

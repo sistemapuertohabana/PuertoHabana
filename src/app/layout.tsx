@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
-import SessionTimeout from "@/components/SessionTimeout";
 import { ColorModeProvider } from "@/contexts/ColorModeContext";
 
 const geistSans = Geist({
@@ -34,7 +33,6 @@ export default function RootLayout({
       <body className="min-h-full flex flex-col overflow-x-hidden w-full">
         <ColorModeProvider>
           {children}
-          <SessionTimeout />
           <PWAInstallPrompt />
         </ColorModeProvider>
       </body>

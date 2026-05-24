@@ -68,7 +68,7 @@ export default function MozoPerfilPage() {
     const id = session.id ?? '';
 
     // Cargar estado de notificaciones
-    setNotifActivas(sessionStorage.getItem('notificaciones_activas') === 'true');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
 
     if (!id) {
       setLoading(false);
@@ -303,12 +303,12 @@ export default function MozoPerfilPage() {
               <button
                 onClick={async () => {
                   if (notifActivas) {
-                    sessionStorage.removeItem('notificaciones_activas');
+                    localStorage.removeItem('notificaciones_activas');
                     setNotifActivas(false);
                   } else {
                     if ('Notification' in window) await Notification.requestPermission().catch(() => {});
                     try { const a = new Audio('/notification.mp3'); a.volume = 0; await a.play(); } catch {}
-                    sessionStorage.setItem('notificaciones_activas', 'true');
+                    localStorage.setItem('notificaciones_activas', 'true');
                     setNotifActivas(true);
                   }
                 }}

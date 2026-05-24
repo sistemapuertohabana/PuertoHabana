@@ -64,7 +64,7 @@ const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
   },
   noche: {
     dom: { inicio: '17:00', fin: '23:00' },
-    lun: { inicio: '16:00', fin: '23:00' },
+    lun: null, // descanso
     mar: { inicio: '16:00', fin: '23:00' },
     mie: { inicio: '16:00', fin: '23:00' },
     jue: { inicio: '16:00', fin: '23:00' },
