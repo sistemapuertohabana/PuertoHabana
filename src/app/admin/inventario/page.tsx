@@ -473,8 +473,8 @@ export default function InventarioPage() {
               </div>
             </div>
 
-            {/* Resumen de costos */}
-            {Object.keys(selectedInsumos).length > 0 && (
+            {/* Resumen de costos — solo si hay precio definido */}
+            {Object.keys(selectedInsumos).length > 0 && precioPlato > 0 && (
               <div className="bg-gray-50 p-4 rounded-lg border border-gray-200">
                 <h5 className="text-sm font-medium text-gray-700 mb-3">Resumen del Plato</h5>
                 <div className="space-y-2">
@@ -502,6 +502,22 @@ export default function InventarioPage() {
                     <span className="text-gray-600">Precio final:</span>
                     <span className="text-lg font-semibold text-gray-900">S/ {precioPlato.toFixed(2)}</span>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {/* Mensaje informativo cuando hay insumos pero falta precio */}
+            {Object.keys(selectedInsumos).length > 0 && precioPlato <= 0 && (
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 flex items-start gap-3">
+                <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div>
+                  <p className="text-sm font-semibold text-blue-800">Falta definir el precio</p>
+                  <p className="text-xs text-blue-600 mt-1">
+                    Usa el botón <strong>"Poner Precio"</strong> para calcularlo automáticamente (costo × 1.5) 
+                    o ingrésalo manualmente en el campo de texto.
+                  </p>
                 </div>
               </div>
             )}
