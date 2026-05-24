@@ -106,7 +106,8 @@ export default function PersonalPage() {
     setError('');
     setIsSubmitting(true);
 
-    const payload = {
+    const hoy = new Date().toISOString().split('T')[0];
+    const payload: Record<string, any> = {
       nombre:        formData.nombre.trim(),
       dni:           formData.dni.trim() || undefined,
       email:         formData.email.trim() || undefined,
@@ -114,6 +115,8 @@ export default function PersonalPage() {
       turno:         formData.turno || undefined,
       salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : undefined,
       salario_tipo:  formData.salario_tipo,
+      // Auto-asignar fecha de ingreso al crear
+      fecha_ingreso: editingId ? undefined : hoy,
     };
 
     try {
