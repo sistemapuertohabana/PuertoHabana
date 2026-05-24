@@ -1,23 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import CocinaSidebar from '@/components/CocinaSidebar';
 
-export default function CocinaLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  if (!mounted) {
-    return null;
-  }
-
+export default function CocinaLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen overflow-x-hidden bg-gray-50">
       <CocinaSidebar />

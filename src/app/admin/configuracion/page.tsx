@@ -13,8 +13,8 @@ interface Configuracion {
   fotoPerfil: string;
 }
 
-type SidebarDesign = 'minimalista' | 'bonito' | 'normal';
-type NavbarStyle   = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante';
+type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
+type NavbarStyle   = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
 
 /* Aplica el valor a localStorage y dispara el evento para que los sidebars
    reaccionen en tiempo real sin necesidad de recargar. */
@@ -43,6 +43,12 @@ const sidebarPreviews: Record<SidebarDesign, { bg: string; accent: string; label
     accent: 'bg-blue-600',
     label: 'Bonito',
     desc: 'Degradado azul suave',
+  },
+  azul: {
+    bg: 'bg-blue-900',
+    accent: 'bg-white',
+    label: 'Azul (Nuevo)',
+    desc: 'Fondo azul, botones blancos',
   },
 };
 
@@ -76,6 +82,12 @@ const navbarPreviews: Record<NavbarStyle, { bg: string; accent: string; label: s
     accent: 'bg-blue-600 text-white rounded-full',
     label: 'Flotante (Nuevo)',
     desc: 'Bordes muy redondos, estilo flotante',
+  },
+  flotante_blue_new: {
+    bg: 'bg-blue-600 rounded-full mx-4 mb-4 shadow-lg border-0',
+    accent: 'bg-white text-blue-600 rounded-full',
+    label: 'FLOTANTE BLUE NEW',
+    desc: 'Fondo azul, botones blancos',
   },
 };
 
@@ -171,7 +183,7 @@ export default function ConfiguracionPage() {
             <label className="block text-sm font-medium text-gray-600 mb-1.5">Nombre del Negocio</label>
             <input type="text" value={config.nombreEmpresa}
               onChange={e => setConfig(p => ({ ...p, nombreEmpresa: e.target.value }))}
-              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+              className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
           </div>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1.5">
@@ -179,7 +191,7 @@ export default function ConfiguracionPage() {
             </label>
             <input type="text" value={config.direccion}
               onChange={e => setConfig(p => ({ ...p, direccion: e.target.value }))}
-              className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+              className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
@@ -188,7 +200,7 @@ export default function ConfiguracionPage() {
               </label>
               <input type="text" value={config.telefono}
                 onChange={e => setConfig(p => ({ ...p, telefono: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1.5">
@@ -196,7 +208,7 @@ export default function ConfiguracionPage() {
               </label>
               <input type="email" value={config.email}
                 onChange={e => setConfig(p => ({ ...p, email: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             </div>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -204,13 +216,13 @@ export default function ConfiguracionPage() {
               <label className="block text-sm font-medium text-gray-600 mb-1.5">Turno Mañana</label>
               <input type="text" value={config.horarioMañana} placeholder="09:00 - 14:00"
                 onChange={e => setConfig(p => ({ ...p, horarioMañana: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1.5">Turno Tarde / Noche</label>
               <input type="text" value={config.horarioTarde} placeholder="15:00 - 23:00"
                 onChange={e => setConfig(p => ({ ...p, horarioTarde: e.target.value }))}
-                className="w-full px-3.5 py-2.5 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
+                className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
             </div>
           </div>
         </section>
@@ -241,7 +253,7 @@ export default function ConfiguracionPage() {
             <Layout size={16} className="text-gray-500" /> Diseño del Sidebar
           </h2>
           <p className="text-xs text-gray-400 mb-4">Afecta el panel lateral en pantallas grandes (laptop/desktop)</p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
             {(Object.entries(sidebarPreviews) as [SidebarDesign, typeof sidebarPreviews.normal][]).map(([key, p]) => {
               const active = sidebarDesign === key;
               return (
@@ -251,14 +263,14 @@ export default function ConfiguracionPage() {
                   }`}>
                   {/* Mini preview */}
                   <div className={`w-full h-16 rounded-lg mb-3 overflow-hidden flex ${p.bg}`}>
-                    <div className={`w-8 h-full ${p.bg} border-r border-gray-200 flex flex-col items-center pt-2 gap-1.5`}>
-                      <div className={`w-4 h-1.5 rounded-full ${p.accent}`} />
-                      <div className="w-4 h-1.5 rounded-full bg-gray-200" />
-                      <div className="w-4 h-1.5 rounded-full bg-gray-200" />
+                    <div className={`w-8 h-full ${key === 'azul' ? 'bg-blue-800' : p.bg} border-r ${key === 'azul' ? 'border-blue-700' : 'border-gray-200'} flex flex-col items-center pt-2 gap-1.5`}>
+                      <div className={`w-4 h-1.5 rounded-full ${key === 'azul' ? 'bg-white' : p.accent}`} />
+                      <div className={`w-4 h-1.5 rounded-full ${key === 'azul' ? 'bg-blue-300' : 'bg-gray-200'}`} />
+                      <div className={`w-4 h-1.5 rounded-full ${key === 'azul' ? 'bg-blue-300' : 'bg-gray-200'}`} />
                     </div>
-                    <div className="flex-1 p-2">
-                      <div className="w-full h-2 bg-gray-100 rounded mb-1.5" />
-                      <div className="w-3/4 h-2 bg-gray-100 rounded" />
+                    <div className={`flex-1 p-2 ${key === 'azul' ? 'bg-blue-900' : ''}`}>
+                      <div className={`w-full h-2 ${key === 'azul' ? 'bg-blue-700' : 'bg-gray-100'} rounded mb-1.5`} />
+                      <div className={`w-3/4 h-2 ${key === 'azul' ? 'bg-blue-700' : 'bg-gray-100'} rounded`} />
                     </div>
                   </div>
                   <p className="text-sm font-semibold text-gray-800">{p.label}</p>
@@ -280,7 +292,7 @@ export default function ConfiguracionPage() {
             <Palette size={16} className="text-gray-500" /> Estilo Navigation Bar
           </h2>
           <p className="text-xs text-gray-400 mb-4">Afecta la barra inferior en móvil — Admin, Mozo y Cocina</p>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-6 gap-3">
             {(Object.entries(navbarPreviews) as [NavbarStyle, typeof navbarPreviews.original][]).map(([key, p]) => {
               const active = navbarStyle === key;
               return (
@@ -300,6 +312,12 @@ export default function ConfiguracionPage() {
                       <div className="flex justify-around w-full">
                         {[0,1,2,3].map(i => (
                           <div key={i} className={`w-4 h-4 rounded-full ${i === 0 ? 'bg-blue-600' : 'bg-gray-200'}`} />
+                        ))}
+                      </div>
+                    ) : key === 'flotante_blue_new' ? (
+                      <div className="flex justify-around w-full">
+                        {[0,1,2,3].map(i => (
+                          <div key={i} className={`w-3 h-3 rounded-full ${i === 0 ? 'bg-white' : 'bg-blue-400'}`} />
                         ))}
                       </div>
                     ) : (

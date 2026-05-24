@@ -210,28 +210,28 @@ export default function PersonalPage() {
               <input type="text" value={formData.nombre}
                 onChange={e => setFormData({ ...formData, nombre: e.target.value })}
                 required placeholder="Ej. María García"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">DNI</label>
               <input type="text" value={formData.dni}
                 onChange={e => { const v = e.target.value.replace(/\D/g,''); if (v.length <= 8) setFormData({ ...formData, dni: v }); }}
                 placeholder="12345678" maxLength={8} inputMode="numeric"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Gmail (clave de acceso)</label>
               <input type="email" value={formData.email}
                 onChange={e => setFormData({ ...formData, email: e.target.value })}
                 placeholder="empleado@gmail.com"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
               <p className="text-xs text-gray-400 mt-1">El empleado usará este Gmail para ingresar al sistema.</p>
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Rol</label>
               <select value={formData.rol}
                 onChange={e => setFormData({ ...formData, rol: e.target.value as Rol })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-900">
                 <option value="mozo">Mozo</option>
                 <option value="cocina">Cocinero</option>
                 <option value="ayudante_cocina">Ayudante de Cocina</option>
@@ -244,13 +244,13 @@ export default function PersonalPage() {
               <input type="number" step="0.01" min="0" value={formData.salario_monto}
                 onChange={e => setFormData({ ...formData, salario_monto: e.target.value })}
                 placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Salario</label>
               <select value={formData.salario_tipo}
                 onChange={e => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white">
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-900">
                 <option value="diario">Diario</option>
                 <option value="semanal">Semanal</option>
                 <option value="mensual">Mensual</option>

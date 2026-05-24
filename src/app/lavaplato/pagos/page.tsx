@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { DollarSign, Search, Calendar } from 'lucide-react';
+import { DollarSign, Calendar } from 'lucide-react';
+
 export default function PagosLavaplatoPage() {
   const [pagos, setPagos] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
@@ -26,7 +27,7 @@ export default function PagosLavaplatoPage() {
           setPagos(data);
         }
       } catch (err) {
-        console.error("Error fetching pagos:", err);
+        console.error('Error fetching pagos:', err);
       }
       setLoading(false);
     };

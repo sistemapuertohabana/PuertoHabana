@@ -21,20 +21,39 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'nombre, monto y concepto son requeridos' }, { status: 400 });
   }
 
-  const { data, error } = await sb
+  const fechaPago = fecha || new Date().toISOString().split('T')[0];
+
+  // Insertar pago de personal
+  const { data: paymentData, error: paymentError } = await sb
     .from('pagos_personal')
     .insert([{
       usuario_id: usuario_id || null,
       nombre,
       monto: parseFloat(monto),
       concepto,
-      fecha: fecha || new Date().toISOString().split('T')[0],
+      fecha: fechaPago,
     }])
     .select('id')
     .single();
 
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  return NextResponse.json({ success: true, id: data.id }, { status: 201 });
+  if (paymentError) return NextResponse.json({ error: paymentError.message }, { status: 500 });
+
+  // Sincronizar automáticamente con gastos
+  const { error: gastoError } = await sb
+    .from('gastos')
+    .insert([{
+      descripcion: `Pago a personal: ${nombre} - ${concepto}`,
+      categoria: 'Personal',
+      monto: parseFloat(monto),
+      fecha: fechaPago,
+    }]);
+
+  if (gastoError) {
+    console.error('Error al sincronizar gasto:', gastoError);
+    // No fallar si la sincronización falla, solo loggear el error
+  }
+
+  return NextResponse.json({ success: true, id: paymentData.id }, { status: 201 });
 }
 
 // DELETE /api/reportes/payments?id=xxx
