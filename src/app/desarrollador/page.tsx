@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Trash2, UserPlus, AlertTriangle, Code2 } from 'lucide-react';
+import { UserPlus, AlertTriangle, Code2 } from 'lucide-react';
 
 export default function DevDashboard() {
   const [adminEmail, setAdminEmail] = useState('');
@@ -59,76 +59,119 @@ export default function DevDashboard() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="flex items-center gap-3 mb-2">
-        <div className="bg-purple-100 p-2.5 rounded-xl">
-          <Code2 className="text-purple-600" size={28} />
+      {/* Header minimalista */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center shrink-0">
+          <Code2 size={20} className="text-purple-500" strokeWidth={1.5} />
         </div>
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Panel de Desarrollador</h1>
-          <p className="text-gray-500 text-sm">Superusuario · Reset DB · Crear Admin</p>
+          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Desarrollador</h1>
+          <p className="text-xs text-gray-400 mt-0.5">Superusuario · Reset DB · Crear Admin</p>
         </div>
       </div>
 
       {status.msg && (
-        <div className={`p-4 rounded-xl mt-6 text-sm font-medium ${status.type === 'error' ? 'bg-red-50 text-red-600 border border-red-200' : 'bg-green-50 text-green-600 border border-green-200'}`}>
+        <div className={`mb-5 px-4 py-3 rounded-lg border text-xs font-medium ${
+          status.type === 'error'
+            ? 'bg-red-50 border-red-100 text-red-700'
+            : 'bg-green-50 border-green-100 text-green-700'
+        }`}>
           {status.msg}
         </div>
       )}
 
       {/* Crear Admin */}
-      <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6 mt-6">
-        <h2 className="text-lg font-bold text-gray-900 mb-4 flex items-center gap-2"><UserPlus size={18} className="text-blue-600"/> Forzar Creación de Admin</h2>
-        <div className="flex flex-col gap-3">
-          <input type="text" placeholder="Nombre (ej. Super Admin)" className="bg-gray-50 border border-gray-200 text-gray-900 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 text-sm placeholder-gray-400" value={adminName} onChange={(e) => setAdminName(e.target.value)} />
-          <input type="email" placeholder="Correo (ej. admin@gmail.com)" className="bg-gray-50 border border-gray-200 text-gray-900 p-3 rounded-xl outline-none focus:ring-2 focus:ring-blue-500/50 text-sm placeholder-gray-400" value={adminEmail} onChange={(e) => setAdminEmail(e.target.value)} />
-          <button onClick={handleCreateAdmin} className="bg-blue-600 text-white font-bold py-3 rounded-xl hover:bg-blue-700 transition text-sm">Crear Admin</button>
+      <div className="rounded-xl border border-gray-100 bg-white p-5 shadow-sm mb-4">
+        <h2 className="text-sm font-medium text-gray-900 mb-4 flex items-center gap-2">
+          <UserPlus size={15} className="text-gray-400" strokeWidth={1.5} />
+          Forzar Creación de Admin
+        </h2>
+        <div className="flex flex-col gap-2.5">
+          <input
+            type="text"
+            placeholder="Nombre (ej. Super Admin)"
+            className="px-3.5 py-2.5 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-200 placeholder-gray-400"
+            value={adminName}
+            onChange={(e) => setAdminName(e.target.value)}
+          />
+          <input
+            type="email"
+            placeholder="Correo (ej. admin@gmail.com)"
+            className="px-3.5 py-2.5 bg-gray-50 border border-gray-100 rounded-lg text-sm text-gray-900 outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-200 placeholder-gray-400"
+            value={adminEmail}
+            onChange={(e) => setAdminEmail(e.target.value)}
+          />
+          <button
+            onClick={handleCreateAdmin}
+            className="bg-gray-900 text-white text-sm font-medium py-2.5 rounded-lg hover:bg-gray-800 transition-colors"
+          >
+            Crear Admin
+          </button>
         </div>
 
         {/* Lista de Admins */}
-        <div className="mt-6 border-t border-gray-100 pt-6">
-          <h3 className="text-sm font-bold text-gray-700 mb-3 uppercase tracking-wider">Admins Registrados ({admins.length})</h3>
+        <div className="mt-5 pt-4 border-t border-gray-100">
+          <p className="text-[10px] font-medium uppercase text-gray-400 tracking-wider mb-3">
+            Admins Registrados ({admins.length})
+          </p>
           {admins.length === 0 ? (
-            <p className="text-sm text-gray-400">No hay administradores registrados.</p>
+            <p className="text-xs text-gray-400">No hay administradores registrados.</p>
           ) : (
-            <ul className="space-y-2">
+            <div className="space-y-1.5">
               {admins.map((a: any) => (
-                <li key={a.id} className="bg-gray-50 border border-gray-100 rounded-lg p-3 flex justify-between items-center">
+                <div key={a.id} className="flex justify-between items-center px-3 py-2.5 bg-gray-50 border border-gray-100 rounded-lg">
                   <div>
-                    <p className="text-sm font-bold text-gray-900">{a.nombre}</p>
-                    <p className="text-xs text-gray-500">{a.email}</p>
+                    <p className="text-sm font-medium text-gray-900">{a.nombre}</p>
+                    <p className="text-[11px] text-gray-400">{a.email}</p>
                   </div>
-                  <span className={`text-[10px] px-2 py-1 rounded-full font-bold uppercase ${a.activo ? 'bg-green-100 text-green-700' : 'bg-red-100 text-red-700'}`}>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${
+                    a.activo
+                      ? 'bg-green-50 text-green-700 border-green-100'
+                      : 'bg-red-50 text-red-700 border-red-100'
+                  }`}>
                     {a.activo ? 'Activo' : 'Inactivo'}
                   </span>
-                </li>
+                </div>
               ))}
-            </ul>
+            </div>
           )}
         </div>
       </div>
 
       {/* Zona de peligro */}
-      <div className="bg-white rounded-2xl shadow-sm border border-red-200 p-6 mt-6">
-        <h2 className="text-lg font-bold text-red-600 mb-4 flex items-center gap-2"><AlertTriangle size={18}/> Zona de Peligro (Reset DB)</h2>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between border-b border-gray-100 pb-4">
+      <div className="rounded-xl border border-red-100 bg-white p-5 shadow-sm">
+        <h2 className="text-sm font-medium text-red-600 mb-4 flex items-center gap-2">
+          <AlertTriangle size={15} strokeWidth={1.5} />
+          Zona de Peligro (Reset DB)
+        </h2>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between px-3 py-3 bg-gray-50 border border-gray-100 rounded-lg">
             <div>
-              <p className="font-bold text-gray-900 text-sm">Borrar todas las ventas</p>
-              <p className="text-xs text-gray-500">Elimina historial de comandas y ventas diarias.</p>
+              <p className="text-sm font-medium text-gray-900">Borrar todas las ventas</p>
+              <p className="text-[11px] text-gray-400">Elimina historial de comandas y ventas.</p>
             </div>
-            <button onClick={handleResetSales} className="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-xl hover:bg-red-100 transition text-sm border border-red-200">Resetear Ventas</button>
+            <button
+              onClick={handleResetSales}
+              className="text-xs font-medium px-3.5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors shrink-0 ml-3"
+            >
+              Resetear
+            </button>
           </div>
           
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between px-3 py-3 bg-gray-50 border border-gray-100 rounded-lg">
             <div>
-              <p className="font-bold text-gray-900 text-sm">Borrar todo el personal</p>
-              <p className="text-xs text-gray-500">Elimina mozos, cocina y lavaplatos (mantiene admins).</p>
+              <p className="text-sm font-medium text-gray-900">Borrar todo el personal</p>
+              <p className="text-[11px] text-gray-400">Elimina mozos, cocina y lavaplatos.</p>
             </div>
-            <button onClick={handleResetStaff} className="bg-red-50 text-red-600 font-bold px-4 py-2 rounded-xl hover:bg-red-100 transition text-sm border border-red-200">Resetear Personal</button>
+            <button
+              onClick={handleResetStaff}
+              className="text-xs font-medium px-3.5 py-2 rounded-lg bg-red-50 text-red-600 border border-red-100 hover:bg-red-100 transition-colors shrink-0 ml-3"
+            >
+              Resetear
+            </button>
           </div>
         </div>
       </div>
-
     </div>
   );
 }

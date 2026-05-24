@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Droplets, CheckCircle2, Clock } from 'lucide-react';
+import { Droplets } from 'lucide-react';
 
 export default function LavaplatoDashboard() {
   const [session, setSession] = useState<any>(null);
@@ -14,45 +14,67 @@ export default function LavaplatoDashboard() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <h1 className="text-3xl font-medium text-gray-900 mb-2">Panel de Lavado</h1>
-      <p className="text-gray-500 mb-8">Bienvenido/a, {session?.nombre || 'Lavaplatos'}. Mantén tu área de trabajo limpia y organizada.</p>
+      {/* Header minimalista */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
+          <Droplets size={20} className="text-cyan-500" strokeWidth={1.5} />
+        </div>
+        <div>
+          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Panel de Lavado</h1>
+          <p className="text-xs text-gray-400 mt-0.5">
+            Bienvenido/a, {session?.nombre || 'Lavaplatos'}
+          </p>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-blue-50 text-blue-600 rounded-xl">
-            <Droplets size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Estado de Área</p>
-            <p className="text-xl font-bold text-gray-900">En Servicio</p>
+      {/* Stats cards minimalistas */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+              <Droplets size={16} className="text-blue-500" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Estado</p>
+              <p className="text-sm font-medium text-gray-900">En Servicio</p>
+            </div>
           </div>
         </div>
-        
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-green-50 text-green-600 rounded-xl">
-            <CheckCircle2 size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Vajilla Disponible</p>
-            <p className="text-xl font-bold text-gray-900">Óptimo</p>
+
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-green-50 border border-green-100 flex items-center justify-center shrink-0">
+              <div className="w-4 h-4 rounded-full bg-green-500" />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Vajilla</p>
+              <p className="text-sm font-medium text-gray-900">Óptimo</p>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-sm flex items-center gap-4">
-          <div className="p-4 bg-orange-50 text-orange-600 rounded-xl">
-            <Clock size={24} />
-          </div>
-          <div>
-            <p className="text-sm font-medium text-gray-500">Última Limpieza</p>
-            <p className="text-xl font-bold text-gray-900">Hace 30 min</p>
+        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm">
+          <div className="flex items-center gap-3">
+            <div className="w-9 h-9 rounded-lg bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+              <Droplets size={16} className="text-orange-500" strokeWidth={1.5} />
+            </div>
+            <div>
+              <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wider">Limpieza</p>
+              <p className="text-sm font-medium text-gray-900">Hace 30 min</p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="bg-white border border-gray-100 rounded-2xl shadow-sm p-8 text-center">
-        <Droplets size={48} className="mx-auto text-blue-200 mb-4" />
-        <h3 className="text-xl font-bold text-gray-800 mb-2">Área de Lavado Lista</h3>
-        <p className="text-gray-500">Este es tu panel inicial. Aquí se podrán agregar reportes de merma o inventario de limpieza en el futuro.</p>
+      {/* Área de lavado */}
+      <div className="rounded-xl border border-gray-100 bg-white p-8 shadow-sm text-center">
+        <div className="w-12 h-12 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mx-auto mb-4">
+          <Droplets size={22} className="text-cyan-300" strokeWidth={1.5} />
+        </div>
+        <h3 className="text-sm font-medium text-gray-900 mb-1">Área de Lavado Lista</h3>
+        <p className="text-xs text-gray-400 font-light">
+          Este es tu panel inicial. Aquí se podrán agregar reportes de merma o inventario de limpieza en el futuro.
+        </p>
       </div>
     </div>
   );

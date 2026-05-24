@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
@@ -56,7 +56,7 @@ interface TurnosConfig {
 const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
   mañana: {
     dom: { inicio: '08:00', fin: '17:00' },
-    lun: null, // descanso
+    lun: null,
     mar: { inicio: '09:00', fin: '16:00' },
     mie: { inicio: '09:00', fin: '16:00' },
     jue: { inicio: '09:00', fin: '16:00' },
@@ -65,7 +65,7 @@ const TURNOS_CONFIG_DEFAULT: TurnosConfig = {
   },
   noche: {
     dom: { inicio: '17:00', fin: '23:00' },
-    lun: null, // descanso
+    lun: null,
     mar: { inicio: '16:00', fin: '23:00' },
     mie: { inicio: '16:00', fin: '23:00' },
     jue: { inicio: '16:00', fin: '23:00' },
@@ -89,7 +89,7 @@ function getHoraMinutos(h: string): number {
 
 function validarTurnoActivo(turno: string | undefined | null): { activo: boolean; mensaje: string } {
   if (!turno || (turno !== 'mañana' && turno !== 'noche')) {
-    return { activo: true, mensaje: '' }; // sin turno asignado = permitir
+    return { activo: true, mensaje: '' };
   }
   
   const config = getTurnosConfig();
@@ -97,7 +97,7 @@ function validarTurnoActivo(turno: string | undefined | null): { activo: boolean
   if (!horarios) return { activo: true, mensaje: '' };
   
   const ahora = new Date();
-  const diaSemana = DIAS[ahora.getDay()]; // 0=domingo
+  const diaSemana = DIAS[ahora.getDay()];
   const hoyHorario = horarios[diaSemana];
   
   if (!hoyHorario) {
@@ -133,7 +133,6 @@ export default function MozoPage() {
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
   
-  // Config mode
   const [isConfigMode, setIsConfigMode] = useState(false);
   const [mesas, setMesas] = useState<MesaConfig[]>([]);
   const [mergeTarget, setMergeTarget] = useState<string | null>(null);
@@ -149,12 +148,10 @@ export default function MozoPage() {
   }, []);
 
   useEffect(() => {
-    // Cargar sesión del mozo y actualizar desde la API para obtener el turno actual
     const loadSession = async () => {
       try {
         const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
         
-        // Intentar obtener datos actualizados desde la API (turno puede cambiar)
         try {
           const res = await fetch('/api/personal');
           if (res.ok) {
@@ -163,7 +160,6 @@ export default function MozoPage() {
             if (updated) {
               session.turno = updated.turno || session.turno;
               session.nombre = updated.nombre || session.nombre;
-              // Guardar sesión actualizada
               localStorage.setItem('ph_mozo_session', JSON.stringify(session));
             }
           }
@@ -178,7 +174,6 @@ export default function MozoPage() {
     
     loadSession();
     
-    // Re-validar turno cada 30 segundos (detecta cambios de horario automáticamente)
     const interval = setInterval(() => {
       try {
         const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
@@ -256,7 +251,6 @@ export default function MozoPage() {
   const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
     
-    // Validar turno activo
     if (!turnoInfo.activo && mozoSession.turno) {
       setHorarioMensaje(turnoInfo.mensaje);
       setShowHorarioModal(true);
@@ -282,14 +276,12 @@ export default function MozoPage() {
     }));
 
     try {
-      // Guardar en MySQL via API
       await fetch('/api/pedidos', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
       });
       
-      // Notificar a cocina
       fetch('/api/notificaciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -301,11 +293,9 @@ export default function MozoPage() {
       }).catch(() => {});
 
     } catch {
-      // Encolar para sincronización
       addToSyncQueue('POST', '/api/pedidos', {
         mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
       });
-      // Fallback localStorage si la API falla
       const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       const nuevos = cart.map(c => ({
         id: Date.now() + Math.random(), item: c.name, cantidad: c.qty,
@@ -348,7 +338,6 @@ export default function MozoPage() {
     const newMesas = mesas.map(m => {
       if (m.id === m1.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m2.id, ...m2.unidaCon])] };
       if (m.id === m2.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, ...m1.unidaCon])] };
-      // Also update any others already in the group
       if (m1.unidaCon.includes(m.id) || m2.unidaCon.includes(m.id)) {
          return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, m2.id, ...m1.unidaCon, ...m2.unidaCon].filter(id => id !== m.id))] };
       }
@@ -372,7 +361,6 @@ export default function MozoPage() {
     saveMesas(newMesas);
   };
 
-  // Group mesas for display
   const displayMesas: MesaConfig[] = [];
   const processed = new Set<string>();
   
@@ -387,47 +375,58 @@ export default function MozoPage() {
   });
 
   return (
-    <div className="min-h-screen bg-gray-50 pb-20">
+    <div className="animate-in fade-in duration-300">
       <NotificacionesToast rol="mozo" usuarioId={typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('ph_mozo_session') || '{}')?.id) : undefined} />
-      <div className="bg-white border-b border-gray-200 px-4 py-4 sticky top-0 z-10 flex justify-between items-center">
-        <h1 className="text-xl font-bold text-gray-900">Puerto Habana — Mesas</h1>
+
+      {/* Header minimalista */}
+      <div className="flex items-center gap-4 mb-6">
+        <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
+          <LayoutGrid size={20} className="text-blue-500" strokeWidth={1.5} />
+        </div>
+        <div className="flex-1">
+          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Mesas</h1>
+          <p className="text-xs text-gray-400 mt-0.5">
+            {isConfigMode ? 'Modo configuración' : 'Selecciona una mesa para tomar el pedido'}
+          </p>
+        </div>
         <button 
           onClick={() => setIsConfigMode(!isConfigMode)}
-          className={`p-2 rounded-xl transition-colors ${isConfigMode ? 'bg-blue-600 text-white' : 'bg-gray-100 text-gray-600'}`}
+          className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${
+            isConfigMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+          }`}
         >
-          <Settings size={20} />
+          <Settings size={16} strokeWidth={1.5} />
         </button>
       </div>
 
       {success && (
-        <div className="mx-4 mt-4 bg-green-50 border border-green-200 text-green-700 px-4 py-3 rounded-xl text-sm font-medium">
-          ✅ Pedido enviado a cocina correctamente
+        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg">
+          <p className="text-xs font-medium text-green-700">✅ Pedido enviado a cocina correctamente</p>
         </div>
       )}
 
-      {/* Aviso de turno inactivo */}
       {!turnoInfo.activo && mozoSession.turno && (
-        <div className="mx-4 mt-4 bg-yellow-50 border border-yellow-200 text-yellow-800 px-4 py-3 rounded-xl text-sm font-medium flex items-center gap-2">
-          <span>⚠️</span>
-          <span>{turnoInfo.mensaje} — No puedes realizar pedidos hasta que inicie tu turno.</span>
+        <div className="mb-4 px-4 py-3 bg-yellow-50 border border-yellow-100 rounded-lg">
+          <p className="text-xs font-medium text-yellow-800 flex items-center gap-1.5">
+            <span>⚠️</span>
+            <span>{turnoInfo.mensaje} — No puedes realizar pedidos hasta que inicie tu turno.</span>
+          </p>
         </div>
       )}
 
       {/* Grid de mesas */}
       {!activeMesa && (
-        <div className="p-4">
-          <p className="text-sm text-gray-500 mb-4">
-            {isConfigMode ? 'Modo configuración: Edita sillas o une mesas' : 'Selecciona una mesa para tomar el pedido'}
-          </p>
-          
+        <div>
           {isConfigMode && mergeTarget && (
-            <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm flex justify-between items-center">
-              <span>Selecciona otra mesa para unir con <b>{mesas.find(x => x.id === mergeTarget)?.nombre}</b></span>
-              <button onClick={() => setMergeTarget(null)}><X size={16}/></button>
+            <div className="mb-4 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
+              <p className="text-xs font-medium text-blue-700 flex items-center justify-between">
+                <span>Selecciona otra mesa para unir con <b>{mesas.find(x => x.id === mergeTarget)?.nombre}</b></span>
+                <button onClick={() => setMergeTarget(null)} className="ml-2"><X size={14}/></button>
+              </p>
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
             {(isConfigMode ? mesas : displayMesas).map(mesa => {
               const dName = isConfigMode ? mesa.nombre : getDisplayName(mesa);
               const ocupada = !isConfigMode && mesasOcupadas.has(dName);
@@ -445,29 +444,33 @@ export default function MozoPage() {
                         setCart([]); 
                       }
                     }}
-                    className={`w-full p-4 rounded-2xl border-2 transition-all text-left ${
-                      isMergeTarget ? 'bg-blue-50 border-blue-500 shadow-md transform scale-[1.02]' :
-                      isConfigMode ? 'bg-white border-gray-200 hover:border-blue-300' :
-                      ocupada
-                        ? 'bg-red-50 border-red-200 text-red-700'
-                        : 'bg-green-50 border-green-200 text-green-700 hover:shadow-md'
-                    }`}
+                    className={`w-full text-left rounded-xl border transition-all ${
+                      isMergeTarget
+                        ? 'bg-blue-50 border-blue-400 shadow-sm'
+                        : isConfigMode
+                          ? 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
+                          : ocupada
+                            ? 'bg-white border-red-200 hover:shadow-sm'
+                            : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
+                    } p-3.5`}
                   >
-                    <div className="font-bold text-lg mb-1">{dName}</div>
+                    <div className="font-medium text-sm text-gray-900 mb-1">{dName}</div>
                     
                     {!isConfigMode ? (
-                      <div className={`text-xs font-medium ${ocupada ? 'text-red-500' : 'text-green-600'}`}>
-                        {ocupada ? 'Ocupada' : 'Disponible'} • {mesa.unidaCon.length === 0 ? `${mesa.sillas} sillas` : 'Grupo'}
+                      <div className={`text-[11px] ${ocupada ? 'text-red-500' : 'text-green-600'}`}>
+                        {ocupada ? 'Ocupada' : 'Disponible'}
+                        <span className="text-gray-300 mx-1">·</span>
+                        {mesa.unidaCon.length === 0 ? `${mesa.sillas} sillas` : 'Grupo'}
                       </div>
                     ) : (
-                      <div className="flex justify-between items-center mt-2">
-                        <div className="flex items-center gap-1 text-gray-500 text-xs">
+                      <div className="flex justify-between items-center mt-1.5">
+                        <div className="flex items-center gap-1 text-gray-400 text-[11px]">
                           <UsersIcon size={12} />
                           {editingSillas === mesa.id ? (
                             <input 
                               type="number"
                               autoFocus
-                              className="w-12 border border-gray-300 rounded px-1"
+                              className="w-12 border border-gray-200 rounded px-1 text-xs"
                               defaultValue={mesa.sillas}
                               onBlur={(e) => {
                                 const v = parseInt(e.target.value);
@@ -477,7 +480,7 @@ export default function MozoPage() {
                               onClick={(e) => e.stopPropagation()}
                             />
                           ) : (
-                            <span onClick={(e) => { e.stopPropagation(); setEditingSillas(mesa.id); }} className="cursor-pointer hover:text-blue-600 border-b border-dashed border-gray-400">
+                            <span onClick={(e) => { e.stopPropagation(); setEditingSillas(mesa.id); }} className="cursor-pointer hover:text-blue-600 border-b border-dashed border-gray-300">
                               {mesa.sillas} sillas
                             </span>
                           )}
@@ -485,17 +488,17 @@ export default function MozoPage() {
                         {mesa.unidaCon.length > 0 && (
                           <button 
                             onClick={(e) => { e.stopPropagation(); handleUnmerge(mesa.id); }}
-                            className="text-orange-500 hover:bg-orange-50 p-1 rounded flex items-center gap-1 text-[10px] font-bold uppercase"
+                            className="text-orange-500 hover:bg-orange-50 p-1 rounded text-[10px] font-medium flex items-center gap-1"
                           >
-                            <Unlink size={12} /> Separar
+                            <Unlink size={11} /> Separar
                           </button>
                         )}
                       </div>
                     )}
                   </button>
                   {isConfigMode && mesa.unidaCon.length > 0 && !isMergeTarget && (
-                    <div className="absolute -top-2 -right-2 bg-blue-100 text-blue-600 rounded-full p-1 border border-blue-200 shadow-sm" title="Unida">
-                      <LinkIcon size={12} />
+                    <div className="absolute -top-1.5 -right-1.5 bg-blue-50 text-blue-500 rounded-full p-1 border border-blue-100">
+                      <LinkIcon size={11} />
                     </div>
                   )}
                 </div>
@@ -505,20 +508,22 @@ export default function MozoPage() {
         </div>
       )}
 
-      {/* Modal de pedido */}
+      {/* Modal de pedido — minimalista */}
       {activeMesa && (
-        <div className="fixed inset-0 bg-white z-50 flex flex-col">
-          <div className="flex items-center justify-between px-4 py-4 border-b border-gray-200 bg-white sticky top-0">
+        <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in slide-in-from-right duration-200">
+          {/* Header */}
+          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
             <div>
-              <h2 className="text-lg font-bold text-gray-900">{getDisplayName(activeMesa)}</h2>
-              <p className="text-xs text-gray-500">Selecciona los productos</p>
+              <h2 className="text-base font-medium text-gray-900">{getDisplayName(activeMesa)}</h2>
+              <p className="text-[11px] text-gray-400">Selecciona los productos</p>
             </div>
-            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="p-2 hover:bg-gray-100 rounded-full">
-              <X size={20} className="text-gray-500" />
+            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+              <X size={16} className="text-gray-400" />
             </button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-6">
+          {/* Productos */}
+          <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
             {['comida', 'bebidas', 'tapers'].map(cat => {
               const items = cat === 'tapers'
                 ? tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))
@@ -526,31 +531,31 @@ export default function MozoPage() {
               if (items.length === 0) return null;
               return (
                 <div key={cat}>
-                  <div className="flex items-center gap-2 mb-3">
-                    {cat === 'tapers' && <Package size={14} className="text-gray-400" />}
-                    <h3 className="text-xs font-bold uppercase text-gray-400 tracking-wider">
+                  <div className="flex items-center gap-2 mb-2.5">
+                    {cat === 'tapers' && <Package size={13} className="text-gray-400" />}
+                    <h3 className="text-[10px] font-medium uppercase text-gray-400 tracking-wider">
                       {cat === 'tapers' ? 'Envases / Tapers' : cat}
                     </h3>
                     <span className="text-[10px] text-gray-300">({items.length})</span>
                   </div>
-                  <div className="space-y-2">
+                  <div className="space-y-1.5">
                     {items.map(item => {
                       const qty = cart.find(c => c.name === item.name)?.qty || 0;
                       return (
-                        <div key={item.name} className="flex justify-between items-center bg-gray-50 rounded-xl p-3 border border-gray-100">
+                        <div key={item.name} className="flex justify-between items-center rounded-lg px-3.5 py-2.5 border border-gray-100 bg-gray-50/50">
                           <div>
-                            <p className="font-medium text-sm text-gray-900">{item.name}</p>
-                            <p className="text-xs text-gray-500">S/ {Number(item.price).toFixed(2)}</p>
+                            <p className="text-sm text-gray-900">{item.name}</p>
+                            <p className="text-[11px] text-gray-400">S/ {Number(item.price).toFixed(2)}</p>
                           </div>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2.5">
                             <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
-                              className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30">
-                              <Minus size={12} />
+                              className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30 hover:bg-gray-300 transition-colors">
+                              <Minus size={11} />
                             </button>
-                            <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                            <span className="w-4 text-center text-sm font-medium text-gray-900">{qty}</span>
                             <button onClick={() => updateCart(item, 1)}
-                              className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center">
-                              <Plus size={12} />
+                              className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center hover:bg-gray-800 transition-colors">
+                              <Plus size={11} />
                             </button>
                           </div>
                         </div>
@@ -562,50 +567,42 @@ export default function MozoPage() {
             })}
           </div>
 
-          <div className="p-4 border-t border-gray-200 bg-white">
+          {/* Footer */}
+          <div className="px-5 py-4 border-t border-gray-100 bg-white">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-sm text-gray-500">{cart.reduce((s, c) => s + c.qty, 0)} productos</span>
-              <span className="text-xl font-bold text-gray-900">S/ {Number(total).toFixed(2)}</span>
+              <span className="text-xs text-gray-400">{cart.reduce((s, c) => s + c.qty, 0)} productos</span>
+              <span className="text-lg font-medium text-gray-900">S/ {Number(total).toFixed(2)}</span>
             </div>
             <button
               onClick={handleEnviar}
               disabled={cart.length === 0}
-              className="w-full bg-blue-600 text-white font-bold py-4 rounded-2xl flex items-center justify-center gap-2 disabled:opacity-40 hover:bg-blue-700 transition-colors"
+              className="w-full bg-gray-900 text-white text-sm font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-gray-800 transition-colors"
             >
-              <CheckCircle size={20} />
+              <CheckCircle size={16} strokeWidth={1.5} />
               Enviar a Cocina
             </button>
           </div>
         </div>
       )}
 
-      {/* ── Modal de fuera de horario ──────────────────────────────────── */}
+      {/* Modal de fuera de horario — minimalista */}
       {showHorarioModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-white rounded-3xl shadow-2xl w-[90%] max-w-sm mx-auto overflow-hidden animate-in zoom-in-95 duration-200">
-            {/* Header decorativo */}
-            <div className="h-2 bg-gradient-to-r from-red-500 to-orange-400" />
-
-            <div className="px-6 pt-6 pb-8 text-center">
-              <div className="w-16 h-16 rounded-2xl bg-red-50 flex items-center justify-center mx-auto mb-4">
-                <OctagonX size={36} className="text-red-500" />
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-lg w-[90%] max-w-sm mx-auto p-6 animate-in zoom-in-95 duration-200">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-xl bg-red-50 border border-red-100 flex items-center justify-center mx-auto mb-4">
+                <OctagonX size={24} className="text-red-500" />
               </div>
-
-              <h3 className="text-xl font-bold text-gray-900 mb-2">Fuera de Horario</h3>
-              
-              <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6">
-                <p className="text-sm text-amber-800 font-medium">
-                  {horarioMensaje}
-                </p>
+              <h3 className="text-base font-medium text-gray-900 mb-2">Fuera de Horario</h3>
+              <div className="bg-amber-50 border border-amber-100 rounded-lg p-3 mb-4">
+                <p className="text-xs font-medium text-amber-800">{horarioMensaje}</p>
               </div>
-
-              <p className="text-sm text-gray-500 mb-6">
-                No puedes realizar pedidos hasta que inicie tu turno. Consulta con el administrador si crees que esto es un error.
+              <p className="text-xs text-gray-400 mb-5">
+                No puedes realizar pedidos hasta que inicie tu turno.
               </p>
-
               <button
                 onClick={() => setShowHorarioModal(false)}
-                className="w-full bg-gray-900 text-white font-semibold py-3.5 rounded-2xl hover:bg-gray-800 transition-colors"
+                className="w-full bg-gray-900 text-white text-sm font-medium py-3 rounded-xl hover:bg-gray-800 transition-colors"
               >
                 Entendido
               </button>

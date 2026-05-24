@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Clock, UtensilsCrossed } from 'lucide-react';
+import { Check, Clock, UtensilsCrossed, ChefHat } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
@@ -23,6 +23,20 @@ function getLocalDateString() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
 
+const estadoColor = {
+  Pendiente: 'text-orange-600 bg-orange-50 border-orange-100',
+  Preparando: 'text-blue-600 bg-blue-50 border-blue-100',
+  Listo: 'text-green-600 bg-green-50 border-green-100',
+  Entregado: 'text-gray-400 bg-gray-50 border-gray-100',
+} as Record<string, string>;
+
+const estadoBorder = {
+  Pendiente: 'border-l-orange-400',
+  Preparando: 'border-l-blue-400',
+  Listo: 'border-l-green-400',
+  Entregado: 'border-l-gray-300',
+} as Record<string, string>;
+
 export default function CocinaPage() {
   const [pedidos,     setPedidos]     = useState<Pedido[]>([]);
   const [showHistory, setShowHistory] = useState(false);
@@ -42,7 +56,6 @@ export default function CocinaPage() {
       const data: Pedido[] = await res.json();
       setPedidos(showHistory ? data : data.filter(p => p.estado !== 'Entregado'));
     } catch {
-      // Fallback localStorage
       try {
         const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
         setPedidos(showHistory
@@ -82,12 +95,9 @@ export default function CocinaPage() {
         }
       }
 
-      // Reload after short delay to ensure DB committed
       setTimeout(() => loadPedidos(), 600);
     } catch {
-      // Encolar para sincronización
       addToSyncQueue('PATCH', `/api/pedidos/${id}`, { estado: nuevoEstado });
-      // Fallback localStorage
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       const updated = all.map((p: any) => p.id === id ? { ...p, estado: nuevoEstado } : p);
       localStorage.setItem('puerto_habana_pedidos', JSON.stringify(updated));
@@ -97,93 +107,118 @@ export default function CocinaPage() {
   };
 
   return (
-    <div className="p-6 max-w-5xl mx-auto animate-in fade-in">
+    <div className="animate-in fade-in duration-300">
       <NotificacionesToast rol="cocina" />
-      <div className="flex justify-between items-center mb-8">
-        <div>
-          <h1 className="text-3xl md:text-4xl font-medium text-gray-900 mb-2">Comandas de Cocina</h1>
-          <p className="text-sm text-gray-500 uppercase font-medium">{fecha} — EN TIEMPO REAL</p>
+
+      {/* Header minimalista */}
+      <div className="flex items-center gap-4 mb-8">
+        <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
+          <ChefHat size={20} className="text-orange-500" strokeWidth={1.5} />
         </div>
-        <div className="text-right bg-white/70 backdrop-blur-sm px-6 py-3 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-3xl font-bold text-orange-600">{pedidos.length}</p>
-          <p className="text-xs text-gray-500 font-medium uppercase mt-1">
+        <div className="flex-1">
+          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Comandas</h1>
+          <p className="text-xs text-gray-400 mt-0.5">{fecha}</p>
+        </div>
+        <div className="text-right">
+          <p className="text-2xl font-light text-gray-900">{pedidos.length}</p>
+          <p className="text-[10px] text-gray-400 uppercase tracking-wider">
             {showHistory ? 'Entregadas' : 'Activas'}
           </p>
         </div>
       </div>
 
-      {/* Toggle historial */}
-      <div className="flex gap-2 mb-6">
+      {/* Toggle minimalista */}
+      <div className="flex gap-1.5 mb-6 p-1 bg-gray-100 rounded-lg w-fit">
         <button onClick={() => setShowHistory(false)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${!showHistory ? 'bg-orange-600 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+            !showHistory ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
           Activas
         </button>
         <button onClick={() => setShowHistory(true)}
-          className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${showHistory ? 'bg-gray-800 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'}`}>
+          className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
+            showHistory ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+          }`}>
           Historial
         </button>
       </div>
 
       {pedidos.length === 0 ? (
-        <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-2xl bg-white">
-          <UtensilsCrossed size={48} className="mx-auto text-gray-300 mb-4" />
-          <p className="text-gray-500 font-medium">
+        <div className="flex flex-col items-center justify-center py-20">
+          <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-4">
+            <UtensilsCrossed size={24} className="text-gray-300" strokeWidth={1.5} />
+          </div>
+          <p className="text-sm text-gray-400 font-light">
             {showHistory ? 'No hay comandas entregadas' : 'No hay comandas activas'}
+          </p>
+          <p className="text-xs text-gray-300 mt-1">
+            {showHistory ? '' : 'Las nuevas comandas aparecerán aquí automáticamente'}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {pedidos.map(p => (
-            <div key={p.id} className={`bg-white rounded-2xl border-2 p-5 shadow-sm transition-all ${
-              p.estado === 'Pendiente'  ? 'border-orange-200' :
-              p.estado === 'Preparando'? 'border-blue-200'   :
-              p.estado === 'Listo'     ? 'border-green-200'  : 'border-gray-200'
-            }`}>
+            <div
+              key={p.id}
+              className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 border-l-4 transition-all hover:shadow-md ${estadoBorder[p.estado] || 'border-l-gray-200'}`}
+            >
+              {/* Header de tarjeta */}
               <div className="flex justify-between items-start mb-3">
                 <div>
-                  <h3 className="font-bold text-lg text-gray-900">{p.mesa}</h3>
-                  {p.mozo_nombre && <p className="text-xs text-gray-400">Mozo: {p.mozo_nombre}</p>}
+                  <h3 className="font-medium text-sm text-gray-900">{p.mesa}</h3>
+                  {p.mozo_nombre && (
+                    <p className="text-[11px] text-gray-400 mt-0.5">{p.mozo_nombre}</p>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock size={13} className="text-gray-400" />
-                  <span className="text-xs text-gray-500">{p.hora}</span>
-                  <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
-                    p.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
-                    p.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
-                    p.estado === 'Listo'     ? 'bg-green-100 text-green-600'   : 'bg-gray-100 text-gray-600'
-                  }`}>{p.estado}</span>
+                  <span className="text-[11px] text-gray-400 flex items-center gap-1">
+                    <Clock size={11} className="text-gray-300" />
+                    {p.hora}
+                  </span>
+                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${estadoColor[p.estado] || 'text-gray-500 bg-gray-50 border-gray-100'}`}>
+                    {p.estado}
+                  </span>
                 </div>
               </div>
 
-              {/* Items de la comanda */}
+              {/* Items */}
               {p.items && p.items.length > 0 && (
-                <ul className="space-y-1 mb-4">
+                <ul className="space-y-1 mb-3">
                   {p.items.map((item, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="font-bold text-gray-900">{item.cantidad}×</span>
+                      <span className="font-medium text-gray-900 w-6 text-right text-xs">{item.cantidad}×</span>
                       <span>{item.nombre}</span>
-                      {item.notas && <span className="text-xs text-gray-400 italic">({item.notas})</span>}
+                      {item.notas && (
+                        <span className="text-[11px] text-gray-400 italic">({item.notas})</span>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
 
               {p.notas && (
-                <p className="text-xs text-gray-500 italic mb-3 bg-gray-50 px-3 py-2 rounded-lg">📝 {p.notas}</p>
+                <p className="text-[11px] text-gray-500 italic mb-3 bg-gray-50 px-3 py-1.5 rounded-lg">
+                  📝 {p.notas}
+                </p>
               )}
 
+              {/* Acciones */}
               {!showHistory && (
-                <div className="flex gap-2">
+                <div className="flex gap-2 mt-2">
                   {p.estado === 'Pendiente' && (
-                    <button onClick={() => updateEstado(p.id, 'Preparando')}
-                      className="flex-1 bg-blue-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors">
+                    <button
+                      onClick={() => updateEstado(p.id, 'Preparando')}
+                      className="flex-1 text-xs font-medium py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                    >
                       Preparar
                     </button>
                   )}
                   {p.estado === 'Preparando' && (
-                    <button onClick={() => updateEstado(p.id, 'Listo')}
-                      className="flex-1 bg-green-600 text-white py-2 rounded-xl text-sm font-semibold hover:bg-green-700 transition-colors flex items-center justify-center gap-2">
-                      <Check size={16} /> Listo
+                    <button
+                      onClick={() => updateEstado(p.id, 'Listo')}
+                      className="flex-1 text-xs font-medium py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                    >
+                      <Check size={14} /> Listo
                     </button>
                   )}
                 </div>
