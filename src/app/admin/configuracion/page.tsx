@@ -267,12 +267,20 @@ export default function ConfiguracionPage() {
           </div>
         </section>
 
+        <style>{`
+          .scrollbar-hide::-webkit-scrollbar { display: none; }
+          .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        `}</style>
+
         {/* ── Horarios de Turnos ──────────────────────────────────────────── */}
         <section className="bg-white border border-gray-200 rounded-xl p-6">
           <h2 className="text-base font-semibold text-gray-900 mb-1 flex items-center gap-2">
             <Clock size={16} className="text-gray-500" /> Horarios de Turnos
           </h2>
           <p className="text-xs text-gray-400 mb-4">Define los horarios para cada turno. Los mozos con turno asignado solo podrán hacer pedidos dentro de su horario.</p>
+          <p className="text-xs text-blue-500 mb-3 flex items-center gap-1 sm:hidden">
+            <span>👈</span> Desliza para ver más días <span>👉</span>
+          </p>
           
           {(['mañana', 'noche'] as const).map(turno => (
             <div key={turno} className="mb-5 last:mb-0">
@@ -284,61 +292,69 @@ export default function ConfiguracionPage() {
                 )}
                 <h3 className="text-sm font-semibold text-gray-700 capitalize">{turno}</h3>
               </div>
-              <div className="space-y-2">
-                {DIAS_ORDEN.map(dia => {
-                  const horario = turnosConfig[turno][dia];
-                  return (
-                    <div key={dia} className="flex items-center gap-3 bg-gray-50 rounded-xl p-3 border border-gray-100">
-                      <span className="w-20 text-sm font-medium text-gray-700">{DIAS_LABEL[dia]}</span>
-                      <label className="flex items-center gap-2 text-xs text-gray-500">
-                        <input type="checkbox" checked={horario !== null}
-                          onChange={e => {
-                            const newConfig = { ...turnosConfig };
-                            if (e.target.checked) {
-                              newConfig[turno] = {
-                                ...newConfig[turno],
-                                [dia]: { inicio: '09:00', fin: '17:00' },
-                              };
-                            } else {
-                              newConfig[turno] = {
-                                ...newConfig[turno],
-                                [dia]: null,
-                              };
-                            }
-                            setTurnosConfig(newConfig);
-                          }}
-                          className="rounded"
-                        />
-                        Laboral
-                      </label>
-                      {horario && (
-                        <>
-                          <input type="time" value={horario.inicio}
+              {/* Horizontal scroll container — invisible scrollbar */}
+              <div
+                className="overflow-x-auto scrollbar-hide -mx-2 px-2 pb-2"
+                style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
+              >
+                <div className="flex gap-3 min-w-max">
+                  {DIAS_ORDEN.map(dia => {
+                    const horario = turnosConfig[turno][dia];
+                    return (
+                      <div key={dia} className="flex-shrink-0 w-[170px] bg-gray-50 rounded-xl p-3.5 border border-gray-100 space-y-2.5">
+                        <span className="block text-sm font-semibold text-gray-700 text-center">{DIAS_LABEL[dia]}</span>
+                        <label className="flex items-center justify-center gap-1.5 text-xs text-gray-500 cursor-pointer">
+                          <input type="checkbox" checked={horario !== null}
                             onChange={e => {
                               const newConfig = { ...turnosConfig };
-                              newConfig[turno] = {
-                                ...newConfig[turno],
-                                [dia]: { ...horario, inicio: e.target.value },
-                              };
+                              if (e.target.checked) {
+                                newConfig[turno] = {
+                                  ...newConfig[turno],
+                                  [dia]: { inicio: '09:00', fin: '17:00' },
+                                };
+                              } else {
+                                newConfig[turno] = {
+                                  ...newConfig[turno],
+                                  [dia]: null,
+                                };
+                              }
                               setTurnosConfig(newConfig);
                             }}
-                            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                          <span className="text-gray-400 text-xs">a</span>
-                          <input type="time" value={horario.fin}
-                            onChange={e => {
-                              const newConfig = { ...turnosConfig };
-                              newConfig[turno] = {
-                                ...newConfig[turno],
-                                [dia]: { ...horario, fin: e.target.value },
-                              };
-                              setTurnosConfig(newConfig);
-                            }}
-                            className="w-28 px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400" />
-                        </>
-                      )}
-                    </div>
-                  );
-                })}
+                            className="rounded"
+                          />
+                          Laboral
+                        </label>
+                        {horario ? (
+                          <div className="flex flex-col items-center gap-1.5">
+                            <input type="time" value={horario.inicio}
+                              onChange={e => {
+                                const newConfig = { ...turnosConfig };
+                                newConfig[turno] = {
+                                  ...newConfig[turno],
+                                  [dia]: { ...horario, inicio: e.target.value },
+                                };
+                                setTurnosConfig(newConfig);
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 text-center" />
+                            <span className="text-gray-400 text-xs">a</span>
+                            <input type="time" value={horario.fin}
+                              onChange={e => {
+                                const newConfig = { ...turnosConfig };
+                                newConfig[turno] = {
+                                  ...newConfig[turno],
+                                  [dia]: { ...horario, fin: e.target.value },
+                                };
+                                setTurnosConfig(newConfig);
+                              }}
+                              className="w-full px-2 py-1.5 border border-gray-200 rounded-lg text-sm bg-white focus:outline-none focus:ring-1 focus:ring-blue-400 text-center" />
+                          </div>
+                        ) : (
+                          <div className="text-center text-xs text-gray-400 py-4">❌ Descanso</div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </div>
           ))}
