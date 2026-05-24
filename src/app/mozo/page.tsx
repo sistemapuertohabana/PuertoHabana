@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
 interface MesaConfig {
@@ -300,6 +301,10 @@ export default function MozoPage() {
       }).catch(() => {});
 
     } catch {
+      // Encolar para sincronización
+      addToSyncQueue('POST', '/api/pedidos', {
+        mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
+      });
       // Fallback localStorage si la API falla
       const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       const nuevos = cart.map(c => ({

@@ -2,6 +2,8 @@
 // Inventario persistence via MySQL API routes.
 // Falls back to localStorage only if the API is unreachable.
 
+import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
+
 export interface InventarioItem {
   id: string;
   nombre: string;
@@ -101,6 +103,8 @@ export async function addInventarioItem(
     window.dispatchEvent(new Event('ph_store_update'));
     return newItem;
   } catch {
+    // Encolar para sincronización cuando vuelva internet
+    addToSyncQueue('POST', '/api/inventario', { ...item, seccion: collection });
     // Fallback localStorage
     const newItem = { ...item, id: genId(), seccion: collection } as InventarioItem;
     const current = lsRead(collection);
@@ -123,6 +127,8 @@ export async function updateInventarioItem(
     if (!res.ok) throw new Error('API error');
     window.dispatchEvent(new Event('ph_store_update'));
   } catch {
+    // Encolar para sincronización cuando vuelva internet
+    addToSyncQueue('PUT', `/api/inventario/${collection}/${id}`, updates);
     // Fallback localStorage
     const current = lsRead(collection);
     lsWrite(collection, current.map(i => i.id === id ? { ...i, ...updates } : i), true);
@@ -138,6 +144,8 @@ export async function deleteInventarioItem(
     if (!res.ok) throw new Error('API error');
     window.dispatchEvent(new Event('ph_store_update'));
   } catch {
+    // Encolar para sincronización cuando vuelva internet
+    addToSyncQueue('DELETE', `/api/inventario/${collection}/${id}`);
     // Fallback localStorage
     const current = lsRead(collection);
     lsWrite(collection, current.filter(i => i.id !== id), true);

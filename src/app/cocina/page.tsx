@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, Clock, UtensilsCrossed } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 interface Pedido {
   id: number;
@@ -84,6 +85,8 @@ export default function CocinaPage() {
       // Reload after short delay to ensure DB committed
       setTimeout(() => loadPedidos(), 600);
     } catch {
+      // Encolar para sincronización
+      addToSyncQueue('PATCH', `/api/pedidos/${id}`, { estado: nuevoEstado });
       // Fallback localStorage
       const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       const updated = all.map((p: any) => p.id === id ? { ...p, estado: nuevoEstado } : p);

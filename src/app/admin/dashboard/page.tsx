@@ -5,6 +5,7 @@ import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { useColorMode } from '@/contexts/ColorModeContext';
 
 // Helper para obtener fecha local en formato YYYY-MM-DD
@@ -383,6 +384,7 @@ export default function DashboardPage() {
         setInsumosWasted(prev => [newWaste, ...prev]);
       }
     } catch {
+      addToSyncQueue('POST', '/api/reportes/wastes', { descripcion: wasteForm.descripcion, costo: wasteForm.costo, fecha: simulatedDate });
       const newWaste = { id: Date.now(), descripcion: wasteForm.descripcion, costo: parseFloat(wasteForm.costo) || 0, fecha: simulatedDate };
       const updated = [newWaste, ...insumosWasted];
       setInsumosWasted(updated);
@@ -437,6 +439,7 @@ export default function DashboardPage() {
         }
       }
     } catch {
+      addToSyncQueue('POST', '/api/reportes/payments', { nombre: paymentForm.mozoNombre, monto: paymentForm.monto, concepto: paymentForm.concepto, fecha: simulatedDate });
       const newPayment = { id: Date.now(), mozoNombre: paymentForm.mozoNombre, monto: parseFloat(paymentForm.monto) || 0, concepto: paymentForm.concepto, fecha: simulatedDate };
       const updated = [newPayment, ...staffPayments];
       setStaffPayments(updated);
@@ -628,6 +631,11 @@ export default function DashboardPage() {
         }
       }
     } catch {
+      addToSyncQueue('POST', '/api/pedidos', {
+        mesa_nombre: newOrder.mesa, mozo_id: mozo.id, mozo_nombre: mozo.nombre,
+        items: [{ nombre: selectedItem.name, cantidad: newOrder.cantidad, precio: selectedItem.price, categoria: selectedItem.category, notas: newOrder.notas }],
+        fecha: simulatedDate, hora: horaStr,
+      });
       // Fallback localStorage
       const newPedidoObj: Pedido = {
         id: Date.now(), item: selectedItem.name, cantidad: newOrder.cantidad,

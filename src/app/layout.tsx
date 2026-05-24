@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
+import ServiceWorkerRegister from "@/components/ServiceWorkerRegister";
 import { ColorModeProvider } from "@/contexts/ColorModeContext";
 
 const geistSans = Geist({
@@ -51,6 +52,7 @@ export default function RootLayout({
         <ColorModeProvider>
           {children}
           <PWAInstallPrompt />
+          <ServiceWorkerRegister />
         </ColorModeProvider>
       </body>
     </html>

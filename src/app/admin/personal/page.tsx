@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato' | 'dev';
 type SalarioTipo = 'diario' | 'semanal' | 'mensual';
@@ -148,6 +149,12 @@ export default function PersonalPage() {
       await loadPersonal();
       handleClose();
     } catch {
+      // Encolar para sincronización
+      if (editingId) {
+        addToSyncQueue('PUT', `/api/personal/${editingId}`, payload);
+      } else {
+        addToSyncQueue('POST', '/api/personal', payload);
+      }
       // Fallback localStorage
       const id = editingId ?? String(Date.now());
       const current: Personal[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
@@ -172,6 +179,8 @@ export default function PersonalPage() {
         throw new Error();
       }
     } catch {
+      // Encolar para sincronización
+      addToSyncQueue('DELETE', `/api/personal/${id}`);
       // Fallback localStorage
       const current: Personal[] = JSON.parse(localStorage.getItem('ph_personal') || '[]');
       const updated = current.filter(p => p.id !== id);
