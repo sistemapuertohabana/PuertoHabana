@@ -52,14 +52,16 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     const checkNotifs = async () => {
       try {
         const queryParams = new URLSearchParams();
-        if (rol) queryParams.append('rol', rol);
+        if (rol) queryParams.append('rol_destino', rol);
         if (usuarioId) queryParams.append('usuario_id', usuarioId);
+        queryParams.append('leida', 'false');
         
         const res = await fetch(`/api/notificaciones?${queryParams.toString()}`);
         if (!res.ok) return;
         const data = await res.json();
         
-        const nueva = data.find((n: any) => !dismissed.has(String(n.id))); 
+        // Filtramos solo las no leídas
+        const nueva = data.find((n: any) => !n.leida && !dismissed.has(String(n.id))); 
         
         if (nueva && (!notificacion || notificacion.id !== nueva.id)) {
           setNotificacion(nueva);

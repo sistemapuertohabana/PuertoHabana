@@ -9,6 +9,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const usuario_id  = searchParams.get('usuario_id');
   const rol_destino = searchParams.get('rol_destino');
+  const leidaParam  = searchParams.get('leida');
 
   let query = sb
     .from('notificaciones')
@@ -18,6 +19,9 @@ export async function GET(request: Request) {
 
   if (usuario_id)  query = query.eq('usuario_id', usuario_id);
   if (rol_destino) query = query.eq('rol_destino', rol_destino);
+  if (leidaParam !== null) {
+    query = query.eq('leida', leidaParam === 'true');
+  }
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
