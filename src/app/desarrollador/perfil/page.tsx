@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import {
-  User, Mail, Calendar, Briefcase,
+  User, Mail, Calendar,
   Edit2, Phone, MapPin, DollarSign, Download,
 } from 'lucide-react';
 import CarnetPDF from '@/components/CarnetPDF';
@@ -36,12 +36,6 @@ const ROL_LABELS: Record<string, string> = {
   ayudante_cocina: 'Ayudante de Cocina',
   lavaplato:       'Lavaplatos',
   dev:             'Desarrollador',
-};
-
-const SALARIO_LABELS: Record<string, string> = {
-  diario:   'Diario',
-  semanal:  'Semanal',
-  mensual:  'Mensual',
 };
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
@@ -124,9 +118,6 @@ export default function DevPerfilPage() {
   const nombre   = record?.nombre ?? '—';
   const rolLabel = ROL_LABELS[record?.rol ?? ''] ?? record?.rol ?? 'Desarrollador';
   const email    = record?.email ?? '—';
-  const salario  = record?.salario_monto;
-  const salTipo  = SALARIO_LABELS[record?.salario_tipo ?? ''] ?? record?.salario_tipo ?? '';
-
   return (
     <div className="animate-in fade-in duration-300 max-w-2xl mx-auto pb-24 lg:pb-8">
       <h1 className="text-3xl font-medium text-gray-900 mb-6">Mi Perfil</h1>
@@ -196,26 +187,8 @@ export default function DevPerfilPage() {
             <p className="text-[10px] text-gray-400 mt-3 italic">Estos datos los gestiona el administrador desde su panel.</p>
           </div>
 
-          {/* ── Salario (del admin, solo lectura) ───────────────────────── */}
-          {salario && (
-            <div className="border-t border-gray-100 pt-5 mt-5">
-              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">
-                Información de Pago
-              </h3>
-              <div className="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center">
-                  <DollarSign size={18} className="text-emerald-600" />
-                </div>
-                <div>
-                  <p className="text-xs text-gray-500 font-medium">Salario Base</p>
-                  <p className="text-lg font-bold text-gray-900">
-                    S/ {Number(salario).toFixed(2)}
-                    {salTipo && <span className="text-sm font-normal text-gray-400 ml-1">/ {salTipo.toLowerCase()}</span>}
-                  </p>
-                </div>
-              </div>
-            </div>
-          )}
+          {/* ── Pagos recibidos (sin mensualidad — es contratista) ── */}
+          <PagosRecibidos nombre={nombre} />
 
           {/* ── Carnet QR ────────────────────────────────────────────── */}
           {record && (
@@ -266,4 +239,85 @@ function formatDate(iso: string): string {
     const d = new Date(iso + 'T00:00:00');
     return d.toLocaleDateString('es-PE', { day: 'numeric', month: 'long', year: 'numeric' });
   } catch { return iso; }
+}
+
+
+/* ─── Pagos recibidos (historial de pagos del admin) ───────────────────── */
+
+function PagosRecibidos({ nombre }: { nombre: string }) {
+  const [pagos, setPagos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchPagos = async () => {
+      try {
+        const res = await fetch(`/api/pagos-personal?nombre=${encodeURIComponent(nombre)}`);
+        if (res.ok) {
+          const data = await res.json();
+          setPagos(data);
+        }
+      } catch {}
+      setLoading(false);
+    };
+    fetchPagos();
+  }, [nombre]);
+
+  const totalRecibido = pagos.reduce((sum, p) => sum + Number(p.monto), 0);
+
+  return (
+    <div className="border-t border-gray-100 pt-5 mt-5">
+      <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-4">
+        Pagos Recibidos
+      </h3>
+
+      {/* Total card */}
+      <div className="bg-gradient-to-br from-emerald-50 to-teal-50 border border-emerald-200 rounded-xl p-4 flex items-center gap-3 mb-4">
+        <div className="w-10 h-10 rounded-lg bg-emerald-100 flex items-center justify-center shrink-0">
+          <DollarSign size={20} className="text-emerald-600" />
+        </div>
+        <div>
+          <p className="text-[10px] text-emerald-600 font-semibold uppercase tracking-wide">
+            Total Recibido (Histórico)
+          </p>
+          <p className="text-xl font-bold text-emerald-800">
+            S/ {totalRecibido.toFixed(2)}
+          </p>
+          <p className="text-[10px] text-emerald-500 mt-0.5">
+            {pagos.length} pago{pagos.length !== 1 ? 's' : ''} registrado{pagos.length !== 1 ? 's' : ''}
+          </p>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="text-center py-6 text-sm text-gray-400">Cargando pagos...</div>
+      ) : pagos.length === 0 ? (
+        <div className="bg-gray-50 rounded-xl p-6 text-center">
+          <DollarSign size={24} className="mx-auto text-gray-300 mb-2" />
+          <p className="text-sm text-gray-400 font-medium">Aún no has recibido pagos</p>
+          <p className="text-xs text-gray-300 mt-1">El administrador registrará aquí tus pagos como contratista.</p>
+        </div>
+      ) : (
+        <div className="space-y-2 max-h-64 overflow-y-auto pr-1">
+          {pagos.map((p) => (
+            <div
+              key={p.id}
+              className="bg-gray-50 rounded-xl px-4 py-3 border border-gray-100 flex items-center justify-between hover:bg-gray-100/50 transition-colors"
+            >
+              <div>
+                <p className="text-xs font-semibold text-gray-700">{p.concepto}</p>
+                <p className="text-[10px] text-gray-400 mt-0.5">
+                  {new Date(p.created_at).toLocaleDateString('es-PE', {
+                    day: 'numeric', month: 'long', year: 'numeric'
+                  })}
+                </p>
+              </div>
+              <p className="text-sm font-bold text-emerald-600">
+                + S/ {Number(p.monto).toFixed(2)}
+              </p>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
 }
