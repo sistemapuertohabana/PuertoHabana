@@ -444,17 +444,17 @@ export default function MozoPage() {
                         setCart([]); 
                       }
                     }}
-                    className={`w-full text-left rounded-xl border transition-all ${
+                    className={`w-full text-left rounded-xl border-2 transition-all ${
                       isMergeTarget
-                        ? 'bg-blue-50 border-blue-400 shadow-sm'
+                        ? 'bg-blue-50 border-blue-400 shadow-md'
                         : isConfigMode
-                          ? 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
+                          ? 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-md shadow-sm'
                           : ocupada
-                            ? 'bg-white border-red-200 hover:shadow-sm'
-                            : 'bg-white border-gray-100 hover:border-gray-200 shadow-sm'
-                    } p-3.5`}
+                            ? 'bg-white border-red-200 hover:border-red-300 hover:shadow-md shadow-sm'
+                            : 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-lg hover:-translate-y-0.5 shadow-sm'
+                    } p-4`}
                   >
-                    <div className="font-medium text-sm text-gray-900 mb-1">{dName}</div>
+                    <div className="font-semibold text-sm text-gray-900 mb-1.5">{dName}</div>
                     
                     {!isConfigMode ? (
                       <div className={`text-[11px] ${ocupada ? 'text-red-500' : 'text-green-600'}`}>
@@ -517,7 +517,7 @@ export default function MozoPage() {
               <h2 className="text-base font-medium text-gray-900">{getDisplayName(activeMesa)}</h2>
               <p className="text-[11px] text-gray-400">Selecciona los productos</p>
             </div>
-            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center">
+            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
               <X size={16} className="text-gray-400" />
             </button>
           </div>
@@ -531,9 +531,9 @@ export default function MozoPage() {
               if (items.length === 0) return null;
               return (
                 <div key={cat}>
-                  <div className="flex items-center gap-2 mb-2.5">
-                    {cat === 'tapers' && <Package size={13} className="text-gray-400" />}
-                    <h3 className="text-[10px] font-medium uppercase text-gray-400 tracking-wider">
+                  <div className="flex items-center gap-2 mb-3">
+                    {cat === 'tapers' && <Package size={14} className="text-gray-400" />}
+                    <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">
                       {cat === 'tapers' ? 'Envases / Tapers' : cat}
                     </h3>
                     <span className="text-[10px] text-gray-300">({items.length})</span>
@@ -542,20 +542,20 @@ export default function MozoPage() {
                     {items.map(item => {
                       const qty = cart.find(c => c.name === item.name)?.qty || 0;
                       return (
-                        <div key={item.name} className="flex justify-between items-center rounded-lg px-3.5 py-2.5 border border-gray-100 bg-gray-50/50">
+                        <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
                           <div>
                             <p className="text-sm text-gray-900">{item.name}</p>
                             <p className="text-[11px] text-gray-400">S/ {Number(item.price).toFixed(2)}</p>
                           </div>
                           <div className="flex items-center gap-2.5">
                             <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
-                              className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center disabled:opacity-30 hover:bg-gray-300 transition-colors">
-                              <Minus size={11} />
+                              className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center disabled:opacity-30 hover:bg-red-100 transition-colors">
+                              <Minus size={12} className="text-red-500" />
                             </button>
-                            <span className="w-4 text-center text-sm font-medium text-gray-900">{qty}</span>
+                            <span className="w-5 text-center text-base font-semibold text-gray-900">{qty}</span>
                             <button onClick={() => updateCart(item, 1)}
-                              className="w-7 h-7 rounded-full bg-gray-900 text-white flex items-center justify-center hover:bg-gray-800 transition-colors">
-                              <Plus size={11} />
+                              className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-200">
+                              <Plus size={12} />
                             </button>
                           </div>
                         </div>
@@ -576,9 +576,9 @@ export default function MozoPage() {
             <button
               onClick={handleEnviar}
               disabled={cart.length === 0}
-              className="w-full bg-gray-900 text-white text-sm font-medium py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-gray-800 transition-colors"
+              className="w-full bg-blue-600 text-white text-sm font-medium py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-200/50"
             >
-              <CheckCircle size={16} strokeWidth={1.5} />
+              <CheckCircle size={18} strokeWidth={1.5} />
               Enviar a Cocina
             </button>
           </div>
