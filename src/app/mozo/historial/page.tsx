@@ -334,14 +334,14 @@ export default function MozoHistorialPage() {
                             <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
-                              <input type="number" step="0.10" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
+                              <input type="text" inputMode="decimal" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
                             </div>
                           </div>
                           <div>
                             <label className="text-xs font-bold text-gray-600 uppercase">Efectivo Recibido</label>
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
-                              <input type="number" step="0.10" value={pagoInputs.efectivo} onChange={e => setPagoInputs({...pagoInputs, efectivo: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-green-600 focus:outline-none" placeholder="0.00" />
+                              <input type="text" inputMode="decimal" value={pagoInputs.efectivo} onChange={e => setPagoInputs({...pagoInputs, efectivo: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-green-600 focus:outline-none" placeholder="0.00" />
                             </div>
                           </div>
                         </div>

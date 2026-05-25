@@ -229,11 +229,12 @@ export default function DashboardPage() {
                 setNewOrder((n: typeof newOrder) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
               }
               if (allStaff.length) {
+                const first = allStaff[0];
                 setPaymentForm((f: typeof paymentForm) => ({ 
                   ...f, 
-                  mozoNombre: allStaff[0].nombre,
-                  monto: allStaff[0].salario_monto ? String(allStaff[0].salario_monto) : '',
-                  concepto: allStaff[0].salario_tipo ? `Pago ${allStaff[0].salario_tipo}` : 'Jornal'
+                  mozoNombre: first.nombre,
+                  monto: first.rol === 'dev' ? '' : (first.salario_monto ? String(first.salario_monto) : ''),
+                  concepto: first.rol === 'dev' ? 'Pago contratista' : (first.salario_tipo ? `Pago ${first.salario_tipo}` : 'Jornal')
                 }));
               }
             }
@@ -461,10 +462,11 @@ export default function DashboardPage() {
       setStaffPayments(updated);
       localStorage.setItem('puerto_habana_payments', JSON.stringify(updated));
     }
+    const resetStaff = allStaffList[0];
     setPaymentForm({ 
-      mozoNombre: allStaffList[0]?.nombre ?? '', 
-      monto: allStaffList[0]?.salario_monto ? String(allStaffList[0].salario_monto) : '', 
-      concepto: allStaffList[0]?.salario_tipo ? `Pago ${allStaffList[0].salario_tipo}` : 'Jornal', 
+      mozoNombre: resetStaff?.nombre ?? '', 
+      monto: resetStaff?.rol === 'dev' ? '' : (resetStaff?.salario_monto ? String(resetStaff.salario_monto) : ''), 
+      concepto: resetStaff?.rol === 'dev' ? 'Pago contratista' : (resetStaff?.salario_tipo ? `Pago ${resetStaff.salario_tipo}` : 'Jornal'), 
       fecha: '' 
     });
     setToastMessage('Pago a personal registrado y deducido de la ganancia.');
@@ -1728,7 +1730,8 @@ export default function DashboardPage() {
                     }`}
                   />
                   <input 
-                    type="number" 
+                    type="text"
+                    inputMode="decimal"
                     placeholder="Costo total (S/)"
                     value={wasteForm.costo}
                     onChange={e => setWasteForm({ ...wasteForm, costo: e.target.value })}
@@ -1784,8 +1787,8 @@ export default function DashboardPage() {
                       setPaymentForm({ 
                         ...paymentForm, 
                         mozoNombre: nombre,
-                        monto: staff?.salario_monto ? String(staff.salario_monto) : '',
-                        concepto: staff?.salario_tipo ? `Pago ${staff.salario_tipo}` : 'Jornal'
+                        monto: staff?.rol === 'dev' ? '' : (staff?.salario_monto ? String(staff.salario_monto) : ''),
+                        concepto: staff?.rol === 'dev' ? 'Pago contratista' : (staff?.salario_tipo ? `Pago ${staff.salario_tipo}` : 'Jornal')
                       });
                     }}
                     className={`px-2 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black ${
@@ -1806,7 +1809,8 @@ export default function DashboardPage() {
                     }`}
                   />
                   <input 
-                    type="number" 
+                    type="text"
+                    inputMode="decimal"
                     placeholder="Monto (S/)"
                     value={paymentForm.monto}
                     onChange={e => setPaymentForm({ ...paymentForm, monto: e.target.value })}
@@ -2109,9 +2113,8 @@ export default function DashboardPage() {
                 <div>
                   <label className="block text-xs font-semibold text-gray-400 uppercase tracking-wider mb-2">Cantidad</label>
                   <input
-                    type="number"
-                    min={1}
-                    max={20}
+                    type="text"
+                    inputMode="numeric"
                     value={newOrder.cantidad}
                     onChange={(e) => setNewOrder({ ...newOrder, cantidad: Math.max(1, parseInt(e.target.value) || 1) })}
                     className={`w-full px-3 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${

@@ -577,7 +577,9 @@ export default function MozoPage() {
                           <UsersIcon size={12} />
                           {editingSillas === mesa.id ? (
                             <input 
-                              type="number"
+                              type="text"
+                              inputMode="numeric"
+                              pattern="[0-9]*"
                               autoFocus
                               className="w-12 border border-gray-200 rounded px-1 text-xs"
                               defaultValue={mesa.sillas}

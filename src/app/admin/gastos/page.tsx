@@ -220,8 +220,8 @@ export default function GastosPage() {
               </div>
               <div>
                 <label className="block text-sm font-semibold text-gray-700 mb-2">Monto (S/) *</label>
-                <input type="number" required min="0" step="0.01" value={formData.monto}
-                  onChange={e => setFormData({ ...formData, monto: parseFloat(e.target.value) || 0 })}
+                <input type="text" inputMode="decimal" required value={formData.monto === 0 ? '' : formData.monto}
+                  onChange={e => setFormData({ ...formData, monto: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
                   className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
               </div>
               <div>

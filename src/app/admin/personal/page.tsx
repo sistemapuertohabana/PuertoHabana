@@ -359,7 +359,7 @@ export default function PersonalPage() {
               <>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>
-                  <input type="number" step="0.01" min="0" value={formData.salario_monto}
+                  <input type="text" inputMode="decimal" value={formData.salario_monto}
                     onChange={e => setFormData({ ...formData, salario_monto: e.target.value })}
                     placeholder="0.00"
                     className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />

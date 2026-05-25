@@ -382,9 +382,9 @@ export default function InventarioPage() {
                       <div className="mt-2 flex items-center gap-2">
                         <label className="text-xs text-gray-500">Cant:</label>
                         <input
-                          type="number"
-                          min="0.1"
-                          step="0.1"
+                          type="text"
+                          inputMode="decimal"
+                          pattern="[0-9.]*"
                           max={ins.cantidad}
                           value={selectedInsumos[ins.id]}
                           onChange={(e) => setSelectedInsumos({...selectedInsumos, [ins.id]: parseFloat(e.target.value) || 0})}
@@ -429,8 +429,9 @@ export default function InventarioPage() {
                 <div>
                   <label className="block text-sm text-gray-600 mb-2 font-medium">Cantidad en Stock</label>
                   <input
-                    type="number"
-                    min="1"
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
                     value={cantidadPlato}
                     onChange={(e) => setCantidadPlato(parseInt(e.target.value) || 1)}
                     className="w-full px-3 py-2 border border-gray-200 rounded-lg focus:outline-none focus:border-teal-500 focus:ring-1 focus:ring-teal-200 transition-colors"
@@ -442,9 +443,9 @@ export default function InventarioPage() {
                     <div className="relative flex-1">
                       <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 text-sm">S/</span>
                       <input
-                        type="number"
-                        step="0.01"
-                        min="0"
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
                         value={precioPlato}
                         onChange={(e) => { setPrecioPlato(parseFloat(e.target.value) || 0); setPrecioManual(true); }}
                         className={`w-full pl-8 pr-3 py-2 border rounded-lg text-sm focus:outline-none focus:ring-1 transition-colors ${
@@ -723,12 +724,13 @@ export default function InventarioPage() {
                   <div className="relative">
                     <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
                     <input
-                      type="number"
-                      value={formData.precio || 0}
-                      onChange={(e) => setFormData({ ...formData, precio: parseFloat(e.target.value) || 0 })}
+                      type="text"
+                      inputMode="decimal"
+                      pattern="[0-9.]*"
+                      value={formData.precio || ''}
+                      onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : e.target.value })}
                       className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
                       placeholder="0.00"
-                      step="0.01"
                     />
                   </div>
                 </div>
@@ -737,9 +739,11 @@ export default function InventarioPage() {
                     Cantidad
                   </label>
                   <input
-                    type="number"
-                    value={formData.cantidad || 0}
-                    onChange={(e) => setFormData({ ...formData, cantidad: parseInt(e.target.value) || 0 })}
+                    type="text"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={formData.cantidad || ''}
+                    onChange={(e) => setFormData({ ...formData, cantidad: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
                     className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
                     placeholder="0"
                   />
