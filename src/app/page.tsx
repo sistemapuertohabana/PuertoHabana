@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import { ChefHat, Users, ShieldCheck, Droplets, Code2, ArrowRight } from 'lucide-react';
+import { ChefHat, Users, ShieldCheck, Droplets, ArrowRight } from 'lucide-react';
 
 const roles = [
   {
@@ -38,15 +38,6 @@ const roles = [
     color: 'text-purple-500',
     bg: 'bg-purple-50 group-hover:bg-purple-100',
     border: 'border-purple-100 group-hover:border-purple-200',
-  },
-  {
-    href: '/login-desarrollador',
-    icon: Code2,
-    label: 'Desarrollador',
-    desc: 'Panel técnico del sistema',
-    color: 'text-indigo-500',
-    bg: 'bg-indigo-50 group-hover:bg-indigo-100',
-    border: 'border-indigo-100 group-hover:border-indigo-200',
   },
 ];
 

@@ -87,7 +87,7 @@ export default function DevSidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/'; }}
+            <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/desarrollador'; }}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
             </button>
@@ -137,7 +137,7 @@ export default function DevSidebar() {
           })}
         </nav>
         <div className={`px-3 pb-4 border-t pt-3 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
-          <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/'; }}
+          <button onClick={() => { localStorage.removeItem('ph_dev_session'); window.location.href = '/desarrollador'; }}
             className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium ${design === 'azul' ? 'text-red-300 hover:bg-blue-700' : 'text-red-500 hover:bg-red-50'}`}>
             <LogOut size={15} /> Volver al Inicio
           </button>
