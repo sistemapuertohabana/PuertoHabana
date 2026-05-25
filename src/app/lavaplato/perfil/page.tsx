@@ -7,8 +7,6 @@ import {
 } from 'lucide-react';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
-import { supabase } from '@/lib/supabase';
-
 /* ─── tipos ──────────────────────────────────────────────────────────────── */
 
 interface PersonalRecord {
@@ -44,7 +42,7 @@ const SALARIO_LABELS: Record<string, string> = {
 
 /* ─── helpers ────────────────────────────────────────────────────────────── */
 
-function loadSession(): { id?: string; nombre?: string; rol?: string; email?: string } {
+function loadSession(): Record<string, any> {
   try { return JSON.parse(localStorage.getItem('ph_lavaplato_session') || '{}'); } catch { return {}; }
 }
 
@@ -73,20 +71,39 @@ export default function LavaplatoPerfilPage() {
       return;
     }
 
-    // Cargar datos reales de Supabase
+    // Cargar datos reales desde la API (como cocina/mozo)
     const loadData = async () => {
-      const { data, error } = await supabase.from('usuarios').select('*').eq('id', id).single();
-      if (!error && data) {
-        setRecord(data);
-        const ex = {
-          turno: data.turno || '',
-          area: data.area || '',
-          telefono: data.telefono || '',
-          fecha_ingreso: data.fecha_ingreso || '',
-        };
-        setExtra(ex);
-        setPhoto(data.foto_url || getProfilePhoto('lavaplato'));
-      } else {
+      try {
+        const res = await fetch(`/api/personal/${id}`);
+        if (res.ok) {
+          const data = await res.json();
+          setRecord(data);
+          const ex = {
+            turno: data.turno || '',
+            area: data.area || '',
+            telefono: data.telefono || '',
+            fecha_ingreso: data.fecha_ingreso || '',
+          };
+          setExtra(ex);
+          setPhoto(data.foto_url || getProfilePhoto('lavaplato'));
+
+          // Refrescar sesión en localStorage para que dashboard y perfil estén sincronizados
+          const sess = loadSession();
+          sess.turno = data.turno || sess.turno;
+          sess.nombre = data.nombre || sess.nombre;
+          sess.foto_url = data.foto_url || sess.foto_url;
+          localStorage.setItem('ph_lavaplato_session', JSON.stringify(sess));
+        } else {
+          // Fallback a sesión si falla la API
+          setRecord({
+            id,
+            nombre: session.nombre ?? 'Sin nombre',
+            email:  session.email,
+            rol:    session.rol ?? 'lavaplato',
+          });
+        }
+      } catch (err) {
+        console.error('Error cargando perfil', err);
         setRecord({
           id,
           nombre: session.nombre ?? 'Sin nombre',
