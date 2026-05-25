@@ -191,7 +191,7 @@ export default function MozoPerfilPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <InfoRow icon={<Phone size={15} />}   label="Teléfono"        value={extra.telefono    || '—'} />
               <InfoRow icon={<MapPin size={15} />}  label="Área Asignada"   value={extra.area        || '—'} />
-              <InfoRow icon={<Calendar size={15} />}label="Fecha de Ingreso"value={extra.fecha_ingreso || '—'} />
+              <InfoRow icon={<Calendar size={15} />}label="Fecha de Ingreso"value={formatDate(extra.fecha_ingreso)} />
             </div>
             <p className="text-[10px] text-gray-400 mt-3 italic">Estos datos los gestiona el administrador desde su panel.</p>
           </div>

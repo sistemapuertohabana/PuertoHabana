@@ -14,6 +14,8 @@ interface Personal {
   email?: string;
   rol: Rol;
   turno?: string;
+  telefono?: string;
+  area?: string;
   salario_monto?: number;
   salario_tipo?: SalarioTipo;
 }
@@ -40,6 +42,8 @@ const emptyForm = {
   nombre: '', dni: '', email: '',
   rol: 'mozo' as Rol,
   turno: '',
+  telefono: '',
+  area: '',
   salario_monto: '',
   salario_tipo: 'mensual' as SalarioTipo,
 };
@@ -92,6 +96,8 @@ export default function PersonalPage() {
       email:         p.email ?? '',
       rol:           p.rol,
       turno:         p.turno ?? '',
+      telefono:      p.telefono ?? '',
+      area:          p.area ?? '',
       salario_monto: p.salario_monto?.toString() ?? '',
       salario_tipo:  p.salario_tipo ?? 'mensual',
     });
@@ -114,6 +120,8 @@ export default function PersonalPage() {
       email:         formData.email.trim() || undefined,
       rol:           formData.rol,
       turno:         formData.turno || undefined,
+      telefono:      formData.telefono.trim() || undefined,
+      area:          formData.area.trim() || undefined,
       salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : undefined,
       salario_tipo:  formData.salario_tipo,
       // Auto-asignar fecha de ingreso al crear
@@ -256,6 +264,22 @@ export default function PersonalPage() {
               </select>
             </div>
             <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Teléfono</label>
+              <input type="text" value={formData.telefono}
+                onChange={e => setFormData({ ...formData, telefono: e.target.value })}
+                placeholder="+51 999 888 777"
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <p className="text-xs text-gray-400 mt-1">Número de contacto del empleado.</p>
+            </div>
+            <div>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Área / Especialidad</label>
+              <input type="text" value={formData.area}
+                onChange={e => setFormData({ ...formData, area: e.target.value })}
+                placeholder="Ej. Cocina, Salón Principal, Lavado..."
+                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+              <p className="text-xs text-gray-400 mt-1">Área asignada o especialidad del empleado.</p>
+            </div>
+            <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Turno</label>
               <select value={formData.turno}
                 onChange={e => setFormData({ ...formData, turno: e.target.value })}
@@ -380,8 +404,7 @@ export default function PersonalPage() {
                       <Trash2 size={15} />
                     </button>
                   </div>
-                </div>
-                <div className="flex items-center justify-between">
+                </div>                  <div className="flex items-center justify-between">
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
                     {rolLabels[p.rol] ?? p.rol}
                   </span>
@@ -391,6 +414,12 @@ export default function PersonalPage() {
                     </span>
                   )}
                 </div>
+                {(p.telefono || p.area) && (
+                  <div className="flex flex-wrap gap-2 mt-2 pt-2 border-t border-gray-100">
+                    {p.telefono && <span className="text-[11px] text-gray-500">📞 {p.telefono}</span>}
+                    {p.area && <span className="text-[11px] text-gray-500">📍 {p.area}</span>}
+                  </div>
+                )}
               </div>
             ))}
           </div>
