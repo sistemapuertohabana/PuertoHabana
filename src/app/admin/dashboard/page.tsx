@@ -739,12 +739,11 @@ export default function DashboardPage() {
       const todayOrders = pedidos.filter(p => p.fecha === simulatedDate);
       const comidaVal = todayOrders.filter(p => p.category === 'comida').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const bebidasVal = todayOrders.filter(p => p.category === 'bebidas').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-      const activeMozoIds = new Set(todayOrders.map(p => p.mozoId));
 
       return {
         comida: { title: 'Comida (Hoy)', value: `S/ ${comidaVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Utensils },
         bebidas: { title: 'Bebidas (Hoy)', value: `S/ ${bebidasVal.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`, icon: Wine },
-        mozos: { title: 'Mozos en Turno', value: String(activeMozoIds.size), icon: Users },
+        mozos: { title: 'Mozos Registrados', value: String(mozosList.length), icon: Users },
       };
     } else if (activeTab === 'historial') {
       const totalRev = filteredHistoryOrders.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
