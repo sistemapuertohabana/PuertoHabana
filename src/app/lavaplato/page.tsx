@@ -6,6 +6,9 @@ export default function LavaplatoDashboard() {
   const [session, setSession] = useState<any>(null);
   const [asistencia, setAsistencia] = useState<{ id: number; hora_llegada: string } | null>(null);
   const [registrando, setRegistrando] = useState(false);
+  const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
+  const [showHistorialAsist, setShowHistorialAsist] = useState(false);
+  const [errorAsistencia, setErrorAsistencia] = useState('');
 
   useEffect(() => {
     const loadSession = async () => {
@@ -39,6 +42,16 @@ export default function LavaplatoDashboard() {
           .then(data => {
             if (data.length > 0) {
               setAsistencia({ id: data[0].id, hora_llegada: data[0].hora_llegada });
+            }
+          })
+          .catch(() => {});
+        
+        // Cargar historial de asistencias
+        fetch(`/api/asistencia?usuario_id=${sess.id}`)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => {
+            if (data.length > 0) {
+              setHistorialAsistencia(data.slice(0, 10));
             }
           })
           .catch(() => {});
@@ -78,7 +91,10 @@ export default function LavaplatoDashboard() {
         {/* Asistencia */}
         {session?.id ? (
           asistencia ? (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100 text-green-700 text-xs font-medium">
+            <div
+              onClick={() => setShowHistorialAsist(!showHistorialAsist)}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100 text-green-700 text-xs font-medium cursor-pointer hover:bg-green-100 transition-colors"
+            >
               <CheckCircle size={14} />
               {asistencia.hora_llegada.slice(0, 5)}
             </div>
@@ -86,6 +102,32 @@ export default function LavaplatoDashboard() {
             <button
               onClick={async () => {
                 if (!session.id || registrando) return;
+                setErrorAsistencia('');
+                
+                // Validar si hoy es día laboral
+                const turno = session.turno;
+                if (turno) {
+                  try {
+                    const raw = localStorage.getItem('ph_turnos_config');
+                    if (raw) {
+                      const config = JSON.parse(raw);
+                      const diasSemana = ['dom', 'lun', 'mar', 'mie', 'jue', 'vie', 'sab'] as const;
+                      type DiaSemana = typeof diasSemana[number];
+                      const diasLabels: Record<DiaSemana, string> = {
+                        dom: 'Domingo', lun: 'Lunes', mar: 'Martes', mie: 'Miércoles',
+                        jue: 'Jueves', vie: 'Viernes', sab: 'Sábado',
+                      };
+                      const diaHoy = diasSemana[new Date().getDay()];
+                      const horarioHoy = config[turno as 'mañana' | 'noche']?.[diaHoy];
+                      if (!horarioHoy) {
+                        setErrorAsistencia(`Hoy (${diasLabels[diaHoy]}) es descanso para tu turno. No puedes registrar asistencia.`);
+                        setTimeout(() => setErrorAsistencia(''), 5000);
+                        return;
+                      }
+                    }
+                  } catch {}
+                }
+                
                 setRegistrando(true);
                 try {
                   const res = await fetch('/api/asistencia', {
@@ -96,6 +138,9 @@ export default function LavaplatoDashboard() {
                   if (res.ok) {
                     const data = await res.json();
                     setAsistencia({ id: data.data.id, hora_llegada: data.data.hora_llegada });
+                  } else if (res.status === 409) {
+                    setErrorAsistencia('Ya registraste tu asistencia hoy');
+                    setTimeout(() => setErrorAsistencia(''), 3000);
                   }
                 } catch {}
                 setRegistrando(false);
@@ -109,6 +154,30 @@ export default function LavaplatoDashboard() {
           )
         ) : null}
       </div>
+
+      {errorAsistencia && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
+          <p className="text-xs font-medium text-red-700">{errorAsistencia}</p>
+        </div>
+      )}
+
+      {/* Historial de asistencias */}
+      {historialAsistencia.length > 0 && showHistorialAsist && (
+        <div className="mb-6 bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
+          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
+            <Clock size={13} />
+            Historial de Asistencias
+          </h3>
+          <div className="space-y-1.5">
+            {historialAsistencia.map((a, i) => (
+              <div key={i} className="flex items-center justify-between text-xs py-1.5 px-2 rounded-lg hover:bg-gray-50">
+                <span className="text-gray-500">{a.fecha}</span>
+                <span className="font-medium text-gray-700">{a.hora_llegada.slice(0, 5)} hrs</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Stats cards minimalistas */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-8">

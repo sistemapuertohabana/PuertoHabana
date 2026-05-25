@@ -25,11 +25,13 @@ export async function sendPushNotification({
   rol_destino,
   titulo,
   mensaje,
+  url,
 }: {
   usuario_id?: string;
   rol_destino?: string;
   titulo: string;
   mensaje: string;
+  url?: string;
 }): Promise<{ sent: number; removed: number }> {
   if (!ensureVapid()) return { sent: 0, removed: 0 };
 
@@ -51,7 +53,7 @@ export async function sendPushNotification({
     return { sent: 0, removed: 0 };
   }
 
-  const payload = JSON.stringify({ titulo, mensaje });
+  const payload = JSON.stringify({ titulo, mensaje, url: url || '/' });
   let sent = 0;
   const toRemove: number[] = [];
 

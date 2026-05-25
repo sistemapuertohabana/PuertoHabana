@@ -28,7 +28,10 @@ export async function GET(request: Request) {
   let fecha = searchParams.get('fecha');
   if (!fecha && searchParams.has('today')) {
     const hoy = new Date();
-    fecha = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    const utcMs = hoy.getTime() + (hoy.getTimezoneOffset() * 60000);
+    const peruMs = utcMs - (5 * 60 * 60 * 1000);
+    const peruDate = new Date(peruMs);
+    fecha = `${peruDate.getFullYear()}-${String(peruDate.getMonth() + 1).padStart(2, '0')}-${String(peruDate.getDate()).padStart(2, '0')}`;
   }
 
   const usuarioId = searchParams.get('usuario_id');
@@ -78,8 +81,12 @@ export async function POST(request: Request) {
 
   // Fecha y hora actual en UTC-5 (Perú)
   const ahora = new Date();
-  const fechaLocal = `${ahora.getFullYear()}-${String(ahora.getMonth() + 1).padStart(2, '0')}-${String(ahora.getDate()).padStart(2, '0')}`;
-  const horaLocal = `${String(ahora.getHours()).padStart(2, '0')}:${String(ahora.getMinutes()).padStart(2, '0')}:${String(ahora.getSeconds()).padStart(2, '0')}`;
+  // Convertir a Perú (UTC-5) independientemente de la zona horaria del servidor
+  const utcMs = ahora.getTime() + (ahora.getTimezoneOffset() * 60000);
+  const peruMs = utcMs - (5 * 60 * 60 * 1000); // UTC-5
+  const peruDate = new Date(peruMs);
+  const fechaLocal = `${peruDate.getFullYear()}-${String(peruDate.getMonth() + 1).padStart(2, '0')}-${String(peruDate.getDate()).padStart(2, '0')}`;
+  const horaLocal = `${String(peruDate.getHours()).padStart(2, '0')}:${String(peruDate.getMinutes()).padStart(2, '0')}:${String(peruDate.getSeconds()).padStart(2, '0')}`;
 
   // Intentar insertar — si ya existe (unique constraint), devolver error
   const { data, error } = await sb
@@ -110,6 +117,7 @@ export async function POST(request: Request) {
 
   const tituloNotif = '👋 Asistencia Registrada';
   const mensajeNotif = `${rolLabel[usuario.rol] || usuario.rol} ${usuario.nombre} marcó asistencia a las ${horaLocal.slice(0, 5)} hrs`;
+  const urlNotif = '/admin/personal';
 
   try {
     await sb
@@ -127,6 +135,7 @@ export async function POST(request: Request) {
       rol_destino: 'admin',
       titulo: tituloNotif,
       mensaje: mensajeNotif,
+      url: urlNotif,
     }).catch(() => {});
   } catch {}
 

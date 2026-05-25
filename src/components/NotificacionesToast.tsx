@@ -36,6 +36,14 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     }
   }, []);
 
+  // Auto-suscribir a PushManager cuando se activan las notificaciones
+  useEffect(() => {
+    if (activado && !checking) {
+      const timer = setTimeout(() => suscribirPush(), 1500);
+      return () => clearTimeout(timer);
+    }
+  }, [activado, checking]);
+
   // Suscribir al PushManager cuando se activan las notificaciones
   const suscribirPush = async () => {
     try {
