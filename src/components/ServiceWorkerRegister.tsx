@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
-import { WifiOff, RefreshCw, CloudOff } from 'lucide-react';
+import { useEffect, useState, useCallback, useRef } from 'react';
+import { WifiOff, RefreshCw, CloudOff, X } from 'lucide-react';
 
 // ─── Cola de sincronización offline ───────────────────────────────────────
 // Guarda las operaciones de escritura (POST, PUT, DELETE) que fallaron por
@@ -58,6 +58,9 @@ export default function ServiceWorkerRegister() {
   const [syncCount, setSyncCount] = useState(0);
   const [syncing, setSyncing] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+  const [dismissed, setDismissed] = useState(false);
+  const dismissedRef = useRef(false);
+  const prevCountRef = useRef(0);
 
   // Procesar la cola de sincronización
   const processQueue = useCallback(async () => {
@@ -151,10 +154,19 @@ export default function ServiceWorkerRegister() {
 
     // Escuchar cambios en la cola
     const handleQueueChange = () => {
-      setSyncCount(getQueue().length);
+      const newCount = getQueue().length;
+      // Si hay nuevos items desde la última vez que se descartó, mostrar de nuevo
+      if (newCount > prevCountRef.current && dismissedRef.current) {
+        setDismissed(false);
+        dismissedRef.current = false;
+      }
+      prevCountRef.current = newCount;
+      setSyncCount(newCount);
     };
     window.addEventListener('ph_sync_queue_update', handleQueueChange);
-    setSyncCount(getQueue().length);
+    const initialCount = getQueue().length;
+    prevCountRef.current = initialCount;
+    setSyncCount(initialCount);
 
     // Procesar cola al montar si hay conexión
     if (navigator.onLine) {
@@ -173,8 +185,7 @@ export default function ServiceWorkerRegister() {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('ph_sync_queue_update', handleQueueChange);
       clearInterval(interval);
-    };
-  }, [processQueue]);
+    };    }, [processQueue]);
 
   if (!showBanner && syncCount === 0) return null;
 
@@ -195,8 +206,8 @@ export default function ServiceWorkerRegister() {
       )}
 
       {/* Indicador de cola de sincronización */}
-      {syncCount > 0 && online && (
-        <div className="fixed bottom-4 right-4 z-[200]">
+      {syncCount > 0 && online && !dismissed && (
+        <div className="fixed bottom-4 right-4 z-[200] flex items-end gap-2">
           <button
             onClick={processQueue}
             disabled={syncing}
@@ -208,6 +219,13 @@ export default function ServiceWorkerRegister() {
               <CloudOff size={16} />
             )}
             {syncing ? 'Sincronizando...' : `${syncCount} cambios pendientes`}
+          </button>
+          <button
+            onClick={() => { setDismissed(true); dismissedRef.current = true; }}
+            className="bg-gray-800/70 text-white p-2 rounded-full shadow-xl hover:bg-gray-800 transition-colors"
+            title="Cerrar"
+          >
+            <X size={14} />
           </button>
         </div>
       )}
