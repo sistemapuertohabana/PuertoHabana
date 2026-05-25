@@ -51,7 +51,7 @@ serwist.addEventListeners();
 const swSelf = self as any;
 
 swSelf.addEventListener('push', (event: any) => {
-  let data: { titulo?: string; mensaje?: string } = {};
+  let data: { titulo?: string; mensaje?: string; url?: string; rol_destino?: string } = {};
   if (event.data) {
     try { data = event.data.json(); } catch { data = { titulo: event.data.text() }; }
   }
@@ -62,19 +62,36 @@ swSelf.addEventListener('push', (event: any) => {
       body,
       icon: '/icon-192.png',
       vibrate: [200, 100, 200],
+      data: { url: data.url || '/', rol_destino: data.rol_destino || '' },
     })
   );
 });
 
-// Click en notificación → abrir/enfocar la app
+// Click en notificación → abrir/enfocar la app y navegar según el tipo
 swSelf.addEventListener('notificationclick', (event: any) => {
   event.notification.close();
+  const data = event.notification.data || {};
+  const url = data.url || '/';
+  const rolDestino = data.rol_destino || '';
+  
+  // Si el push incluyó una URL específica, usarla; si no, mapear por rol
+  const rutas: Record<string, string> = {
+    cocina: '/cocina',
+    mozo: '/mozo',
+    admin: '/admin/dashboard',
+    lavaplato: '/lavaplato',
+  };
+  const ruta = url !== '/' ? url : (rutas[rolDestino] || '/');
+
   event.waitUntil(
     swSelf.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clients: any[]) => {
       if (clients.length > 0) {
-        clients[0].focus();
+        const client = clients[0];
+        client.focus();
+        // Enviar mensaje al cliente para navegar (manejado en el layout)
+        client.postMessage({ type: 'NAVIGATE', url: ruta });
       } else {
-        swSelf.clients.openWindow('/');
+        swSelf.clients.openWindow(ruta);
       }
     })
   );

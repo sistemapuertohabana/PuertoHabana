@@ -1,5 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
@@ -26,7 +27,16 @@ function detectarIcono(titulo: string, mensaje: string) {
   return iconMap.default;
 }
 
+const rutasPorRol: Record<string, string> = {
+  admin: '/admin/dashboard',
+  mozo: '/mozo',
+  cocina: '/cocina',
+  lavaplato: '/lavaplato',
+  desarrollador: '/desarrollador',
+};
+
 export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: string, rol: string }) {
+  const router = useRouter();
   const [notificacion, setNotificacion] = useState<any>(null);
   const [activado, setActivado] = useState(false);
   const [checking, setChecking] = useState(true);
@@ -56,6 +66,21 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
       }
       setChecking(false);
     }
+    
+    // Escuchar mensajes del Service Worker para navegación (desde notificationclick)
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data && event.data.type === 'NAVIGATE' && event.data.url) {
+        router.push(event.data.url);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      navigator.serviceWorker?.addEventListener('message', handleMessage);
+    }
+    return () => {
+      if (typeof window !== 'undefined') {
+        navigator.serviceWorker?.removeEventListener('message', handleMessage);
+      }
+    };
   }, []);
 
   // Auto-suscribir a PushManager cuando se activan las notificaciones
@@ -190,6 +215,12 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   // Si no está activado, no mostramos nada y dejamos que lo active en configuración
   if (!activado) return null;
 
+  const irAPagina = () => {
+    const destino = rutasPorRol[rol] || '/';
+    cerrar();
+    router.push(destino);
+  };
+
   if (!notificacion) return null;
 
   const icono = detectarIcono(notificacion.titulo, notificacion.mensaje);
@@ -198,7 +229,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     <div
       className={`fixed top-5 right-5 z-[9999] max-w-sm w-[calc(100%-2.5rem)] sm:w-auto sm:min-w-[340px] ${saliendo ? 'animate-out slide-out-to-right-8 opacity-0' : 'animate-in slide-in-from-right-8 fade-in'} duration-300`}
     >
-      <div className="relative bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
+      <div className="relative bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden cursor-pointer transition-all hover:shadow-[0_12px_48px_-8px_rgba(0,0,0,0.18)]" onClick={irAPagina}>
         {/* Gradient accent bar at top */}
         <div className={`h-1 w-full bg-gradient-to-r ${icono.bg}`} />
 
@@ -212,18 +243,23 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
             {/* Content */}
             <div className="flex-1 min-w-0">
               <div className="flex items-start justify-between gap-2">
-                <h4 className="text-sm font-semibold text-gray-900 leading-snug">
-                  {notificacion.titulo}
-                </h4>
+                <div className="flex-1">
+                  <h4 className="text-sm font-semibold text-gray-900 leading-snug hover:text-blue-600 transition-colors">
+                    {notificacion.titulo}
+                  </h4>
+                  <p className="text-[10px] text-blue-500 mt-0.5 font-medium">
+                    Toca para ir a {rol === 'cocina' ? 'cocina' : rol === 'mozo' ? 'tus pedidos' : 'tu panel'}
+                  </p>
+                </div>
                 <button
-                  onClick={cerrar}
+                  onClick={(e) => { e.stopPropagation(); cerrar(); }}
                   aria-label="Cerrar notificación"
                   className="shrink-0 -mt-0.5 -mr-1 w-6 h-6 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-all"
                 >
                   <X size={14} strokeWidth={2} />
                 </button>
               </div>
-              <p className="text-xs text-gray-500 mt-1 leading-relaxed pr-2">
+              <p className="text-xs text-gray-500 mt-1.5 leading-relaxed pr-2">
                 {notificacion.mensaje}
               </p>
 
@@ -231,12 +267,15 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
                 <span className="text-[10px] text-gray-300 font-medium uppercase tracking-wider">
                   Puerto Habana
                 </span>
-                <button
-                  onClick={cerrar}
-                  className="text-[11px] font-semibold text-gray-500 hover:text-gray-800 px-3.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all active:scale-95"
-                >
-                  Entendido
-                </button>
+                <div className="flex items-center gap-2">
+                  <span className="text-[10px] text-blue-400 font-medium">Ver panel →</span>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); cerrar(); }}
+                    className="text-[11px] font-semibold text-gray-500 hover:text-gray-800 px-3.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all active:scale-95"
+                  >
+                    Entendido
+                  </button>
+                </div>
               </div>
             </div>
           </div>

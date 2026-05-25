@@ -53,7 +53,7 @@ export async function sendPushNotification({
     return { sent: 0, removed: 0 };
   }
 
-  const payload = JSON.stringify({ titulo, mensaje, url: url || '/' });
+  const payload = JSON.stringify({ titulo, mensaje, url: url || '/', rol_destino });
   let sent = 0;
   const toRemove: number[] = [];
 

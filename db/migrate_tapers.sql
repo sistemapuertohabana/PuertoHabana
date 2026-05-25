@@ -1,21 +1,49 @@
 -- ============================================================
 --  Migración: Permitir categoría 'tapers' en comandas
---  Ejecutar en el SQL Editor de Supabase
+--  Ejecutar TODO este SQL en el SQL Editor de Supabase
+-- ============================================================
+--  NOTA: Ejecuta el script COMPLETO de una sola vez.
+--  Si ya lo ejecutaste antes y decía OK, ejecútalo de nuevo
+--  con esta versión corregida.
 -- ============================================================
 
--- 1. Actualizar CHECK constraint en comanda_items para permitir 'tapers'
-ALTER TABLE comanda_items
-DROP CONSTRAINT IF EXISTS comanda_items_categoria_check;
+-- 1. Encontrar y eliminar el CHECK constraint existente en comanda_items.categoria
+--    (PostgreSQL le asigna un nombre auto-generado que puede variar)
+DO $$
+DECLARE
+  v_constraint_name text;
+BEGIN
+  -- Buscar el constraint actual en la columna 'categoria'
+  SELECT con.conname INTO v_constraint_name
+  FROM pg_constraint con
+  JOIN pg_class rel ON rel.oid = con.conrelid
+  WHERE rel.relname = 'comanda_items'
+    AND con.contype = 'c'
+    AND con.conkey::text LIKE '%' || (
+      SELECT attnum::text FROM pg_attribute 
+      WHERE attrelid = rel.oid AND attname = 'categoria'
+    ) || '%';
+  
+  -- Si encontramos un constraint, lo eliminamos
+  IF v_constraint_name IS NOT NULL THEN
+    EXECUTE format('ALTER TABLE comanda_items DROP CONSTRAINT %I', v_constraint_name);
+    RAISE NOTICE 'Constraint eliminado: %', v_constraint_name;
+  ELSE
+    RAISE NOTICE 'No se encontró constraint en comanda_items.categoria';
+  END IF;
+END;
+$$;
 
+-- 2. Agregar el nuevo constraint que permite 'tapers'
 ALTER TABLE comanda_items
 ADD CONSTRAINT comanda_items_categoria_check
   CHECK (categoria IN ('comida','bebidas','tapers'));
 
--- 2. Agregar columna total_tapers a ventas_diarias (si no existe)
+-- 3. Agregar columna total_tapers a ventas_diarias (si no existe)
 ALTER TABLE ventas_diarias
 ADD COLUMN IF NOT EXISTS total_tapers NUMERIC(10,2) NOT NULL DEFAULT 0.00;
 
--- 3. Actualizar función upsert_ventas_diarias para aceptar tapers
+-- 4. Actualizar función upsert_ventas_diarias para aceptar tapers
 CREATE OR REPLACE FUNCTION upsert_ventas_diarias(
   p_fecha DATE,
   p_ingresos NUMERIC,
@@ -35,3 +63,12 @@ BEGIN
         updated_at     = now();
 END;
 $$;
+
+-- ============================================================
+--  VERIFICACIÓN: Ejecuta estas consultas para confirmar
+-- ============================================================
+-- SELECT conname, contype, conkey FROM pg_constraint 
+-- WHERE conrelid = 'comanda_items'::regclass AND contype = 'c';
+-- 
+-- SELECT column_name, data_type FROM information_schema.columns 
+-- WHERE table_name = 'ventas_diarias' AND column_name = 'total_tapers';
