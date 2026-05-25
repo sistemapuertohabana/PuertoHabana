@@ -38,6 +38,7 @@ export default function LoginLavaplatoPage() {
         localStorage.setItem('ph_lavaplato_session', JSON.stringify({
           id: user.id, nombre: user.nombre, email: user.email,
           rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+          turno: user.turno || '', foto_url: user.foto_url || '',
         }));
         router.push('/lavaplato');
         return;
@@ -55,6 +56,7 @@ export default function LoginLavaplatoPage() {
         localStorage.setItem('ph_lavaplato_session', JSON.stringify({
           id: user.id, nombre: user.nombre, email: user.email,
           rol: user.rol, salario_monto: user.salario_monto, salario_tipo: user.salario_tipo,
+          turno: user.turno || '', foto_url: user.foto_url || '',
         }));
         router.push('/lavaplato');
       } else {

@@ -168,12 +168,14 @@ export default function LavaplatoPerfilPage() {
               {/* Turno (solo visual — admin edita desde dashboard) */}
               <span className={`px-2.5 py-0.5 text-xs font-semibold rounded-full border ${
                 extra.turno
-                  ? extra.turno === 'Mañana'
+                  ? extra.turno.toLowerCase() === 'mañana'
                     ? 'bg-amber-100 text-amber-700 border-amber-200'
                     : 'bg-indigo-100 text-indigo-700 border-indigo-200'
                   : 'bg-gray-100 text-gray-500 border-gray-200'
               }`}>
-                {extra.turno || 'Sin turno'}
+                {extra.turno
+                  ? extra.turno.charAt(0).toUpperCase() + extra.turno.slice(1).toLowerCase()
+                  : 'Sin turno'}
               </span>
             </div>
           </div>

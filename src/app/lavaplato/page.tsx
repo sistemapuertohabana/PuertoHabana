@@ -1,16 +1,43 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Droplets } from 'lucide-react';
+import { Droplets, Sun, Moon } from 'lucide-react';
 
 export default function LavaplatoDashboard() {
   const [session, setSession] = useState<any>(null);
 
   useEffect(() => {
-    try {
-      const stored = localStorage.getItem('ph_lavaplato_session');
-      if (stored) setSession(JSON.parse(stored));
-    } catch {}
+    const loadSession = async () => {
+      try {
+        const stored = localStorage.getItem('ph_lavaplato_session');
+        if (!stored) return;
+        const sess = JSON.parse(stored);
+        
+        // Refrescar turno desde la API para recoger cambios hechos por el admin
+        try {
+          const res = await fetch('/api/personal');
+          if (res.ok) {
+            const personal: any[] = await res.json();
+            const updated = personal.find(p => p.id === sess.id && p.rol === 'lavaplato');
+            if (updated) {
+              sess.turno = updated.turno || sess.turno;
+              sess.nombre = updated.nombre || sess.nombre;
+              sess.foto_url = updated.foto_url || sess.foto_url;
+              localStorage.setItem('ph_lavaplato_session', JSON.stringify(sess));
+            }
+          }
+        } catch {}
+        
+        setSession(sess);
+      } catch {}
+    };
+    
+    loadSession();
   }, []);
+
+  const turnoLabel = session?.turno === 'mañana' ? 'Mañana' : session?.turno === 'noche' ? 'Noche' : null;
+  const turnoColors = session?.turno === 'mañana' 
+    ? 'bg-amber-50 border-amber-100 text-amber-700' 
+    : 'bg-indigo-50 border-indigo-100 text-indigo-700';
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -19,10 +46,19 @@ export default function LavaplatoDashboard() {
         <div className="w-10 h-10 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
           <Droplets size={20} className="text-cyan-500" strokeWidth={1.5} />
         </div>
-        <div>
-          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Panel de Lavado</h1>
+        <div className="flex-1">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-medium text-gray-900 tracking-tight">Panel de Lavado</h1>
+            {turnoLabel && (
+              <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 text-[10px] font-medium rounded-full border ${turnoColors}`}>
+                {session?.turno === 'mañana' ? <Sun size={11} /> : <Moon size={11} />}
+                {turnoLabel}
+              </span>
+            )}
+          </div>
           <p className="text-xs text-gray-400 mt-0.5">
             Bienvenido/a, {session?.nombre || 'Lavaplatos'}
+            {!turnoLabel && <span className="text-gray-300 ml-1">· Sin turno asignado</span>}
           </p>
         </div>
       </div>

@@ -26,9 +26,9 @@ export function useAuth() {
       const sess = JSON.parse(localStorage.getItem(key) || 'null');
       setProfile(sess);
       
-      // Si la sesión tiene ID pero no foto_url, intentar obtener datos actualizados
-      // Esto permite que la foto de perfil se sincronice entre dispositivos
-      if (sess?.id && !sess.foto_url) {
+      // Si la sesión tiene ID pero le falta foto o turno, intentar obtener datos actualizados
+      // Esto permite que la foto de perfil y el turno se sincronicen entre dispositivos
+      if (sess?.id && (!sess.foto_url || !sess.turno)) {
         if (sess.rol === 'admin') {
           // Admin usa MySQL — endpoint admin-exists
           fetch('/api/auth/admin-exists')

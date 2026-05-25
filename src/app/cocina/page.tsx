@@ -46,6 +46,31 @@ export default function CocinaPage() {
       : getLocalDateString()
   );
 
+  // Refrescar sesión desde la API para recoger cambios hechos por el admin (turno, foto, etc.)
+  useEffect(() => {
+    const loadSession = async () => {
+      try {
+        const stored = localStorage.getItem('ph_cocina_session');
+        if (!stored) return;
+        const sess = JSON.parse(stored);
+        try {
+          const res = await fetch('/api/personal');
+          if (res.ok) {
+            const personal: any[] = await res.json();
+            const updated = personal.find(p => p.id === sess.id && (p.rol === 'cocina' || p.rol === 'ayudante_cocina'));
+            if (updated) {
+              sess.turno = updated.turno || sess.turno;
+              sess.nombre = updated.nombre || sess.nombre;
+              sess.foto_url = updated.foto_url || sess.foto_url;
+              localStorage.setItem('ph_cocina_session', JSON.stringify(sess));
+            }
+          }
+        } catch {}
+      } catch {}
+    };
+    loadSession();
+  }, []);
+
   const loadPedidos = useCallback(async () => {
     try {
       const url = showHistory
