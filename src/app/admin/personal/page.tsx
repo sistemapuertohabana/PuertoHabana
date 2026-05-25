@@ -393,8 +393,8 @@ export default function PersonalPage() {
       {!loading && (
         <>
           {/* Desktop table */}
-          <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full">
+          <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-x-auto">
+            <table className="w-full min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
                   {['Nombre', 'DNI', 'Gmail', 'Rol', 'Salario', 'Acciones'].map(h => (
@@ -502,8 +502,8 @@ export default function PersonalPage() {
                 </div>
               </div>
 
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+                <table className="w-full min-w-[500px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       {['Empleado', 'Rol', 'Carnet QR', 'DNI/Email'].map(h => (
@@ -566,8 +566,8 @@ export default function PersonalPage() {
                 <Loader2 size={24} className="animate-spin text-gray-300" />
               </div>
             ) : (
-              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
-                <table className="w-full">
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+                <table className="w-full min-w-[500px]">
                   <thead className="bg-gray-50 border-b border-gray-200">
                     <tr>
                       {['Personal', 'Rol', 'Estado', 'Hora de Llegada'].map(h => (

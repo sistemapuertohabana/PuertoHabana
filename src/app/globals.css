@@ -24,3 +24,42 @@ body {
   overflow-x: hidden;
   width: 100%;
 }
+
+/* ── Scrollbar styles ───────────────────────────────────────────────────── */
+/* Mobile: scrollbar invisible */
+.overflow-x-auto::-webkit-scrollbar,
+.overflow-y-auto::-webkit-scrollbar {
+  display: none;
+}
+.overflow-x-auto,
+.overflow-y-auto {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Desktop: scrollbar visible and styled */
+@media (min-width: 768px) {
+  .overflow-x-auto::-webkit-scrollbar,
+  .overflow-y-auto::-webkit-scrollbar {
+    display: block;
+    height: 6px;
+    width: 6px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-track,
+  .overflow-y-auto::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb,
+  .overflow-y-auto::-webkit-scrollbar-thumb {
+    background: #d1d5db;
+    border-radius: 3px;
+  }
+  .overflow-x-auto::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+  }
+  .overflow-x-auto,
+  .overflow-y-auto {
+    -ms-overflow-style: auto;
+    scrollbar-width: thin;
+  }
+}

@@ -85,7 +85,7 @@ export default function Sidebar() {
     window.dispatchEvent(new Event('ph_store_update'));
   };
 
-  const layout = navbar === 'centrado' ? 'justify-center gap-6' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
+  const layout = navbar === 'centrado' ? 'justify-center gap-1' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
 
   return (
     <>

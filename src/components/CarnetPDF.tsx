@@ -25,13 +25,29 @@ const ROL_LABELS: Record<string, string> = {
   dev:             'Desarrollador',
 };
 
+function loadImage(url: string): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width = img.naturalWidth;
+      canvas.height = img.naturalHeight;
+      const ctx = canvas.getContext('2d')!;
+      ctx.drawImage(img, 0, 0);
+      resolve(canvas.toDataURL('image/jpeg', 0.85));
+    };
+    img.onerror = () => reject(new Error('No se pudo cargar la imagen'));
+    img.src = url;
+  });
+}
+
 export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; onClose?: () => void }) {
   const [generando, setGenerando] = useState(false);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
 
   // Generar QR con los datos del empleado
   const generarQR = async (): Promise<string> => {
-    // El QR codifica la URL de asistencia + ID del empleado
     const data = JSON.stringify({
       id: empleado.id,
       nombre: empleado.nombre,
@@ -47,7 +63,6 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
       });
       return url;
     } catch {
-      // Fallback: generar QR simple con solo el ID
       return await QRCode.toDataURL(empleado.id, {
         width: 300,
         margin: 2,
@@ -64,93 +79,116 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
       const doc = new jsPDF({
         orientation: 'portrait',
         unit: 'mm',
-        format: [85, 125], // Tamaño carnet: 85mm x 125mm
+        format: [85, 125],
       });
 
-      // Fondo principal
-      doc.setFillColor(15, 23, 42); // slate-900
+      // ── Fondo blanco ──
+      doc.setFillColor(255, 255, 255);
       doc.rect(0, 0, 85, 125, 'F');
 
-      // Borde decorativo
-      doc.setDrawColor(56, 189, 248); // cyan-400
-      doc.setLineWidth(0.5);
+      // ── Borde sutil gris ──
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.3);
       doc.rect(2, 2, 81, 121, 'S');
 
-      // Header con nombre del restaurante
-      doc.setFillColor(56, 189, 248);
-      doc.rect(0, 0, 85, 22, 'F');
+      // ── Header minimalista ──
+      doc.setFillColor(249, 250, 251); // gray-50
+      doc.rect(0, 0, 85, 20, 'F');
 
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(14);
+      doc.setTextColor(17, 24, 39); // gray-900
+      doc.setFontSize(11);
       doc.setFont('helvetica', 'bold');
-      doc.text('PUERTO HABANA', 42.5, 10, { align: 'center' });
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.text('C E V I C H E R I A', 42.5, 15.5, { align: 'center' });
-      doc.setFontSize(6);
-      doc.text('IDENTIFICACION DEL PERSONAL', 42.5, 19.5, { align: 'center' });
+      doc.text('PUERTO HABANA', 42.5, 9, { align: 'center' });
 
-      // Espacio para foto (círculo)
-      doc.setFillColor(255, 255, 255);
-      doc.circle(42.5, 45, 11, 'F');
-      doc.setDrawColor(56, 189, 248);
-      doc.setLineWidth(0.8);
-      doc.circle(42.5, 45, 11, 'S');
-
-      // Nombre
-      doc.setTextColor(255, 255, 255);
-      doc.setFontSize(10);
-      doc.setFont('helvetica', 'bold');
-      const nombreParts = doc.splitTextToSize(empleado.nombre.toUpperCase(), 70);
-      doc.text(nombreParts, 42.5, 62, { align: 'center' });
-
-      // Rol
-      doc.setFontSize(7);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(56, 189, 248);
-      doc.text((ROL_LABELS[empleado.rol] || empleado.rol).toUpperCase(), 42.5, 69, { align: 'center' });
-
-      // Línea separadora
-      doc.setDrawColor(56, 189, 248);
-      doc.setLineWidth(0.3);
-      doc.line(10, 74, 75, 74);
-
-      // Datos
-      doc.setTextColor(148, 163, 184); // slate-400
       doc.setFontSize(5.5);
-      doc.setFont('helvetica', 'bold');
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(156, 163, 175); // gray-400
+      doc.text('C E V I C H E R I A', 42.5, 13.5, { align: 'center' });
 
+      // ── Línea divisoria ──
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.3);
+      doc.line(10, 18, 75, 18);
+
+      // ── Foto (círculo) ──
+      const fotoX = 42.5;
+      const fotoY = 38;
+      const fotoR = 10;
+
+      if (empleado.foto_url) {
+        try {
+          const imgData = await loadImage(empleado.foto_url);
+          // jsPDF no soporta recortes circulares nativamente.
+          // Estrategia: crear el círculo blanco de fondo, luego poner la imagen cuadrada encima
+          // como no podemos recortar, usamos la imagen directamente
+          doc.setFillColor(255, 255, 255);
+          doc.circle(fotoX, fotoY, fotoR, 'F');
+          // Agregar imagen cuadrada, con clip solo logramos con addImage
+          doc.addImage(imgData, 'JPEG', fotoX - fotoR, fotoY - fotoR, fotoR * 2, fotoR * 2);
+          // Círculo blanco alrededor para simular borde
+          doc.setDrawColor(229, 231, 235);
+          doc.setLineWidth(0.5);
+          doc.circle(fotoX, fotoY, fotoR, 'S');
+        } catch {
+          // Si falla la carga de la foto, dibujar círculo vacío
+          drawEmptyPhoto(doc, fotoX, fotoY, fotoR);
+        }
+      } else {
+        drawEmptyPhoto(doc, fotoX, fotoY, fotoR);
+      }
+
+      // ── Nombre ──
+      doc.setTextColor(17, 24, 39);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      const nombreParts = doc.splitTextToSize(empleado.nombre.toUpperCase(), 65);
+      doc.text(nombreParts, 42.5, 55, { align: 'center' });
+
+      // ── Rol ──
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(107, 114, 128); // gray-500
+      doc.text((ROL_LABELS[empleado.rol] || empleado.rol).toUpperCase(), 42.5, 60.5, { align: 'center' });
+
+      // ── Línea separadora ──
+      doc.setDrawColor(229, 231, 235);
+      doc.setLineWidth(0.3);
+      doc.line(12, 64, 73, 64);
+
+      // ── Datos ──
       const datos = [
-        { label: 'DNI', value: empleado.dni || '—' },
-        { label: 'TURNO', value: empleado.turno ? empleado.turno.charAt(0).toUpperCase() + empleado.turno.slice(1) : '—' },
-        { label: 'EMAIL', value: empleado.email || '—' },
+        { label: 'DNI',    value: empleado.dni || '—' },
+        { label: 'TURNO',  value: empleado.turno ? empleado.turno.charAt(0).toUpperCase() + empleado.turno.slice(1) : '—' },
+        { label: 'EMAIL',  value: empleado.email || '—' },
       ];
 
-      let yPos = 78;
+      let yPos = 67.5;
       datos.forEach(d => {
-        doc.setTextColor(100, 116, 139);
-        doc.text(d.label, 12, yPos);
-        doc.setTextColor(255, 255, 255);
-        doc.setFont('helvetica', 'normal');
-        const valParts = doc.splitTextToSize(d.value, 55);
-        doc.text(valParts, 42, yPos, { align: 'left' });
+        doc.setTextColor(156, 163, 175); // gray-400
+        doc.setFontSize(5);
         doc.setFont('helvetica', 'bold');
-        yPos += 6.5;
+        doc.text(d.label, 12, yPos);
+
+        doc.setTextColor(75, 85, 99); // gray-600
+        doc.setFont('helvetica', 'normal');
+        const valParts = doc.splitTextToSize(d.value, 50);
+        doc.text(valParts, 42, yPos, { align: 'left' });
+        yPos += 5.5;
       });
 
-      // QR Code
+      // ── QR Code ──
       if (qrUrl) {
-        const qrSize = 28;
+        const qrSize = 24;
         const qrX = (85 - qrSize) / 2;
-        const qrY = 93;
+        const qrY = 83;
         doc.addImage(qrUrl, 'PNG', qrX, qrY, qrSize, qrSize);
       }
 
-      // Footer
-      doc.setFontSize(4.5);
-      doc.setTextColor(71, 85, 105);
+      // ── Footer ──
+      doc.setFontSize(4);
+      doc.setTextColor(209, 213, 219);
       doc.setFont('helvetica', 'normal');
-      doc.text('CODEOl SOFTWARE PERU', 42.5, 122, { align: 'center' });
+      doc.text('CODEOl SOFTWARE', 42.5, 121.5, { align: 'center' });
 
       doc.save(`carnet-${empleado.nombre.toLowerCase().replace(/\s+/g, '-')}.pdf`);
     } catch (err) {
@@ -182,7 +220,7 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
         <button
           onClick={handleDescargarPDF}
           disabled={generando}
-          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors text-sm font-semibold disabled:opacity-60"
+          className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors text-sm font-semibold disabled:opacity-60"
         >
           {generando ? (
             <Loader2 size={16} className="animate-spin" />
@@ -200,3 +238,15 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
     </div>
   );
 }
+
+/* Helper: dibujar círculo de foto vacío */
+function drawEmptyPhoto(doc: jsPDF, x: number, y: number, r: number) {
+  doc.setFillColor(249, 250, 251);
+  doc.circle(x, y, r, 'F');
+  doc.setDrawColor(229, 231, 235);
+  doc.setLineWidth(0.5);
+  doc.circle(x, y, r, 'S');
+}
+
+// Nota: jsPDF no soporta clipping circular, así que la foto se renderiza
+// como imagen cuadrada dentro del área del círculo.
