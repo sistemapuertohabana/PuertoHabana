@@ -110,31 +110,25 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
       doc.setLineWidth(0.3);
       doc.line(10, 18, 75, 18);
 
-      // ── Foto (círculo) ──
-      const fotoX = 42.5;
-      const fotoY = 38;
-      const fotoR = 10;
+      // ── Foto (cuadrada) ──
+      const fotoW = 20;
+      const fotoH = 20;
+      const fotoX = 42.5 - fotoW / 2;
+      const fotoY = 28;
 
       if (empleado.foto_url) {
         try {
           const imgData = await loadImage(empleado.foto_url);
-          // jsPDF no soporta recortes circulares nativamente.
-          // Estrategia: crear el círculo blanco de fondo, luego poner la imagen cuadrada encima
-          // como no podemos recortar, usamos la imagen directamente
-          doc.setFillColor(255, 255, 255);
-          doc.circle(fotoX, fotoY, fotoR, 'F');
-          // Agregar imagen cuadrada, con clip solo logramos con addImage
-          doc.addImage(imgData, 'JPEG', fotoX - fotoR, fotoY - fotoR, fotoR * 2, fotoR * 2);
-          // Círculo blanco alrededor para simular borde
+          doc.addImage(imgData, 'JPEG', fotoX, fotoY, fotoW, fotoH);
+          // Borde sutil alrededor de la foto
           doc.setDrawColor(229, 231, 235);
-          doc.setLineWidth(0.5);
-          doc.circle(fotoX, fotoY, fotoR, 'S');
+          doc.setLineWidth(0.3);
+          doc.rect(fotoX, fotoY, fotoW, fotoH, 'S');
         } catch {
-          // Si falla la carga de la foto, dibujar círculo vacío
-          drawEmptyPhoto(doc, fotoX, fotoY, fotoR);
+          drawEmptyPhoto(doc, fotoX, fotoY, fotoW, fotoH);
         }
       } else {
-        drawEmptyPhoto(doc, fotoX, fotoY, fotoR);
+        drawEmptyPhoto(doc, fotoX, fotoY, fotoW, fotoH);
       }
 
       // ── Nombre ──
@@ -239,14 +233,40 @@ export default function CarnetPDF({ empleado, onClose }: { empleado: Empleado; o
   );
 }
 
-/* Helper: dibujar círculo de foto vacío */
-function drawEmptyPhoto(doc: jsPDF, x: number, y: number, r: number) {
-  doc.setFillColor(249, 250, 251);
-  doc.circle(x, y, r, 'F');
+/* Helper: dibujar icono de usuario cuando no hay foto */
+function drawEmptyPhoto(doc: jsPDF, x: number, y: number, w: number, h: number) {
+  // Fondo gris claro
+  doc.setFillColor(243, 244, 246);
+  doc.rect(x, y, w, h, 'F');
+  // Borde
   doc.setDrawColor(229, 231, 235);
-  doc.setLineWidth(0.5);
-  doc.circle(x, y, r, 'S');
-}
+  doc.setLineWidth(0.3);
+  doc.rect(x, y, w, h, 'S');
 
-// Nota: jsPDF no soporta clipping circular, así que la foto se renderiza
-// como imagen cuadrada dentro del área del círculo.
+  // Icono de persona: cabeza (círculo) + cuerpo (trapecio)
+  const cx = x + w / 2;
+  const headR = w * 0.18;
+  const bodyTopY = y + h * 0.42;
+  const bodyBotY = y + h * 0.82;
+  const bodyTopW = w * 0.28;
+  const bodyBotW = w * 0.6;
+
+  doc.setFillColor(209, 213, 219); // gray-300
+
+  // Cabeza
+  doc.circle(cx, y + h * 0.25, headR, 'F');
+
+  // Cuerpo (trapecio usando triángulos)
+  doc.triangle(
+    cx - bodyTopW / 2, bodyTopY,
+    cx + bodyTopW / 2, bodyTopY,
+    cx + bodyBotW / 2, bodyBotY,
+    'F'
+  );
+  doc.triangle(
+    cx - bodyTopW / 2, bodyTopY,
+    cx + bodyBotW / 2, bodyBotY,
+    cx - bodyBotW / 2, bodyBotY,
+    'F'
+  );
+}
