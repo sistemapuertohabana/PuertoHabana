@@ -67,7 +67,7 @@ CREATE TABLE comanda_items (
   nombre TEXT NOT NULL,
   cantidad INTEGER NOT NULL DEFAULT 1,
   precio NUMERIC(10,2) NOT NULL,
-  categoria TEXT NOT NULL CHECK (categoria IN ('comida','bebidas')) DEFAULT 'comida',
+  categoria TEXT NOT NULL CHECK (categoria IN ('comida','bebidas','tapers')) DEFAULT 'comida',
   notas TEXT,
   estado TEXT NOT NULL CHECK (estado IN ('Pendiente','Preparando','Listo','Entregado')) DEFAULT 'Pendiente',
   created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc', now())
@@ -180,16 +180,18 @@ CREATE OR REPLACE FUNCTION upsert_ventas_diarias(
   p_fecha DATE,
   p_ingresos NUMERIC,
   p_comida NUMERIC,
-  p_bebidas NUMERIC
+  p_bebidas NUMERIC,
+  p_tapers NUMERIC DEFAULT 0
 ) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
-  INSERT INTO ventas_diarias (fecha, total_comandas, total_ingresos, total_comida, total_bebidas)
-  VALUES (p_fecha, 1, p_ingresos, p_comida, p_bebidas)
+  INSERT INTO ventas_diarias (fecha, total_comandas, total_ingresos, total_comida, total_bebidas, total_tapers)
+  VALUES (p_fecha, 1, p_ingresos, p_comida, p_bebidas, p_tapers)
   ON CONFLICT (fecha) DO UPDATE
     SET total_comandas = ventas_diarias.total_comandas + 1,
         total_ingresos = ventas_diarias.total_ingresos + EXCLUDED.total_ingresos,
         total_comida   = ventas_diarias.total_comida   + EXCLUDED.total_comida,
         total_bebidas  = ventas_diarias.total_bebidas  + EXCLUDED.total_bebidas,
+        total_tapers   = ventas_diarias.total_tapers   + EXCLUDED.total_tapers,
         updated_at     = now();
 END;
 $$;
@@ -215,7 +217,8 @@ ADD COLUMN IF NOT EXISTS metodo_pago TEXT NOT NULL CHECK (metodo_pago IN ('Efect
 -- 2. Agregar el registro de Yape y Efectivo al resumen de ventas diarias
 ALTER TABLE ventas_diarias
 ADD COLUMN IF NOT EXISTS total_yape NUMERIC(10,2) NOT NULL DEFAULT 0.00,
-ADD COLUMN IF NOT EXISTS total_efectivo NUMERIC(10,2) NOT NULL DEFAULT 0.00;
+ADD COLUMN IF NOT EXISTS total_efectivo NUMERIC(10,2) NOT NULL DEFAULT 0.00,
+ADD COLUMN IF NOT EXISTS total_tapers NUMERIC(10,2) NOT NULL DEFAULT 0.00;
 
 -- 3. Crear la nueva tabla de notificaciones
 CREATE TABLE IF NOT EXISTS notificaciones (

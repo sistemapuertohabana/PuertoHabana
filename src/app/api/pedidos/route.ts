@@ -62,12 +62,14 @@ export async function POST(request: Request) {
   // Upsert ventas_diarias
   const totalComida  = items.filter((i: any) => i.categoria === 'comida')  .reduce((s: number, i: any) => s + i.precio * i.cantidad, 0);
   const totalBebidas = items.filter((i: any) => i.categoria === 'bebidas') .reduce((s: number, i: any) => s + i.precio * i.cantidad, 0);
+  const totalTapers  = items.filter((i: any) => i.categoria === 'tapers')  .reduce((s: number, i: any) => s + i.precio * i.cantidad, 0);
 
   await sb.rpc('upsert_ventas_diarias', {
     p_fecha: today,
     p_ingresos: total,
     p_comida: totalComida,
     p_bebidas: totalBebidas,
+    p_tapers: totalTapers,
   }).maybeSingle();
 
   return NextResponse.json({ success: true, id: comanda.id }, { status: 201 });
