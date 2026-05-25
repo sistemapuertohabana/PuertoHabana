@@ -147,6 +147,20 @@ export default function ConfiguracionPage() {
   const [mounted,setMounted]= useState(false);
   const [turnosConfig, setTurnosConfig] = useState<TurnosConfig>(TURNOS_CONFIG_DEFAULT);
 
+  // Sincronizar turnos_config desde Supabase para recoger cambios hechos desde otros dispositivos
+  const syncTurnosConfigFromServer = async () => {
+    try {
+      const res = await fetch('/api/configuracion?clave=turnos_config');
+      if (res.ok) {
+        const { valor } = await res.json();
+        if (valor) {
+          setTurnosConfig(valor);
+          localStorage.setItem('ph_turnos_config', JSON.stringify(valor));
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     setMounted(true);
     const sd  = localStorage.getItem('sidebarDesign_admin') as SidebarDesign | null;
@@ -166,6 +180,9 @@ export default function ConfiguracionPage() {
     setConfig(p => ({ ...p, ...configUpdate }));
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
     setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
+    
+    // Sincronizar desde Supabase para recoger cambios hechos desde otros dispositivos
+    syncTurnosConfigFromServer();
   }, []);
 
   /* Cambia sidebar en tiempo real */
@@ -193,6 +210,12 @@ export default function ConfiguracionPage() {
       horarioTarde:  config.horarioTarde,
     }));
     localStorage.setItem('ph_turnos_config', JSON.stringify(turnosConfig));
+    // Sincronizar con Supabase para que empleados en otros dispositivos reciban los cambios
+    fetch('/api/configuracion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clave: 'turnos_config', valor: turnosConfig }),
+    }).catch(() => {});
     window.dispatchEvent(new Event('ph_store_update'));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);

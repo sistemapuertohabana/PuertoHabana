@@ -150,7 +150,18 @@ export default function MozoPage() {
   useEffect(() => {
     const unsub = subscribeInventario('tapers', (data) => setTapers(data));
     return () => unsub();
-  }, []);
+  }, []);  // Sincronizar turnos config desde Supabase a localStorage
+  const syncTurnosConfig = async () => {
+    try {
+      const res = await fetch('/api/configuracion?clave=turnos_config');
+      if (res.ok) {
+        const { valor } = await res.json();
+        if (valor) {
+          localStorage.setItem('ph_turnos_config', JSON.stringify(valor));
+        }
+      }
+    } catch {}
+  };
 
   useEffect(() => {
     const loadSession = async () => {
@@ -169,7 +180,10 @@ export default function MozoPage() {
             }
           }
         } catch {}
-        
+
+        // Sincronizar config de turnos desde Supabase
+        await syncTurnosConfig();
+
         setMozoSession(session);
         if (session.turno) {
           setTurnoInfo(validarTurnoActivo(session.turno));
@@ -179,8 +193,10 @@ export default function MozoPage() {
     
     loadSession();
     
-    const interval = setInterval(() => {
+    const interval = setInterval(async () => {
       try {
+        // Sincronizar config de turnos periódicamente
+        await syncTurnosConfig();
         const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
         if (session.turno) {
           setTurnoInfo(validarTurnoActivo(session.turno));

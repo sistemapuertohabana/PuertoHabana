@@ -257,3 +257,4 @@ CREATE TABLE IF NOT EXISTS suscripciones_push (
 );
 
 ALTER PUBLICATION supabase_realtime ADD TABLE suscripciones_push;
+ALTER PUBLICATION supabase_realtime ADD TABLE configuracion;

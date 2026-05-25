@@ -52,6 +52,19 @@ export default function CocinaPage() {
       : getLocalDateString()
   );
 
+  // Sincronizar turnos config desde Supabase a localStorage
+  const syncTurnosConfig = async () => {
+    try {
+      const res = await fetch('/api/configuracion?clave=turnos_config');
+      if (res.ok) {
+        const { valor } = await res.json();
+        if (valor) {
+          localStorage.setItem('ph_turnos_config', JSON.stringify(valor));
+        }
+      }
+    } catch {}
+  };
+
   // Refrescar sesión desde la API para recoger cambios hechos por el admin (turno, foto, etc.)
   useEffect(() => {
     const loadSession = async () => {
@@ -60,6 +73,9 @@ export default function CocinaPage() {
         if (!stored) return;
         const sess = JSON.parse(stored);
         setCocinaSession(sess);
+        
+        // Sincronizar config de turnos desde Supabase
+        await syncTurnosConfig();
         
         // Verificar asistencia de hoy
         const hoy = new Date();
@@ -124,8 +140,10 @@ export default function CocinaPage() {
   useEffect(() => {
     loadPedidos();
     const interval = setInterval(loadPedidos, 5000);
+    // Sincronizar config de turnos cada 30s para reflejar cambios del admin sin recargar
+    const configInterval = setInterval(syncTurnosConfig, 30000);
     window.addEventListener('storage', loadPedidos);
-    return () => { clearInterval(interval); window.removeEventListener('storage', loadPedidos); };
+    return () => { clearInterval(interval); clearInterval(configInterval); window.removeEventListener('storage', loadPedidos); };
   }, [loadPedidos]);
 
   const updateEstado = async (id: number, nuevoEstado: string) => {

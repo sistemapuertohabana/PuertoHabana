@@ -10,12 +10,28 @@ export default function LavaplatoDashboard() {
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
 
+  // Sincronizar turnos config desde Supabase a localStorage
+  const syncTurnosConfig = async () => {
+    try {
+      const res = await fetch('/api/configuracion?clave=turnos_config');
+      if (res.ok) {
+        const { valor } = await res.json();
+        if (valor) {
+          localStorage.setItem('ph_turnos_config', JSON.stringify(valor));
+        }
+      }
+    } catch {}
+  };
+
   useEffect(() => {
     const loadSession = async () => {
       try {
         const stored = localStorage.getItem('ph_lavaplato_session');
         if (!stored) return;
         const sess = JSON.parse(stored);
+        
+        // Sincronizar config de turnos desde Supabase
+        await syncTurnosConfig();
         
         // Refrescar turno desde la API para recoger cambios hechos por el admin
         try {
@@ -59,6 +75,10 @@ export default function LavaplatoDashboard() {
     };
     
     loadSession();
+    
+    // Sincronizar config de turnos cada 30s para reflejar cambios del admin sin recargar
+    const configInterval = setInterval(syncTurnosConfig, 30000);
+    return () => clearInterval(configInterval);
   }, []);
 
   const turnoLabel = session?.turno === 'mañana' ? 'Mañana' : session?.turno === 'noche' ? 'Noche' : null;
