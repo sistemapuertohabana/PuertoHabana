@@ -21,6 +21,7 @@ export function useAuth() {
     if (pathname?.includes('/admin')) key = 'ph_admin_session';
     else if (pathname?.includes('/mozo')) key = 'ph_mozo_session';
     else if (pathname?.includes('/cocina')) key = 'ph_cocina_session';
+    else if (pathname?.includes('/desarrollador')) key = 'ph_dev_session';
 
     try {
       const sess = JSON.parse(localStorage.getItem(key) || 'null');
@@ -68,6 +69,8 @@ export function useAuth() {
     if (pathname?.includes('/admin')) key = 'ph_admin_session';
     else if (pathname?.includes('/mozo')) key = 'ph_mozo_session';
     else if (pathname?.includes('/cocina')) key = 'ph_cocina_session';
+    else if (pathname?.includes('/lavaplato')) key = 'ph_lavaplato_session';
+    else if (pathname?.includes('/desarrollador')) key = 'ph_dev_session';
     
     localStorage.removeItem(key);
     window.location.href = '/';

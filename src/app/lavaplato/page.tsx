@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Droplets, Sun, Moon, Clock, CheckCircle } from 'lucide-react';
+import { Droplets, Sun, Moon, Clock, CheckCircle, ClipboardList, Loader2 } from 'lucide-react';
 
 export default function LavaplatoDashboard() {
   const [session, setSession] = useState<any>(null);
@@ -9,6 +9,8 @@ export default function LavaplatoDashboard() {
   const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
+  const [tareas, setTareas] = useState<any[]>([]);
+  const [cargandoTareas, setCargandoTareas] = useState(true);
 
   // Sincronizar turnos config desde Supabase a localStorage
   const syncTurnosConfig = async () => {
@@ -80,6 +82,33 @@ export default function LavaplatoDashboard() {
     const configInterval = setInterval(syncTurnosConfig, 30000);
     return () => clearInterval(configInterval);
   }, []);
+
+  // Cargar tareas asignadas
+  useEffect(() => {
+    const cargarTareas = async () => {
+      const session = JSON.parse(localStorage.getItem('ph_lavaplato_session') || '{}');
+      if (!session.id) { setCargandoTareas(false); return; }
+      try {
+        const res = await fetch(`/api/tareas?asignado_a=${session.id}`);
+        if (res.ok) setTareas(await res.json());
+      } catch {}
+      setCargandoTareas(false);
+    };
+    cargarTareas();
+  }, []);
+
+  const handleCompletarTarea = async (id: number) => {
+    try {
+      const res = await fetch(`/api/tareas/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'completada' }),
+      });
+      if (res.ok) {
+        setTareas(prev => prev.map(t => t.id === id ? { ...t, estado: 'completada', completada_en: new Date().toISOString() } : t));
+      }
+    } catch {}
+  };
 
   const turnoLabel = session?.turno === 'mañana' ? 'Mañana' : session?.turno === 'noche' ? 'Noche' : null;
   const turnoColors = session?.turno === 'mañana' 
@@ -238,15 +267,75 @@ export default function LavaplatoDashboard() {
         </div>
       </div>
 
-      {/* Área de lavado */}
-      <div className="rounded-xl border border-gray-100 bg-white p-8 shadow-sm text-center">
-        <div className="w-12 h-12 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center mx-auto mb-4">
-          <Droplets size={22} className="text-cyan-300" strokeWidth={1.5} />
+      {/* ── Tareas pendientes ────────────────────────────────────────── */}
+      <div className="mb-8">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center">
+            <ClipboardList size={18} className="text-cyan-600" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-gray-900">Mis Tareas</h3>
+            <p className="text-xs text-gray-400">{tareas.filter(t => t.estado === 'pendiente').length} pendientes</p>
+          </div>
         </div>
-        <h3 className="text-sm font-medium text-gray-900 mb-1">Área de Lavado Lista</h3>
-        <p className="text-xs text-gray-400 font-light">
-          Este es tu panel inicial. Aquí se podrán agregar reportes de merma o inventario de limpieza en el futuro.
-        </p>
+
+        {cargandoTareas ? (
+          <div className="flex justify-center py-8">
+            <Loader2 size={24} className="animate-spin text-gray-300" />
+          </div>
+        ) : tareas.length === 0 ? (
+          <div className="rounded-xl border-2 border-dashed border-gray-200 bg-gray-50 p-8 text-center">
+            <ClipboardList size={28} className="mx-auto text-gray-300 mb-2" />
+            <p className="text-sm font-medium text-gray-500">No tienes tareas asignadas</p>
+            <p className="text-xs text-gray-400 mt-0.5">El admin te asignará tareas desde su panel.</p>
+          </div>
+        ) : (
+          <div className="space-y-2.5">
+            {tareas.map(tarea => {
+              const pendiente = tarea.estado === 'pendiente';
+              return (
+                <div key={tarea.id}
+                  className={`bg-white border rounded-xl p-4 transition-all ${
+                    pendiente ? 'border-gray-200 hover:shadow-sm' : 'border-green-200 bg-green-50/40'
+                  }`}>
+                  <div className="flex items-start gap-3">
+                    {pendiente ? (
+                      <button
+                        onClick={() => handleCompletarTarea(tarea.id)}
+                        className="w-5 h-5 rounded-full border-2 border-gray-300 mt-0.5 hover:border-green-500 hover:bg-green-50 transition-colors shrink-0 flex items-center justify-center"
+                        title="Marcar completada"
+                      />
+                    ) : (
+                      <div className="w-5 h-5 rounded-full bg-green-500 mt-0.5 shrink-0 flex items-center justify-center">
+                        <CheckCircle size={12} className="text-white" />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <h4 className={`text-sm font-semibold ${pendiente ? 'text-gray-900' : 'text-green-700 line-through'}`}>
+                        {tarea.titulo}
+                      </h4>
+                      {tarea.descripcion && (
+                        <p className="text-xs text-gray-500 mt-1">{tarea.descripcion}</p>
+                      )}
+                      <div className="flex items-center gap-3 mt-1.5">
+                        {tarea.fecha_limite && (
+                          <span className="text-[10px] text-gray-400">📅 {tarea.fecha_limite}</span>
+                        )}
+                        {tarea.completada_en && (
+                          <span className="text-[10px] text-green-500">
+                            ✅ {new Date(tarea.completada_en).toLocaleDateString('es-PE', {
+                              day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                            })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

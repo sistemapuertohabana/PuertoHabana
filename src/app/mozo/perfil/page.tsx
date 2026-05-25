@@ -3,8 +3,9 @@
 import { useState, useEffect, useRef } from 'react';
 import {
   User, Mail, Calendar,
-  Edit2, Phone, MapPin, DollarSign, BellRing,
+  Edit2, Phone, MapPin, DollarSign, BellRing, Download,
 } from 'lucide-react';
+import CarnetPDF from '@/components/CarnetPDF';
 import { getProfilePhoto, saveProfilePhoto } from '@/lib/store';
 
 import { supabase } from '@/lib/supabase';
@@ -59,6 +60,7 @@ export default function MozoPerfilPage() {
   const [loading, setLoading] = useState(true);
   const fileRef = useRef<HTMLInputElement>(null);
   const [notifActivas, setNotifActivas] = useState(false);
+  const [showCarnet, setShowCarnet] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -213,6 +215,28 @@ export default function MozoPerfilPage() {
                     {salTipo && <span className="text-sm font-normal text-gray-400 ml-1">/ {salTipo.toLowerCase()}</span>}
                   </p>
                 </div>
+              </div>
+            </div>
+          )}
+
+          {/* ── Carnet QR ────────────────────────────────────────────── */}
+          {record && (
+            <div className="border-t border-gray-100 pt-5 mt-5">
+              <h3 className="text-sm font-semibold text-gray-700 uppercase tracking-wide mb-3">Carnet de Identificación</h3>
+              <button
+                onClick={() => setShowCarnet(true)}
+                className="w-full flex items-center justify-center gap-2 px-4 py-3 bg-indigo-50 border border-indigo-100 rounded-xl hover:bg-indigo-100 transition-colors text-sm font-semibold text-indigo-700"
+              >
+                <Download size={16} />
+                Descargar mi Carnet PDF
+              </button>
+            </div>
+          )}
+
+          {showCarnet && record && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setShowCarnet(false)}>
+              <div className="bg-white rounded-2xl shadow-xl p-6 mx-4 max-w-xs w-full" onClick={e => e.stopPropagation()}>
+                <CarnetPDF empleado={record} onClose={() => setShowCarnet(false)} />
               </div>
             </div>
           )}

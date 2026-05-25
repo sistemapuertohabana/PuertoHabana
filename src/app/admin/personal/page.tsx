@@ -1,7 +1,10 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
+import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle, QrCode, Camera, Download } from 'lucide-react';
+import CarnetPDF from '@/components/CarnetPDF';
+import QRScanner from '@/components/QRScanner';
+import Modal from '@/components/Modal';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato' | 'dev';
@@ -58,6 +61,8 @@ export default function PersonalPage() {
   const [formData,    setFormData]    = useState(emptyForm);
   const [asistencias, setAsistencias] = useState<Record<string, { hora_llegada: string }>>({});
   const [loadingAsist,setLoadingAsist]= useState(true);
+  const [carnetAbierto, setCarnetAbierto] = useState<string | null>(null);
+  const [showScanner, setShowScanner] = useState(false);
 
   /* ── Cargar personal desde API (MySQL) con fallback a localStorage ── */
   const loadPersonal = useCallback(async () => {
@@ -229,13 +234,42 @@ export default function PersonalPage() {
           <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Personal</h1>
           <p className="text-sm text-gray-500 mt-1">Gestiona el equipo de Puerto Habana.</p>
         </div>
-        {!showForm && (
-          <button onClick={handleOpenAdd}
-            className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
-            <Plus size={18} /> Agregar
-          </button>
-        )}
+        <div className="flex gap-2">
+          {!showForm && (
+            <>
+              <button onClick={() => setShowScanner(true)}
+                className="bg-emerald-600 text-white font-semibold py-2.5 px-4 rounded-xl hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2 text-sm">
+                <Camera size={16} /> QR
+              </button>
+              <button onClick={handleOpenAdd}
+                className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
+                <Plus size={18} /> Agregar
+              </button>
+            </>
+          )}
+        </div>
       </div>
+
+      {/* Modal escáner QR */}
+      {showScanner && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowScanner(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 mx-4 max-w-md w-full" onClick={e => e.stopPropagation()}>
+            <QRScanner onClose={() => setShowScanner(false)} />
+          </div>
+        </div>
+      )}
+
+      {/* Modal Carnet */}
+      {carnetAbierto && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setCarnetAbierto(null)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 mx-4 max-w-xs w-full" onClick={e => e.stopPropagation()}>
+            {(() => {
+              const emp = personal.find(p => p.id === carnetAbierto);
+              return emp ? <CarnetPDF empleado={emp} onClose={() => setCarnetAbierto(null)} /> : null;
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Formulario */}
       {showForm && (
@@ -456,8 +490,64 @@ export default function PersonalPage() {
             </div>
           )}
 
-          {/* ── Asistencias del día ── */}
-          <div className="mt-10">
+          {/* ── Asistencias del día ── */}            {/* ── Carnet PDF por empleado ── */}
+            <div className="mt-10 mb-10">
+              <div className="flex items-center gap-3 mb-5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
+                  <QrCode size={18} className="text-indigo-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Carnet del Personal</h2>
+                  <p className="text-xs text-gray-400">Descarga el carnet con QR para cada empleado</p>
+                </div>
+              </div>
+
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      {['Empleado', 'Rol', 'Carnet QR', 'DNI/Email'].map(h => (
+                        <th key={h} className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {personal.filter(p => p.rol !== 'admin').map(p => (
+                      <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                        <td className="px-5 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 shrink-0">
+                              <User size={16} />
+                            </div>
+                            <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
+                          </div>
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
+                            {rolLabels[p.rol] ?? p.rol}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4">
+                          <button
+                            onClick={() => setCarnetAbierto(p.id)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-indigo-600 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+                          >
+                            <Download size={13} />
+                            PDF
+                          </button>
+                        </td>
+                        <td className="px-5 py-4">
+                          <p className="text-xs text-gray-500">{p.dni || p.email || '—'}</p>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+
+            {/* ── Asistencias del día ── */}
+            <div className="mt-10">
             <div className="flex items-center gap-3 mb-5">
               <div className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center">
                 <Clock size={18} className="text-green-600" />

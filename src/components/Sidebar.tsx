@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut,
+  Settings, User, LogOut, ClipboardList,
 } from 'lucide-react';
 import { usePayments } from '@/hooks/usePayments';
 import { useAuth } from '@/hooks/useAuth';
@@ -17,6 +17,7 @@ const menuItems = [
   { href: '/admin/dashboard',      icon: LayoutDashboard, label: 'Dashboard'      },
   { href: '/admin/inventario',     icon: Package,         label: 'Inventario'     },
   { href: '/admin/personal',       icon: Users,           label: 'Personal'       },
+  { href: '/admin/tareas',         icon: ClipboardList,   label: 'Tareas'         },
   { href: '/admin/gastos',         icon: DollarSign,      label: 'Gastos'         },
   { href: '/admin/configuracion',  icon: Settings,        label: 'Configuración'  },
 ];
