@@ -66,8 +66,8 @@ export default function DevSidebar() {
 
   const localPhoto = useProfilePhoto('dev');
   const photo      = profile?.foto_url ?? localPhoto;
-  const design     = useLocalStorageValue('sidebarDesign_desarrollador', 'normal') as SidebarDesign;
-  const navbar     = useLocalStorageValue('navbarStyle_desarrollador', 'original') as NavbarStyle;
+  const design     = useLocalStorageValue('sidebarDesign_dev', 'normal') as SidebarDesign;
+  const navbar     = useLocalStorageValue('navbarStyle_dev', 'original') as NavbarStyle;
 
   const layout    = navbar === 'centrado' ? 'justify-center gap-6' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
   const showLabel = navbar !== 'original' && navbar !== 'flotante' && navbar !== 'flotante_blue_new';
