@@ -1,6 +1,6 @@
 'use client';
 import { useEffect, useState } from 'react';
-import { BellRing } from 'lucide-react';
+import { X } from 'lucide-react';
 
 function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
@@ -13,10 +13,32 @@ function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
   return outputArray;
 }
 
+const iconMap: Record<string, { bg: string, icon: string }> = {
+  asistencia: { bg: 'from-emerald-500 to-teal-500', icon: '✅' },
+  comanda:    { bg: 'from-blue-500 to-indigo-500', icon: '🍽️' },
+  default:    { bg: 'from-blue-500 to-indigo-500', icon: '🔔' },
+};
+
+function detectarIcono(titulo: string, mensaje: string) {
+  const txt = (titulo + ' ' + mensaje).toLowerCase();
+  if (txt.includes('asisten')) return iconMap.asistencia;
+  if (txt.includes('comanda') || txt.includes('pedido') || txt.includes('cocina')) return iconMap.comanda;
+  return iconMap.default;
+}
+
 export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: string, rol: string }) {
   const [notificacion, setNotificacion] = useState<any>(null);
   const [activado, setActivado] = useState(false);
   const [checking, setChecking] = useState(true);
+  const [saliendo, setSaliendo] = useState(false);
+
+  const cerrar = () => {
+    setSaliendo(true);
+    setTimeout(() => {
+      setNotificacion(null);
+      setSaliendo(false);
+    }, 250);
+  };
 
   // Intentar cargar estado de activación desde sessionStorage
   useEffect(() => {
@@ -170,25 +192,55 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
 
   if (!notificacion) return null;
 
+  const icono = detectarIcono(notificacion.titulo, notificacion.mensaje);
+
   return (
-    <div className="fixed top-6 right-6 border-l-4 border-blue-500 shadow-2xl rounded-2xl p-5 z-[9999] max-w-sm animate-in slide-in-from-right-8 duration-300" style={{ background: 'var(--background)' }}>
-      <div className="flex items-start gap-4">
-        <div className="mt-1 w-10 h-10 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center shrink-0">
-          <BellRing size={20} />
+    <div
+      className={`fixed top-5 right-5 z-[9999] max-w-sm w-[calc(100%-2.5rem)] sm:w-auto sm:min-w-[340px] ${saliendo ? 'animate-out slide-out-to-right-8 opacity-0' : 'animate-in slide-in-from-right-8 fade-in'} duration-300`}
+    >
+      <div className="relative bg-white rounded-2xl shadow-[0_12px_40px_-8px_rgba(0,0,0,0.12),0_0_0_1px_rgba(0,0,0,0.04)] overflow-hidden">
+        {/* Gradient accent bar at top */}
+        <div className={`h-1 w-full bg-gradient-to-r ${icono.bg}`} />
+
+        <div className="p-4">
+          <div className="flex items-start gap-3.5">
+            {/* Icon */}
+            <div className="relative mt-0.5 w-10 h-10 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center shrink-0 overflow-hidden">
+              <span className="text-lg">{icono.icon}</span>
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-2">
+                <h4 className="text-sm font-semibold text-gray-900 leading-snug">
+                  {notificacion.titulo}
+                </h4>
+                <button
+                  onClick={cerrar}
+                  aria-label="Cerrar notificación"
+                  className="shrink-0 -mt-0.5 -mr-1 w-6 h-6 rounded-lg flex items-center justify-center text-gray-300 hover:text-gray-500 hover:bg-gray-100 transition-all"
+                >
+                  <X size={14} strokeWidth={2} />
+                </button>
+              </div>
+              <p className="text-xs text-gray-500 mt-1 leading-relaxed pr-2">
+                {notificacion.mensaje}
+              </p>
+
+              <div className="flex items-center justify-between mt-3.5 pt-3 border-t border-gray-50">
+                <span className="text-[10px] text-gray-300 font-medium uppercase tracking-wider">
+                  Puerto Habana
+                </span>
+                <button
+                  onClick={cerrar}
+                  className="text-[11px] font-semibold text-gray-500 hover:text-gray-800 px-3.5 py-1.5 rounded-lg hover:bg-gray-100 transition-all active:scale-95"
+                >
+                  Entendido
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
-        <div>
-          <h4 className="font-bold text-base" style={{ color: 'var(--foreground)' }}>{notificacion.titulo}</h4>
-          <p className="text-sm mt-1 leading-snug" style={{ color: 'var(--muted)' }}>{notificacion.mensaje}</p>
-        </div>
-      </div>
-      <div className="mt-5 flex justify-end">
-        <button
-          onClick={() => setNotificacion(null)}
-          className="text-xs px-5 py-2.5 rounded-xl font-bold uppercase transition-colors"
-          style={{ background: 'color-mix(in srgb, var(--background) 80%, white)', color: 'var(--muted)', border: '1px solid var(--border)' }}
-        >
-          Entendido
-        </button>
       </div>
     </div>
   );
