@@ -39,14 +39,26 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   return NextResponse.json({ success: true });
 }
 
-// DELETE /api/personal/:id — soft delete
+// DELETE /api/personal/:id — soft delete: limpia datos personales pero conserva el email
 export async function DELETE(_: Request, { params }: { params: Promise<{ id: string }> }) {
   const sb = getServiceSupabase();
   const { id } = await params;
 
   const { error } = await sb
     .from('usuarios')
-    .update({ activo: false })
+    .update({
+      activo: false,
+      nombre: null,
+      dni: null,
+      rol: null,
+      salario_monto: null,
+      salario_tipo: null,
+      telefono: null,
+      turno: null,
+      area: null,
+      fecha_ingreso: null,
+      foto_url: null,
+    })
     .eq('id', id)
     .neq('rol', 'admin');
 
