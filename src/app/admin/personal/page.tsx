@@ -151,8 +151,8 @@ export default function PersonalPage() {
       turno:         formData.turno || undefined,
       telefono:      formData.telefono.trim() || undefined,
       area:          formData.area.trim() || undefined,
-      salario_monto: formData.salario_monto ? parseFloat(formData.salario_monto) : undefined,
-      salario_tipo:  formData.salario_tipo,
+      salario_monto: formData.rol === 'dev' ? undefined : (formData.salario_monto ? parseFloat(formData.salario_monto) : undefined),
+      salario_tipo:  formData.rol === 'dev' ? undefined : formData.salario_tipo,
       // Auto-asignar fecha de ingreso al crear
       fecha_ingreso: editingId ? undefined : hoy,
     };
@@ -348,23 +348,34 @@ export default function PersonalPage() {
               </select>
               <p className="text-xs text-gray-400 mt-1">El turno determinará el horario en que puede hacer pedidos.</p>
             </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>
-              <input type="number" step="0.01" min="0" value={formData.salario_monto}
-                onChange={e => setFormData({ ...formData, salario_monto: e.target.value })}
-                placeholder="0.00"
-                className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
-            </div>
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Salario</label>
-              <select value={formData.salario_tipo}
-                onChange={e => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-900">
-                <option value="diario">Diario</option>
-                <option value="semanal">Semanal</option>
-                <option value="mensual">Mensual</option>
-              </select>
-            </div>
+            {formData.rol === 'dev' ? (
+              <div className="md:col-span-2">
+                <div className="p-4 bg-indigo-50 border border-indigo-100 rounded-xl">
+                  <p className="text-sm font-semibold text-indigo-700">Contrato independiente</p>
+                  <p className="text-xs text-indigo-500 mt-0.5">El desarrollador no tiene salario base. Es contratado por el administrador y se le paga por acuerdo independiente.</p>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Salario (S/)</label>
+                  <input type="number" step="0.01" min="0" value={formData.salario_monto}
+                    onChange={e => setFormData({ ...formData, salario_monto: e.target.value })}
+                    placeholder="0.00"
+                    className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2">Tipo de Salario</label>
+                  <select value={formData.salario_tipo}
+                    onChange={e => setFormData({ ...formData, salario_tipo: e.target.value as SalarioTipo })}
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none bg-white text-gray-900">
+                    <option value="diario">Diario</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensual">Mensual</option>
+                  </select>
+                </div>
+              </>
+            )}
 
             {error && (
               <div className="md:col-span-2 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-sm">{error}</div>
@@ -421,7 +432,11 @@ export default function PersonalPage() {
                       </span>
                     </td>
                     <td className="px-5 py-4 text-sm text-gray-700">
-                      {p.salario_monto ? `S/ ${Number(p.salario_monto).toFixed(2)} (${p.salario_tipo})` : '—'}
+                      {p.rol === 'dev' ? (
+                        <span className="text-xs font-semibold text-indigo-600">Contrato</span>
+                      ) : p.salario_monto ? (
+                        `S/ ${Number(p.salario_monto).toFixed(2)} (${p.salario_tipo})`
+                      ) : '—'}
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
@@ -466,7 +481,9 @@ export default function PersonalPage() {
                   <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
                     {rolLabels[p.rol] ?? p.rol}
                   </span>
-                  {p.salario_monto && (
+                  {p.rol === 'dev' ? (
+                    <span className="text-xs font-semibold text-indigo-600">Contrato</span>
+                  ) : p.salario_monto && (
                     <span className="text-xs font-semibold text-emerald-600">
                       S/ {Number(p.salario_monto).toFixed(2)} <span className="font-normal text-gray-400">({p.salario_tipo})</span>
                     </span>
