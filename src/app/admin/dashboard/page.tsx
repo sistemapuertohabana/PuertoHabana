@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
-import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 
@@ -200,87 +199,94 @@ export default function DashboardPage() {
       setCalendarMonth(new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, 1));
     });
 
-    // ── Cargar datos desde MySQL API ──────────────────────────────────────
+    // ── Cargar datos desde APIs en paralelo ──────────────────────────────
     const loadAll = async () => {
-      // Personal (mozos)
-      try {
-        const res = await fetch('/api/personal');
-        if (res.ok) {
-          const data = await res.json();
-          localStorage.setItem('ph_personal', JSON.stringify(data)); // sync para logins
-          const mozos = data.filter((x: Personal) => x.rol === 'mozo').map((x: Personal) => ({ id: x.id, nombre: x.nombre }));
-          const allStaff = data.map((x: Personal) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
-          setAllStaffList(allStaff);
-          if (mozos.length) {
-            setMozosList(mozos);
-            setSelectedWaiterId((prev: string) => prev || mozos[0].id);
-            setNewOrder((n: typeof newOrder) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
-          }
-          if (allStaff.length) {
-            setPaymentForm((f: typeof paymentForm) => ({ 
-              ...f, 
-              mozoNombre: allStaff[0].nombre,
-              monto: allStaff[0].salario_monto ? String(allStaff[0].salario_monto) : '',
-              concepto: allStaff[0].salario_tipo ? `Pago ${allStaff[0].salario_tipo}` : 'Jornal'
-            }));
-          }
-        }
-      } catch {
-        // Fallback localStorage
+      // Helper para fallback a localStorage
+      const fallbackPersonal = () => {
         try {
           const data = JSON.parse(localStorage.getItem('ph_personal') || '[]');
           const mozos = data.filter((x: Personal) => x.rol === 'mozo').map((x: Personal) => ({ id: x.id, nombre: x.nombre }));
           const allStaff = data.map((x: Personal) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
-          setAllStaffList(allStaff);
           if (mozos.length) { setMozosList(mozos); setSelectedWaiterId(mozos[0].id); }
+          setAllStaffList(allStaff);
         } catch {}
-      }
+      };
 
-      // Mermas/Wastes
-      try {
-        const res = await fetch('/api/reportes/wastes');
-        if (res.ok) { setInsumosWasted(await res.json()); }
-      } catch {
-        try { setInsumosWasted(JSON.parse(localStorage.getItem('puerto_habana_wastes') || '[]')); } catch {}
-      }
-
-      // Pagos personal
-      try {
-        const res = await fetch('/api/reportes/payments');
-        if (res.ok) { setStaffPayments(await res.json()); }
-      } catch {
-        try { setStaffPayments(JSON.parse(localStorage.getItem('puerto_habana_payments') || '[]')); } catch {}
-      }
-
-      // Pedidos/Comandas
-      try {
-        const res = await fetch('/api/pedidos');
-        if (res.ok) {
-          const data = await res.json();
-          // Normalizar formato para compatibilidad con el dashboard
-          const normalized = data.flatMap((c: Comanda) =>
-            (c.items || []).map((item: ComandaItem) => ({
-              id: `${c.id}-${item.id}`,
-              item: item.nombre,
-              cantidad: item.cantidad,
-              mesa: c.mesa_nombre || c.mesa,
-              precio: item.precio,
-              estado: c.estado,
-              hora: c.hora,
-              notas: item.notas,
-              mozoId: c.mozo_id || '',
-              mozoNombre: c.mozo_nombre || '',
-              fecha: c.fecha,
-              category: item.categoria || 'comida',
-              comandaId: String(c.id),
-              metodo_pago: c.metodo_pago || 'Efectivo',
-            }))
-          );
-          setPedidos(normalized);
-        }
-      } catch {
-        try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
-      }
+      // Ejecutar todas las llamadas API en paralelo
+      await Promise.all([
+        (async () => {
+          try {
+            const res = await fetch('/api/personal');
+            if (res.ok) {
+              const data = await res.json();
+              localStorage.setItem('ph_personal', JSON.stringify(data));
+              const mozos = data.filter((x: Personal) => x.rol === 'mozo').map((x: Personal) => ({ id: x.id, nombre: x.nombre }));
+              const allStaff = data.map((x: Personal) => ({ id: x.id, nombre: x.nombre, salario_monto: x.salario_monto, salario_tipo: x.salario_tipo, rol: x.rol }));
+              setAllStaffList(allStaff);
+              if (mozos.length) {
+                setMozosList(mozos);
+                setSelectedWaiterId((prev: string) => prev || mozos[0].id);
+                setNewOrder((n: typeof newOrder) => ({ ...n, mozoId: n.mozoId || mozos[0].id }));
+              }
+              if (allStaff.length) {
+                setPaymentForm((f: typeof paymentForm) => ({ 
+                  ...f, 
+                  mozoNombre: allStaff[0].nombre,
+                  monto: allStaff[0].salario_monto ? String(allStaff[0].salario_monto) : '',
+                  concepto: allStaff[0].salario_tipo ? `Pago ${allStaff[0].salario_tipo}` : 'Jornal'
+                }));
+              }
+            }
+          } catch {
+            fallbackPersonal();
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/reportes/wastes');
+            if (res.ok) { setInsumosWasted(await res.json()); }
+          } catch {
+            try { setInsumosWasted(JSON.parse(localStorage.getItem('puerto_habana_wastes') || '[]')); } catch {}
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/reportes/payments');
+            if (res.ok) { setStaffPayments(await res.json()); }
+          } catch {
+            try { setStaffPayments(JSON.parse(localStorage.getItem('puerto_habana_payments') || '[]')); } catch {}
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/pedidos');
+            if (res.ok) {
+              const data = await res.json();
+              const normalized = data.flatMap((c: Comanda) =>
+                (c.items || []).map((item: ComandaItem) => ({
+                  id: `${c.id}-${item.id}`,
+                  item: item.nombre,
+                  cantidad: item.cantidad,
+                  mesa: c.mesa_nombre || c.mesa,
+                  precio: item.precio,
+                  estado: c.estado,
+                  hora: c.hora,
+                  notas: item.notas,
+                  mozoId: c.mozo_id || '',
+                  mozoNombre: c.mozo_nombre || '',
+                  fecha: c.fecha,
+                  category: item.categoria || 'comida',
+                  comandaId: String(c.id),
+                  metodo_pago: c.metodo_pago || 'Efectivo',
+                }))
+              );
+              setPedidos(normalized);
+            }
+          } catch {
+            try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
+          }
+        })(),
+      ]);
     };
 
     loadAll();
@@ -321,7 +327,21 @@ export default function DashboardPage() {
   }, [mounted]);
 
   if (!mounted) {
-    return null;
+    return (
+      <div className="animate-pulse w-full">
+        <div className="h-10 bg-gray-200 rounded-lg w-1/2 mb-8"></div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10">
+          <div className="h-28 bg-gray-200 rounded-xl"></div>
+          <div className="h-28 bg-gray-200 rounded-xl"></div>
+          <div className="h-28 bg-gray-200 rounded-xl"></div>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+          <div className="h-48 bg-gray-200 rounded-xl"></div>
+          <div className="h-48 bg-gray-200 rounded-xl"></div>
+          <div className="h-48 bg-gray-200 rounded-xl"></div>
+        </div>
+      </div>
+    );
   }
 
   // Simulate Day Close / End of Day (00:00 AM Reset)
@@ -954,8 +974,6 @@ export default function DashboardPage() {
 
   return (
     <div className={`animate-in fade-in duration-300 overflow-x-hidden w-full text-gray-900`}>
-      <NotificacionesToast rol="admin" />
-      
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-5 right-5 z-50 animate-in slide-in-from-bottom duration-300">
