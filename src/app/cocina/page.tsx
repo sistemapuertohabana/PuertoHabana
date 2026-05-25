@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Clock, UtensilsCrossed, ChefHat } from 'lucide-react';
+import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
@@ -40,6 +40,9 @@ const estadoBorder = {
 export default function CocinaPage() {
   const [pedidos,     setPedidos]     = useState<Pedido[]>([]);
   const [showHistory, setShowHistory] = useState(false);
+  const [asistencia, setAsistencia] = useState<{ id: number; hora_llegada: string } | null>(null);
+  const [registrando, setRegistrando] = useState(false);
+  const [cocinaSession, setCocinaSession] = useState<{ id?: string; nombre?: string }>({});
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
@@ -53,6 +56,20 @@ export default function CocinaPage() {
         const stored = localStorage.getItem('ph_cocina_session');
         if (!stored) return;
         const sess = JSON.parse(stored);
+        setCocinaSession(sess);
+        
+        // Verificar asistencia de hoy
+        const hoy = new Date();
+        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        fetch(`/api/asistencia?usuario_id=${sess.id}&fecha=${fechaStr}`)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => {
+            if (data.length > 0) {
+              setAsistencia({ id: data[0].id, hora_llegada: data[0].hora_llegada });
+            }
+          })
+          .catch(() => {});
+        
         try {
           const res = await fetch('/api/personal');
           if (res.ok) {
@@ -63,6 +80,7 @@ export default function CocinaPage() {
               sess.nombre = updated.nombre || sess.nombre;
               sess.foto_url = updated.foto_url || sess.foto_url;
               localStorage.setItem('ph_cocina_session', JSON.stringify(sess));
+              setCocinaSession({ ...sess });
             }
           }
         } catch {}
@@ -144,6 +162,39 @@ export default function CocinaPage() {
           <h1 className="text-xl font-medium text-gray-900 tracking-tight">Comandas</h1>
           <p className="text-xs text-gray-400 mt-0.5">{fecha}</p>
         </div>
+        {/* Asistencia */}
+        {cocinaSession.id ? (
+          asistencia ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100 text-green-700 text-xs font-medium">
+              <CheckCircle size={14} />
+              {asistencia.hora_llegada.slice(0, 5)}
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!cocinaSession.id || registrando) return;
+                setRegistrando(true);
+                try {
+                  const res = await fetch('/api/asistencia', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario_id: cocinaSession.id }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setAsistencia({ id: data.data.id, hora_llegada: data.data.hora_llegada });
+                  }
+                } catch {}
+                setRegistrando(false);
+              }}
+              disabled={registrando}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-orange-50 border border-orange-100 text-orange-600 hover:bg-orange-100 transition-colors text-xs font-medium disabled:opacity-50"
+            >
+              <Clock size={14} />
+              {registrando ? '...' : 'Asistencia'}
+            </button>
+          )
+        ) : null}
         <div className="text-right">
           <p className="text-2xl font-light text-gray-900">{pedidos.length}</p>
           <p className="text-[10px] text-gray-400 uppercase tracking-wider">

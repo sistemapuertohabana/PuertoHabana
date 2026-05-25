@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
@@ -141,6 +141,8 @@ export default function MozoPage() {
   const [showHorarioModal, setShowHorarioModal] = useState(false);
   const [horarioMensaje, setHorarioMensaje] = useState('');
   const [mozoSession, setMozoSession] = useState<{ id?: string; nombre?: string; turno?: string }>({});
+  const [asistencia, setAsistencia] = useState<{ id: number; hora_llegada: string } | null>(null);
+  const [registrando, setRegistrando] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeInventario('tapers', (data) => setTapers(data));
@@ -184,6 +186,24 @@ export default function MozoPage() {
     }, 30000);
     
     return () => clearInterval(interval);
+  }, []);
+
+  // Verificar asistencia de hoy al cargar
+  useEffect(() => {
+    const session = JSON.parse(localStorage.getItem('ph_mozo_session') || '{}');
+    if (!session.id) return;
+    
+    const hoy = new Date();
+    const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+    
+    fetch(`/api/asistencia?usuario_id=${session.id}&fecha=${fechaStr}`)
+      .then(res => res.ok ? res.json() : [])
+      .then(data => {
+        if (data.length > 0) {
+          setAsistencia({ id: data[0].id, hora_llegada: data[0].hora_llegada });
+        }
+      })
+      .catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -388,16 +408,48 @@ export default function MozoPage() {
           <p className="text-xs text-gray-400 mt-0.5">
             {isConfigMode ? 'Modo configuración' : 'Selecciona una mesa para tomar el pedido'}
           </p>
+        </div>          {/* Asistencia */}
+          {mozoSession.id && (
+            asistencia ? (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100 text-green-700 text-xs font-medium">
+                <CheckCircle size={14} />
+                {asistencia.hora_llegada.slice(0, 5)}
+              </div>
+            ) : (
+              <button
+                onClick={async () => {
+                  if (!mozoSession.id || registrando) return;
+                  setRegistrando(true);
+                  try {
+                    const res = await fetch('/api/asistencia', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ usuario_id: mozoSession.id }),
+                    });
+                    if (res.ok) {
+                      const data = await res.json();
+                      setAsistencia({ id: data.data.id, hora_llegada: data.data.hora_llegada });
+                    }
+                  } catch {}
+                  setRegistrando(false);
+                }}
+                disabled={registrando}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-blue-50 border border-blue-100 text-blue-600 hover:bg-blue-100 transition-colors text-xs font-medium disabled:opacity-50"
+              >
+                <Clock size={14} />
+                {registrando ? '...' : 'Asistencia'}
+              </button>
+            )
+          )}
+          <button 
+            onClick={() => setIsConfigMode(!isConfigMode)}
+            className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${
+              isConfigMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+            }`}
+          >
+            <Settings size={16} strokeWidth={1.5} />
+          </button>
         </div>
-        <button 
-          onClick={() => setIsConfigMode(!isConfigMode)}
-          className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${
-            isConfigMode ? 'bg-gray-900 text-white' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-          }`}
-        >
-          <Settings size={16} strokeWidth={1.5} />
-        </button>
-      </div>
 
       {success && (
         <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg">

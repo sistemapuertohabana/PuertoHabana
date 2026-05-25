@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { sendPushNotification } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +29,7 @@ export async function GET(request: Request) {
   return NextResponse.json(data ?? []);
 }
 
-// POST /api/notificaciones — crear notificación
+// POST /api/notificaciones — crear notificación y enviar push real
 export async function POST(request: Request) {
   const sb = getServiceSupabase();
   const { usuario_id, rol_destino, titulo, mensaje } = await request.json();
@@ -43,6 +44,10 @@ export async function POST(request: Request) {
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Enviar push notification en segundo plano (no bloqueante)
+  sendPushNotification({ usuario_id, rol_destino, titulo, mensaje }).catch(() => {});
+
   return NextResponse.json({ success: true, id: data.id }, { status: 201 });
 }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { User, Plus, X, Loader2, Edit2, Trash2 } from 'lucide-react';
+import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle } from 'lucide-react';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 type Rol = 'admin' | 'mozo' | 'cocina' | 'ayudante_cocina' | 'lavaplato' | 'dev';
@@ -56,6 +56,8 @@ export default function PersonalPage() {
   const [isSubmitting,setIsSubmitting]= useState(false);
   const [error,       setError]       = useState('');
   const [formData,    setFormData]    = useState(emptyForm);
+  const [asistencias, setAsistencias] = useState<Record<string, { hora_llegada: string }>>({});
+  const [loadingAsist,setLoadingAsist]= useState(true);
 
   /* ── Cargar personal desde API (MySQL) con fallback a localStorage ── */
   const loadPersonal = useCallback(async () => {
@@ -81,6 +83,28 @@ export default function PersonalPage() {
   }, []);
 
   useEffect(() => { loadPersonal(); }, [loadPersonal]);
+
+  /* ── Cargar asistencias de hoy ── */
+  useEffect(() => {
+    const cargarAsistencias = async () => {
+      setLoadingAsist(true);
+      try {
+        const hoy = new Date();
+        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        const res = await fetch(`/api/asistencia?fecha=${fechaStr}`);
+        if (res.ok) {
+          const data = await res.json();
+          const map: Record<string, { hora_llegada: string }> = {};
+          data.forEach((a: any) => {
+            map[a.usuario_id] = { hora_llegada: a.hora_llegada };
+          });
+          setAsistencias(map);
+        }
+      } catch {}
+      setLoadingAsist(false);
+    };
+    cargarAsistencias();
+  }, []);
 
   const resetForm = () => { setFormData(emptyForm); setEditingId(null); setError(''); };
 
@@ -431,6 +455,82 @@ export default function PersonalPage() {
               <p className="text-sm text-gray-400 mt-1">Agrega al primer integrante del equipo.</p>
             </div>
           )}
+
+          {/* ── Asistencias del día ── */}
+          <div className="mt-10">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="w-9 h-9 rounded-xl bg-green-50 border border-green-100 flex items-center justify-center">
+                <Clock size={18} className="text-green-600" />
+              </div>
+              <div>
+                <h2 className="text-lg font-semibold text-gray-900">Asistencia del Día</h2>
+                <p className="text-xs text-gray-400">
+                  {Object.keys(asistencias).length} de {personal.length} registrados
+                  {Object.keys(asistencias).length === personal.length && personal.length > 0 && ' 🎉'}
+                </p>
+              </div>
+            </div>
+
+            {loadingAsist ? (
+              <div className="flex justify-center py-10">
+                <Loader2 size={24} className="animate-spin text-gray-300" />
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-hidden">
+                <table className="w-full">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      {['Personal', 'Rol', 'Estado', 'Hora de Llegada'].map(h => (
+                        <th key={h} className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{h}</th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {personal.map(p => {
+                      const asis = asistencias[p.id];
+                      return (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div className="w-9 h-9 rounded-full bg-gray-50 flex items-center justify-center text-gray-500 shrink-0">
+                                <User size={16} />
+                              </div>
+                              <p className="text-sm font-semibold text-gray-900">{p.nombre}</p>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span className={`text-xs font-semibold px-2.5 py-1 rounded-full ${rolColors[p.rol] ?? 'bg-gray-100 text-gray-700'}`}>
+                              {rolLabels[p.rol] ?? p.rol}
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            {asis ? (
+                              <span className="inline-flex items-center gap-1 text-xs font-semibold text-green-600">
+                                <CheckCircle size={14} />
+                                Presente
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-xs font-medium text-gray-400">
+                                <AlertCircle size={14} />
+                                Pendiente
+                              </span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            {asis ? (
+                              <span className="text-sm font-medium text-gray-900">{asis.hora_llegada.slice(0, 5)} hrs</span>
+                            ) : (
+                              <span className="text-sm text-gray-300">—</span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
         </>
       )}
     </div>

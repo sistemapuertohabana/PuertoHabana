@@ -2,6 +2,17 @@
 import { useEffect, useState } from 'react';
 import { BellRing } from 'lucide-react';
 
+function urlBase64ToUint8Array(base64String: string): Uint8Array<ArrayBuffer> {
+  const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+  const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+  const rawData = window.atob(base64);
+  const outputArray = new Uint8Array(rawData.length);
+  for (let i = 0; i < rawData.length; ++i) {
+    outputArray[i] = rawData.charCodeAt(i);
+  }
+  return outputArray;
+}
+
 export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: string, rol: string }) {
   const [notificacion, setNotificacion] = useState<any>(null);
   const [activado, setActivado] = useState(false);
@@ -25,17 +36,58 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     }
   }, []);
 
-  const habilitarAlertas = async () => {
-    // Pedir permiso nativo al navegador
-    if ('Notification' in window) {
-      await Notification.requestPermission().catch(() => {});
+  // Suscribir al PushManager cuando se activan las notificaciones
+  const suscribirPush = async () => {
+    try {
+      if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+      
+      // Verificar que la VAPID public key exista
+      const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+      if (!publicKey) {
+        console.warn('[Push] VAPID public key no configurada');
+        return;
+      }
+
+      const permission = await Notification.requestPermission();
+      if (permission !== 'granted') return;
+
+      const registration = await navigator.serviceWorker.ready;
+      
+      // Obtener suscripción existente o crear una nueva
+      let subscription = await registration.pushManager.getSubscription();
+      
+      if (!subscription) {
+        subscription = await registration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: urlBase64ToUint8Array(publicKey) as BufferSource,
+        });
+      }
+
+      // Guardar la suscripción en el servidor
+      await fetch('/api/notificaciones/subscribe', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: usuarioId || null,
+          rol,
+          subscription: subscription.toJSON(),
+        }),
+      });
+    } catch (err) {
+      console.warn('[Push] Error al suscribir:', err);
     }
+  };
+
+  const habilitarAlertas = async () => {
     // Reproducir un sonido vacío para desbloquear el AudioContext en el navegador
     try {
       const audio = new Audio('/notification.mp3');
       audio.volume = 0; // silenciado
       await audio.play();
     } catch (e) {}
+
+    // Suscribir al PushManager (pide permiso nativo internamente)
+    suscribirPush();
 
     localStorage.setItem('notificaciones_activas', 'true');
     setActivado(true);

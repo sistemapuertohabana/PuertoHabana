@@ -1,9 +1,11 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Droplets, Sun, Moon } from 'lucide-react';
+import { Droplets, Sun, Moon, Clock, CheckCircle } from 'lucide-react';
 
 export default function LavaplatoDashboard() {
   const [session, setSession] = useState<any>(null);
+  const [asistencia, setAsistencia] = useState<{ id: number; hora_llegada: string } | null>(null);
+  const [registrando, setRegistrando] = useState(false);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -28,6 +30,18 @@ export default function LavaplatoDashboard() {
         } catch {}
         
         setSession(sess);
+        
+        // Verificar asistencia de hoy
+        const hoy = new Date();
+        const fechaStr = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}-${String(hoy.getDate()).padStart(2, '0')}`;
+        fetch(`/api/asistencia?usuario_id=${sess.id}&fecha=${fechaStr}`)
+          .then(res => res.ok ? res.json() : [])
+          .then(data => {
+            if (data.length > 0) {
+              setAsistencia({ id: data[0].id, hora_llegada: data[0].hora_llegada });
+            }
+          })
+          .catch(() => {});
       } catch {}
     };
     
@@ -61,6 +75,39 @@ export default function LavaplatoDashboard() {
             {!turnoLabel && <span className="text-gray-300 ml-1">· Sin turno asignado</span>}
           </p>
         </div>
+        {/* Asistencia */}
+        {session?.id ? (
+          asistencia ? (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 border border-green-100 text-green-700 text-xs font-medium">
+              <CheckCircle size={14} />
+              {asistencia.hora_llegada.slice(0, 5)}
+            </div>
+          ) : (
+            <button
+              onClick={async () => {
+                if (!session.id || registrando) return;
+                setRegistrando(true);
+                try {
+                  const res = await fetch('/api/asistencia', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ usuario_id: session.id }),
+                  });
+                  if (res.ok) {
+                    const data = await res.json();
+                    setAsistencia({ id: data.data.id, hora_llegada: data.data.hora_llegada });
+                  }
+                } catch {}
+                setRegistrando(false);
+              }}
+              disabled={registrando}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-cyan-50 border border-cyan-100 text-cyan-600 hover:bg-cyan-100 transition-colors text-xs font-medium disabled:opacity-50"
+            >
+              <Clock size={14} />
+              {registrando ? '...' : 'Asistencia'}
+            </button>
+          )
+        ) : null}
       </div>
 
       {/* Stats cards minimalistas */}
