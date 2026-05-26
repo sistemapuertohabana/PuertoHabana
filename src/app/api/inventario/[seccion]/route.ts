@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { checkAndNotifyLowStock } from '@/lib/push';
 
 // GET /api/inventario/:seccion
 export async function GET(
@@ -53,5 +54,18 @@ export async function PATCH(
     .single();
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+
+  // Verificar si el stock quedó por debajo del mínimo
+  if (delta < 0 && data) {
+    checkAndNotifyLowStock({
+      id: data.id,
+      nombre: data.nombre,
+      seccion: data.seccion,
+      cantidad: data.cantidad,
+      minimo: data.minimo,
+      unidad: data.unidad,
+    }).catch(() => {});
+  }
+
   return NextResponse.json(data);
 }

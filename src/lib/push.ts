@@ -1,6 +1,40 @@
 import webpush from 'web-push';
 import { getServiceSupabase } from './supabase';
 
+// ── Low stock alert helper ────────────────────────────────────────────────────
+// Se llama después de actualizar stock para notificar al admin si un producto
+// quedó por debajo de su mínimo.
+export async function checkAndNotifyLowStock(item: {
+  id: string | number;
+  nombre: string;
+  seccion: string;
+  cantidad: number;
+  minimo?: number;
+  unidad?: string;
+}): Promise<void> {
+  const minimo = item.minimo ?? 5;
+  if (item.cantidad > minimo) return;
+
+  const sb = getServiceSupabase();
+  const titulo = `⚠️ Stock Bajo: ${item.nombre}`;
+  const unidad = item.unidad || 'unid';
+  const mensaje = `"${item.nombre}" (${item.seccion}) tiene solo ${item.cantidad} ${unidad} — mínimo: ${minimo}`;
+
+  // Crear notificación en BD (para toasts en la app)
+  await sb
+    .from('notificaciones')
+    .insert([{ rol_destino: 'admin', titulo, mensaje }])
+    .maybeSingle();
+
+  // Enviar push notification nativa (no bloqueante)
+  sendPushNotification({
+    rol_destino: 'admin',
+    titulo,
+    mensaje,
+    url: '/admin/inventario',
+  }).catch(() => {});
+}
+
 // ── VAPID Configuration ──────────────────────────────────────────────────────
 const vapidPublicKey  = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY ?? '';
 const vapidPrivateKey = process.env.VAPID_PRIVATE_KEY ?? '';

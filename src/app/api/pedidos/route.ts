@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { checkAndNotifyLowStock } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -80,7 +81,7 @@ export async function POST(request: Request) {
       // Buscar el item en inventario por nombre
       const { data: inventoryItems } = await sb
         .from('inventario')
-        .select('id, cantidad')
+        .select('id, cantidad, nombre, minimo, unidad, seccion')
         .eq('seccion', item.categoria)
         .eq('nombre', item.nombre.replace(/^🎁\s*/, '')) // quitar prefijo 🎁 de cortesía
         .limit(1);
@@ -110,6 +111,16 @@ export async function POST(request: Request) {
             notas: `Pedido #${comanda.id} - ${mesa_nombre}`,
           }])
           .maybeSingle();
+
+        // Verificar si quedó por debajo del mínimo y notificar
+        checkAndNotifyLowStock({
+          id: invItem.id,
+          nombre: invItem.nombre,
+          seccion: invItem.seccion,
+          cantidad: stockNuevo,
+          minimo: invItem.minimo,
+          unidad: invItem.unidad,
+        }).catch(() => {});
       }
     }
   }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
+import { checkAndNotifyLowStock } from '@/lib/push';
 
 // PATCH /api/inventario/stock — { id, delta, referencia, notas }
 // Decrementa o incrementa el stock y registra el movimiento
@@ -14,7 +15,7 @@ export async function PATCH(request: Request) {
   // Fetch current item
   const { data: item, error: fetchErr } = await sb
     .from('inventario')
-    .select('id, cantidad, nombre, seccion')
+    .select('id, cantidad, nombre, seccion, minimo, unidad')
     .eq('id', id)
     .single();
 
@@ -53,6 +54,18 @@ export async function PATCH(request: Request) {
   if (movErr) {
     // No fallar por el movimiento, solo log
     console.error('Error registrando movimiento:', movErr.message);
+  }
+
+  // Verificar si el stock quedó por debajo del mínimo
+  if (delta < 0) {
+    checkAndNotifyLowStock({
+      id: item.id,
+      nombre: item.nombre,
+      seccion: item.seccion,
+      cantidad: stockNuevo,
+      minimo: item.minimo,
+      unidad: item.unidad,
+    }).catch(() => {});
   }
 
   return NextResponse.json({
