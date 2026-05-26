@@ -678,29 +678,14 @@ export default function MozoHistorialPage() {
                     </button>
                     <button
                       onClick={() => {
-                        const data = yapeQRData;
+                        const monto = yapeQRData.yapeMonto;
                         setYapeQRData(null);
                         setQrDataUrlHist('');
-                        if (data.metodo === 'Yape') {
-                          confirmarCobro(data.comandaId, 'Yape');
-                        } else {
-                          // Mixto
-                          const y = data.yapeMonto;
-                          const e = data.efectivoMonto;
-                          const efectivoCobrado = Math.max(0, data.total - y);
-                          let metodo = 'Efectivo';
-                          if (y > 0 && e > 0) {
-                            metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
-                          } else if (y > 0) {
-                            metodo = 'Yape';
-                          }
-                          confirmarCobro(data.comandaId, metodo);
-                        }
+                        setPagoInputs(prev => ({ ...prev, yape: String(monto) }));
                       }}
-                      className="flex-1 py-3 bg-green-600 text-white font-bold hover:bg-green-700 rounded-2xl transition-colors shadow-md text-sm flex items-center justify-center gap-2"
+                      className="flex-1 py-3 bg-[#7408B6] text-white font-bold hover:bg-[#5C0691] rounded-2xl transition-colors shadow-md text-sm flex items-center justify-center gap-2"
                     >
-                      <CheckCircle2 size={18} />
-                      Pagado — S/ {yapeQRData.yapeMonto.toFixed(2)}
+                      Pagar — S/ {yapeQRData.yapeMonto.toFixed(2)}
                     </button>
                   </div>
                 </>
@@ -787,13 +772,101 @@ export default function MozoHistorialPage() {
                   <input type="text" placeholder="Nombre *" value={newClienteHistForm.nombre}
                     onChange={e => setNewClienteHistForm({...newClienteHistForm, nombre: e.target.value})}
                     className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                  <div className="grid grid-cols-2 gap-3">
-                    <input type="text" placeholder="DNI" value={newClienteHistForm.dni} maxLength={8}
-                      onChange={e => setNewClienteHistForm({...newClienteHistForm, dni: e.target.value})}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
-                    <input type="text" placeholder="RUC" value={newClienteHistForm.ruc} maxLength={11}
-                      onChange={e => setNewClienteHistForm({...newClienteHistForm, ruc: e.target.value})}
-                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 uppercase mb-1 block">DNI</label>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="12345678" value={newClienteHistForm.dni} maxLength={8}
+                        onChange={e => setNewClienteHistForm({...newClienteHistForm, dni: e.target.value})}
+                        className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      <button
+                        onClick={async () => {
+                          const dniClean = newClienteHistForm.dni.trim();
+                          if (!dniClean || dniClean.length < 8) return setToastHist('⚠️ Ingresa 8 dígitos del DNI');
+                          setToastHist('🔍 Buscando DNI...');
+                          try {
+                            // 1. Buscar en BD local primero
+                            const localRes = await fetch(`/api/clientes?dni=${encodeURIComponent(dniClean)}`);
+                            if (localRes.ok) {
+                              const localData = await localRes.json();
+                              if (localData && localData.length > 0) {
+                                const c = localData[0];
+                                setNewClienteHistForm({
+                                  nombre: c.nombre || '',
+                                  dni: c.dni || '',
+                                  ruc: c.ruc || '',
+                                  telefono: c.telefono || '',
+                                  email: c.email || '',
+                                });
+                                return setToastHist('✅ Cliente encontrado en BD: ' + c.nombre);
+                              }
+                            }
+                            // 2. Si no existe en BD, consultar API RENIEC
+                            const reniecRes = await fetch(`/api/reniec/consulta?dni=${encodeURIComponent(dniClean)}`);
+                            if (!reniecRes.ok) {
+                              const err = await reniecRes.json();
+                              return setToastHist(err.error || '⚠️ Error al consultar DNI en RENIEC');
+                            }
+                            const reniecData = await reniecRes.json();
+                            if (reniecData && reniecData.nombres) {
+                              const nombreCompleto = [
+                                reniecData.nombres,
+                                reniecData.apellidoPaterno,
+                                reniecData.apellidoMaterno
+                              ].filter(Boolean).join(' ');
+                              setNewClienteHistForm(prev => ({
+                                ...prev,
+                                nombre: prev.nombre || nombreCompleto,
+                                dni: dniClean,
+                              }));
+                              setToastHist('✅ Datos obtenidos de RENIEC: ' + nombreCompleto);
+                            } else {
+                              setToastHist('⚠️ No se encontraron datos para ese DNI');
+                            }
+                          } catch { setToastHist('⚠️ Error de conexión al buscar DNI'); }
+                        }}
+                        className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
+                        title="Buscar por DNI"
+                      >
+                        <Search size={14} />
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-600 uppercase mb-1 block">RUC</label>
+                    <div className="flex gap-2">
+                      <input type="text" placeholder="20123456789" value={newClienteHistForm.ruc} maxLength={11}
+                        onChange={e => setNewClienteHistForm({...newClienteHistForm, ruc: e.target.value})}
+                        className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                      <button
+                        onClick={async () => {
+                          const rucClean = newClienteHistForm.ruc.trim();
+                          if (!rucClean || rucClean.length < 11) return setToastHist('⚠️ Ingresa 11 dígitos del RUC');
+                          setToastHist('🔍 Buscando RUC...');
+                          try {
+                            const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
+                            if (!res.ok) return setToastHist('⚠️ Error al buscar RUC');
+                            const data = await res.json();
+                            if (data && data.length > 0) {
+                              const c = data[0];
+                              setNewClienteHistForm({
+                                nombre: c.nombre || '',
+                                dni: c.dni || '',
+                                ruc: c.ruc || '',
+                                telefono: c.telefono || '',
+                                email: c.email || '',
+                              });
+                              setToastHist('✅ Cliente encontrado: ' + c.nombre);
+                            } else {
+                              setToastHist('⚠️ No hay cliente registrado con ese RUC');
+                            }
+                          } catch { setToastHist('⚠️ Error de conexión al buscar RUC'); }
+                        }}
+                        className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
+                        title="Buscar por RUC"
+                      >
+                        <Search size={14} />
+                      </button>
+                    </div>
                   </div>
                   <input type="tel" placeholder="WhatsApp (opcional)" value={newClienteHistForm.telefono}
                     onChange={e => setNewClienteHistForm({...newClienteHistForm, telefono: e.target.value})}
