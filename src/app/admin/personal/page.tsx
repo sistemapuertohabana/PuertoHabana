@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle, QrCode, Camera, Download } from 'lucide-react';
+import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle, QrCode, Camera, Download, ClipboardList } from 'lucide-react';
 import CarnetPDF from '@/components/CarnetPDF';
 import QRScanner from '@/components/QRScanner';
 import Modal from '@/components/Modal';
@@ -63,6 +63,12 @@ export default function PersonalPage() {
   const [loadingAsist,setLoadingAsist]= useState(true);
   const [carnetAbierto, setCarnetAbierto] = useState<string | null>(null);
   const [showScanner, setShowScanner] = useState(false);
+  /* ── Tareas state ── */
+  const [tareas, setTareas] = useState<any[]>([]);
+  const [showTareaForm, setShowTareaForm] = useState(false);
+  const [tareaForm, setTareaForm] = useState({ titulo: '', descripcion: '', asignado_a: '', fecha_limite: '' });
+  const [tareaError, setTareaError] = useState('');
+  const [loadingTareas, setLoadingTareas] = useState(false);
 
   /* ── Cargar personal desde API (MySQL) con fallback a localStorage ── */
   const loadPersonal = useCallback(async () => {
@@ -88,6 +94,18 @@ export default function PersonalPage() {
   }, []);
 
   useEffect(() => { loadPersonal(); }, [loadPersonal]);
+
+  /* ── Cargar tareas ── */
+  const loadTareas = useCallback(async () => {
+    setLoadingTareas(true);
+    try {
+      const res = await fetch('/api/tareas');
+      if (res.ok) setTareas(await res.json());
+    } catch {}
+    setLoadingTareas(false);
+  }, []);
+
+  useEffect(() => { loadTareas(); }, [loadTareas]);
 
   /* ── Cargar asistencias de hoy ── */
   useEffect(() => {
@@ -635,6 +653,202 @@ export default function PersonalPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── Tareas de Lavaplatos ── */}
+          <div className="mt-10 mb-8">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-cyan-50 border border-cyan-100 flex items-center justify-center shrink-0">
+                  <ClipboardList size={18} className="text-cyan-600" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-gray-900">Tareas de Lavaplatos</h2>
+                  <p className="text-xs text-gray-400">{tareas.filter(t => t.estado === 'pendiente').length} pendientes</p>
+                </div>
+              </div>
+              {!showTareaForm && (
+                <button onClick={() => setShowTareaForm(true)}
+                  className="shrink-0 px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors text-sm font-semibold flex items-center gap-2 whitespace-nowrap">
+                  <Plus size={16} /> <span className="hidden sm:inline">Nueva Tarea</span>
+                </button>
+              )}
+            </div>
+
+            {/* Formulario nueva tarea */}
+            {showTareaForm && (
+              <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-5 mb-6 animate-in slide-in-from-top-4 duration-300">
+                <div className="flex justify-between items-start mb-4">
+                  <h3 className="text-base font-semibold text-gray-900">Nueva Tarea</h3>
+                  <button onClick={() => { setShowTareaForm(false); setTareaError(''); setTareaForm({ titulo: '', descripcion: '', asignado_a: '', fecha_limite: '' }); }}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                    <X size={18} />
+                  </button>
+                </div>
+                <div className="space-y-3.5">
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Título *</label>
+                    <input type="text" value={tareaForm.titulo}
+                      onChange={e => setTareaForm(f => ({ ...f, titulo: e.target.value }))}
+                      placeholder="Ej: Lavar ollas grandes"
+                      className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-gray-600 mb-1.5">Descripción</label>
+                    <textarea value={tareaForm.descripcion}
+                      onChange={e => setTareaForm(f => ({ ...f, descripcion: e.target.value }))}
+                      placeholder="Detalles de la tarea..."
+                      rows={2}
+                      className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none resize-none" />
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Asignar a *</label>
+                      <select value={tareaForm.asignado_a}
+                        onChange={e => setTareaForm(f => ({ ...f, asignado_a: e.target.value }))}
+                        className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none bg-white text-gray-900">
+                        <option value="">Seleccionar</option>
+                        {personal.filter(p => p.rol === 'lavaplato').map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-semibold text-gray-600 mb-1.5">Fecha límite</label>
+                      <input type="date" value={tareaForm.fecha_limite}
+                        onChange={e => setTareaForm(f => ({ ...f, fecha_limite: e.target.value }))}
+                        className="w-full border border-gray-200 bg-white text-gray-900 rounded-xl px-3.5 py-2.5 text-sm focus:ring-2 focus:ring-cyan-500 focus:outline-none" />
+                    </div>
+                  </div>
+
+                  {tareaError && (
+                    <div className="p-2.5 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs">{tareaError}</div>
+                  )}
+
+                  <div className="flex justify-end gap-2.5 pt-1">
+                    <button onClick={() => { setShowTareaForm(false); setTareaError(''); setTareaForm({ titulo: '', descripcion: '', asignado_a: '', fecha_limite: '' }); }}
+                      className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-200 rounded-xl hover:bg-gray-50 transition-colors">
+                      Cancelar
+                    </button>
+                    <button onClick={async () => {
+                      if (!tareaForm.titulo.trim() || !tareaForm.asignado_a) {
+                        setTareaError('Título y asignado son requeridos');
+                        return;
+                      }
+                      setTareaError('');
+                      try {
+                        const sess = JSON.parse(localStorage.getItem('ph_admin_session') || '{}');
+                        const res = await fetch('/api/tareas', {
+                          method: 'POST',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({
+                            titulo: tareaForm.titulo.trim(),
+                            descripcion: tareaForm.descripcion.trim() || undefined,
+                            asignado_a: tareaForm.asignado_a,
+                            creado_por: sess.id || null,
+                            fecha_limite: tareaForm.fecha_limite || undefined,
+                          }),
+                        });
+                        if (res.ok) {
+                          setTareaForm({ titulo: '', descripcion: '', asignado_a: '', fecha_limite: '' });
+                          setShowTareaForm(false);
+                          loadTareas();
+                        } else {
+                          const err = await res.json();
+                          setTareaError(err.error || 'Error al crear tarea');
+                        }
+                      } catch {
+                        setTareaError('Error de conexión');
+                      }
+                    }}
+                      className="px-4 py-2 text-sm font-semibold text-white bg-cyan-600 rounded-xl hover:bg-cyan-700 transition-colors">
+                      Crear Tarea
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Listado de tareas */}
+            {loadingTareas ? (
+              <div className="flex justify-center py-8">
+                <Loader2 size={24} className="animate-spin text-gray-300" />
+              </div>
+            ) : tareas.length === 0 ? (
+              <div className="text-center py-10 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+                <ClipboardList size={32} className="mx-auto text-gray-300 mb-2" />
+                <p className="font-medium text-gray-600 text-sm">No hay tareas</p>
+                <p className="text-xs text-gray-400 mt-0.5">Crea la primera tarea para el lavaplatos.</p>
+              </div>
+            ) : (
+              <div className="space-y-2.5">
+                {tareas.map(tarea => {
+                  const pendiente = tarea.estado === 'pendiente';
+                  return (
+                    <div key={tarea.id}
+                      className={`bg-white border rounded-xl p-4 transition-all ${
+                        pendiente ? 'border-gray-200' : 'border-green-200 bg-green-50/30'
+                      }`}>
+                      <div className="flex items-start justify-between gap-3">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-0.5">
+                            <h3 className={`text-sm font-semibold ${pendiente ? 'text-gray-900' : 'text-green-700 line-through'}`}>
+                              {tarea.titulo}
+                            </h3>
+                            <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                              pendiente
+                                ? 'bg-yellow-100 text-yellow-700'
+                                : 'bg-green-100 text-green-700'
+                            }`}>
+                              {pendiente ? 'Pendiente' : 'Completada'}
+                            </span>
+                          </div>
+                          {tarea.descripcion && (
+                            <p className="text-xs text-gray-500 mt-0.5">{tarea.descripcion}</p>
+                          )}
+                          <div className="flex flex-wrap items-center gap-3 mt-1.5 text-[11px] text-gray-400">
+                            <span className="flex items-center gap-1">
+                              <User size={11} />
+                              {tarea.asignado?.nombre || 'Sin asignar'}
+                            </span>
+                            {tarea.fecha_limite && <span>📅 {tarea.fecha_limite}</span>}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1 shrink-0">
+                          {pendiente && (
+                            <button onClick={async () => {
+                              try {
+                                await fetch(`/api/tareas/${tarea.id}`, {
+                                  method: 'PATCH',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({ estado: 'completada' }),
+                                });
+                                loadTareas();
+                              } catch {}
+                            }}
+                              className="p-1.5 text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                              title="Marcar completada">
+                              <CheckCircle size={18} />
+                            </button>
+                          )}
+                          <button onClick={async () => {
+                            if (!confirm('¿Eliminar esta tarea?')) return;
+                            try {
+                              await fetch(`/api/tareas/${tarea.id}`, { method: 'DELETE' });
+                              loadTareas();
+                            } catch {}
+                          }}
+                            className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Eliminar tarea">
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             )}
           </div>

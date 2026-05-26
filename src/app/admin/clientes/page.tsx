@@ -130,21 +130,21 @@ export default function ClientesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-blue-100 flex items-center justify-center">
-            <Users size={24} className="text-blue-600" />
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-blue-100 flex items-center justify-center shrink-0">
+            <Users size={20} className="text-blue-600" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Clientes</h1>
-            <p className="text-sm text-gray-500 mt-0.5">{clientes.length} registrados</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Clientes</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">{clientes.length} registrados</p>
           </div>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 shrink-0">
           <div className="relative">
             <button onClick={() => setExportMenu(!exportMenu)}
-              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center gap-2">
-              <Download size={15} /> Exportar
+              className="px-3 sm:px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-50 transition-colors flex items-center justify-center gap-1.5">
+              <Download size={15} /> <span className="hidden sm:inline">Exportar</span>
             </button>
             {exportMenu && (
               <div className="absolute right-0 top-12 bg-white rounded-xl shadow-xl border border-gray-100 py-2 w-48 z-10">
@@ -155,8 +155,8 @@ export default function ClientesPage() {
             )}
           </div>
           <button onClick={openNew}
-            className="px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center gap-2">
-            <Plus size={16} /> Nuevo Cliente
+            className="px-4 sm:px-5 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold flex items-center justify-center gap-2 whitespace-nowrap">
+            <Plus size={16} /> <span className="hidden sm:inline">Nuevo Cliente</span><span className="sm:hidden">Nuevo</span>
           </button>
         </div>
       </div>

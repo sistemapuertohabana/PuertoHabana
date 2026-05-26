@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut, ClipboardList, Landmark, Megaphone,
+  Settings, User, LogOut, Landmark, Megaphone,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
@@ -44,7 +44,6 @@ const menuGroups: MenuGroup[] = [
     label: 'Gestión',
     items: [
       { href: '/admin/personal', icon: User, label: 'Personal' },
-      { href: '/admin/tareas', icon: ClipboardList, label: 'Tareas' },
     ],
   },
   {
@@ -221,10 +220,7 @@ export default function Sidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <Link href="/admin/sunat"
-              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors px-2 py-1.5 rounded-lg">
-              <Landmark size={14} /> SUNAT
-            </Link>
+
             <button onClick={signOut}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
