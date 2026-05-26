@@ -559,6 +559,34 @@ export default function DashboardPage() {
     }));
   };
 
+  // ── Cálculo de margen para historial de ventas (con filtro de órdenes) ──
+  const getMargenHistorial = (orders: Pedido[]) => {
+    const costMap: Record<string, number> = {};
+    inventarioItems.forEach(item => {
+      const key = item.nombre.toLowerCase().trim();
+      if (costMap[key]) {
+        costMap[key] = (costMap[key] + (item.costo || 0)) / 2;
+      } else {
+        costMap[key] = item.costo || 0;
+      }
+    });
+
+    let totalVenta = 0;
+    let totalCosto = 0;
+    orders.forEach(p => {
+      const costo = costMap[p.item.toLowerCase().trim()] || 0;
+      totalVenta += p.precio * p.cantidad;
+      totalCosto += costo * p.cantidad;
+    });
+
+    return {
+      totalVenta,
+      totalCosto,
+      ganancia: totalVenta - totalCosto,
+      margen: totalVenta > 0 ? ((totalVenta - totalCosto) / totalVenta * 100) : 0,
+    };
+  };
+
   // Helper to extract top dishes data dynamically from the orders list
   const getTopDishesData = () => {
     const counts: Record<string, { qty: number; revenue: number }> = {};
@@ -852,6 +880,7 @@ export default function DashboardPage() {
       const bebidasVal = filteredHistoryOrders.filter(p => p.category === 'bebidas').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const totalYape = filteredHistoryOrders.filter(p => p.metodo_pago === 'Yape').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const totalEfectivo = filteredHistoryOrders.filter(p => p.metodo_pago === 'Efectivo').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+      const margenHist = getMargenHistorial(filteredHistoryOrders);
 
       return {
         ventasTotal: { title: 'Ventas Totales', value: `S/ ${totalRev.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
@@ -859,6 +888,9 @@ export default function DashboardPage() {
         efectivo: { title: 'Total Efectivo', value: `S/ ${totalEfectivo.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         comidaHist: { title: 'Ventas Comida', value: `S/ ${comidaVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Utensils },
         bebidasHist: { title: 'Ventas Bebidas', value: `S/ ${bebidasVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Wine },
+        costoHist: { title: 'Costo de Ventas', value: `S/ ${margenHist.totalCosto.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: TrendingUp },
+        gananciaHist: { title: 'Ganancia Bruta', value: `S/ ${margenHist.ganancia.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: TrendingUp },
+        margenHistPct: { title: 'Margen %', value: `${margenHist.margen.toFixed(1)}%`, icon: TrendingUp },
       };
     } else {
       // ventas_mozo
@@ -1178,7 +1210,7 @@ export default function DashboardPage() {
       
       {/* Summary Cards Grid */}
       {activeTab !== 'reportes' && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 mb-10 w-full overflow-hidden">
+        <div className={`grid grid-cols-1 ${activeTab === 'historial' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 md:gap-6 mb-10 w-full overflow-hidden`}>
           {Object.entries(getTabCards()).map(([key, data]) => {
             const Icon = data.icon;
             return (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, Send } from 'lucide-react';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
 interface Comanda {
@@ -30,6 +30,18 @@ export default function MozoHistorialPage() {
   const [taperModalData, setTaperModalData] = useState<Comanda | null>(null);
   const [taperCart, setTaperCart] = useState<{ nombre: string; precio: number; qty: number }[]>([]);
   const [taperSuccess, setTaperSuccess] = useState(false);
+
+  // Cliente para boleta electrónica / WhatsApp
+  const [clienteHist, setClienteHist] = useState<{ id: number; nombre: string; dni?: string; ruc?: string; telefono?: string } | null>(null);
+  const [showClienteSearchHist, setShowClienteSearchHist] = useState(false);
+  const [clienteSearchHist, setClienteSearchHist] = useState('');
+  const [clientesHist, setClientesHist] = useState<any[]>([]);
+  const [showNewClienteHistForm, setShowNewClienteHistForm] = useState(false);
+  const [newClienteHistForm, setNewClienteHistForm] = useState({ nombre: '', dni: '', ruc: '', telefono: '', email: '' });
+  const [sendingWhatsAppHist, setSendingWhatsAppHist] = useState(false);
+  const [sendingSunatHist, setSendingSunatHist] = useState(false);
+  const [toastHist, setToastHist] = useState<string | null>(null);
+
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
@@ -42,7 +54,26 @@ export default function MozoHistorialPage() {
     return () => unsub();
   }, []);
 
-    // Modal detallado
+  // Búsqueda de clientes para boleta electrónica
+  useEffect(() => {
+    if (!showClienteSearchHist) return;
+    const debounce = setTimeout(async () => {
+      if (clienteSearchHist.length < 2) {
+        setClientesHist([]);
+        return;
+      }
+      try {
+        const res = await fetch(`/api/clientes?search=${encodeURIComponent(clienteSearchHist)}&limit=10`);
+        if (res.ok) setClientesHist(await res.json());
+      } catch {}
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [clienteSearchHist, showClienteSearchHist]);
+
+  // Toast auto-clear
+  useEffect(() => { if (!toastHist) return; const t = setTimeout(() => setToastHist(null), 3000); return () => clearTimeout(t); }, [toastHist]);
+
+  // Modal detallado
   const [detailModal, setDetailModal] = useState<Comanda | null>(null);
   
   // Solo muestra las comandas del mozo logueado
@@ -141,6 +172,7 @@ export default function MozoHistorialPage() {
   const handlePagoModalOpen = (c: Comanda) => {
     setPagoModalData(c);
     setPagoInputs({ yape: '', efectivo: '' });
+    setClienteHist(null);
   };
 
   const total = comandas.reduce((s, c) => s + Number(c.total), 0);
@@ -339,13 +371,108 @@ export default function MozoHistorialPage() {
                       <h3 className="text-xl font-bold mb-1 text-center text-gray-900">Cobrar Mesa {c.mesa}</h3>
                       <p className="text-center text-3xl font-black text-blue-600 mb-6">S/ {Number(c.total).toFixed(2)}</p>
 
+                      {/* Sección Cliente (boleta electrónica) */}
+                      <div className="mb-4">
+                        <button
+                          onClick={() => { setShowClienteSearchHist(true); setClienteSearchHist(''); setClientesHist([]); }}
+                          className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-dashed border-gray-300 px-3 py-2 rounded-lg transition-colors"
+                        >
+                          <Search size={13} />
+                          {clienteHist
+                            ? `🧑 ${clienteHist.nombre}${clienteHist.dni ? ` · ${clienteHist.dni}` : ''}`
+                            : 'Buscar o registrar cliente (opcional para boleta)'}
+                        </button>
+                        {clienteHist && (
+                          <div className="flex gap-2 mt-2">
+                            <button
+                              onClick={async () => {
+                                setSendingSunatHist(true);
+                                try {
+                                  const res = await fetch('/api/sunat/enviar', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      comanda_id: c.id,
+                                      cliente_id: clienteHist.id,
+                                      tipo_doc: 'boleta',
+                                      cliente: {
+                                        tipo_doc: clienteHist.ruc ? 'RUC' : 'DNI',
+                                        numero_doc: clienteHist.ruc || clienteHist.dni || '00000000',
+                                        razon_social: clienteHist.nombre,
+                                      },
+                                      items: (c.items || []).map(i => ({
+                                        nombre: i.nombre,
+                                        cantidad: i.cantidad,
+                                        precio: i.precio,
+                                      })),
+                                      observaciones: `Mesa: ${c.mesa}`,
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  setToastHist(data.success
+                                    ? `✅ Boleta ${data.boleta?.numero_doc || ''} emitida`
+                                    : `❌ Error: ${data.mensaje || data.error}`);
+                                } catch {
+                                  setToastHist('❌ Error al emitir boleta');
+                                } finally { setSendingSunatHist(false); }
+                              }}
+                              disabled={sendingSunatHist}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-amber-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
+                            >
+                              {sendingSunatHist ? (
+                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : <FileText size={13} />}
+                              {sendingSunatHist ? 'Enviando...' : '🧾 Boleta Electrónica'}
+                            </button>
+                            {clienteHist.telefono && (
+                              <button
+                                onClick={async () => {
+                                  setSendingWhatsAppHist(true);
+                                  const items = (c.items || []).map(i => ({
+                                    nombre: i.nombre,
+                                    cantidad: i.cantidad,
+                                    precio: i.precio,
+                                  }));
+                                  try {
+                                    const res = await fetch('/api/whatsapp/enviar', {
+                                      method: 'POST',
+                                      headers: { 'Content-Type': 'application/json' },
+                                      body: JSON.stringify({
+                                        tipo: 'boleta',
+                                        telefono: clienteHist.telefono,
+                                        cliente_nombre: clienteHist.nombre,
+                                        mesa: c.mesa,
+                                        items,
+                                        total: Number(c.total),
+                                        metodo_pago: pagoInputs.yape ? 'Yape/Mixto' : 'Efectivo',
+                                      }),
+                                    });
+                                    const data = await res.json();
+                                    setToastHist(data.success ? '✅ Voucher enviado por WhatsApp' : '❌ Error al enviar');
+                                  } catch {
+                                    setToastHist('❌ Error de conexión');
+                                  } finally { setSendingWhatsAppHist(false); }
+                                }}
+                                disabled={sendingWhatsAppHist}
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                              >
+                                {sendingWhatsAppHist ? (
+                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                                ) : <Send size={13} />}
+                                {sendingWhatsAppHist ? 'Enviando...' : '📱 WhatsApp'}
+                              </button>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
                       <div className="space-y-4 mb-6">
                         {/* Pago Rápido Completo */}
                         <div className="flex gap-3">
                           <button onClick={() => confirmarCobro(c.id, 'Yape')} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md">Todo Yape</button>
                           <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md">Todo Efectivo</button>
                         </div>
-                        
+
                         <div className="relative flex items-center py-2">
                           <div className="flex-grow border-t border-gray-200"></div>
                           <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-semibold uppercase">O pago mixto / calcular vuelto</span>
@@ -378,7 +505,7 @@ export default function MozoHistorialPage() {
                           const abonado = y + e;
                           const faltante = t - abonado;
                           const vuelto = abonado > t ? abonado - t : 0;
-                          
+
                           return (
                             <div className={`p-4 rounded-xl border ${faltante > 0 ? 'bg-orange-50 border-orange-100' : 'bg-green-50 border-green-100'}`}>
                               {faltante > 0 ? (
@@ -392,14 +519,13 @@ export default function MozoHistorialPage() {
                       </div>
 
                       <div className="flex gap-3 mt-6">
-                        <button onClick={() => setPagoModalData(null)} className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">Cancelar</button>
-                        <button 
+                        <button onClick={() => { setPagoModalData(null); setClienteHist(null); }} className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">Cancelar</button>
+                        <button
                           disabled={((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < Number(c.total)}
                           onClick={() => {
                             const t = Number(c.total);
                             const y = Number(pagoInputs.yape) || 0;
                             const e = Number(pagoInputs.efectivo) || 0;
-                            // El efectivo cobrado real es (total - yape)
                             const efectivoCobrado = Math.max(0, t - y);
                             let metodo: any = 'Efectivo';
                             if (y > 0 && e > 0) {
@@ -421,6 +547,130 @@ export default function MozoHistorialPage() {
           </div>
         )}
       </div>
+
+      {/* Toast */}
+      {toastHist && (
+        <div className="fixed top-4 right-4 z-[200] bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-top">
+          {toastHist}
+        </div>
+      )}
+
+      {/* Modal búsqueda de cliente */}
+      {showClienteSearchHist && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) { setShowClienteSearchHist(false); setShowNewClienteHistForm(false); } }}
+        >
+          <div className="bg-white w-full max-w-md rounded-3xl shadow-2xl p-6 animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-bold text-gray-900">
+                {showNewClienteHistForm ? 'Nuevo Cliente' : 'Buscar Cliente'}
+              </h3>
+              <button onClick={() => { setShowClienteSearchHist(false); setShowNewClienteHistForm(false); }}
+                className="p-1.5 hover:bg-gray-100 rounded-full">
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            {!showNewClienteHistForm ? (
+              <>
+                <div className="relative mb-4">
+                  <Search size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text" value={clienteSearchHist}
+                    onChange={e => setClienteSearchHist(e.target.value)}
+                    placeholder="Buscar por nombre, DNI o RUC..."
+                    className="w-full pl-10 pr-4 py-2.5 text-sm border border-gray-200 rounded-xl bg-white focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    autoFocus
+                  />
+                </div>
+
+                <div className="max-h-48 overflow-y-auto space-y-2 mb-4">
+                  {clientesHist.map(c => (
+                    <button key={c.id} onClick={() => {
+                      setClienteHist(c);
+                      setShowClienteSearchHist(false);
+                      setShowNewClienteHistForm(false);
+                    }}
+                      className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 border border-gray-100 text-left transition-colors">
+                      <div className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center">
+                        <Search size={14} className="text-gray-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-gray-900 truncate">{c.nombre}</p>
+                        <div className="flex gap-2 text-xs text-gray-500">
+                          {c.dni && <span>DNI: {c.dni}</span>}
+                          {c.ruc && <span>RUC: {c.ruc}</span>}
+                          {c.telefono && <span>📱 {c.telefono}</span>}
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                  {clienteSearchHist.length >= 2 && clientesHist.length === 0 && (
+                    <p className="text-sm text-gray-400 text-center py-4">Sin resultados — puedes registrarlo</p>
+                  )}
+                  {clienteSearchHist.length < 2 && (
+                    <p className="text-sm text-gray-400 text-center py-4">Ingresa al menos 2 caracteres para buscar</p>
+                  )}
+                </div>
+
+                <button onClick={() => setShowNewClienteHistForm(true)}
+                  className="w-full py-2.5 border-2 border-dashed border-gray-300 rounded-xl text-sm text-gray-500 font-medium hover:border-blue-400 hover:text-blue-600 transition-colors">
+                  + Registrar nuevo cliente
+                </button>
+              </>
+            ) : (
+              <>
+                <div className="space-y-3 mb-4">
+                  <input type="text" placeholder="Nombre *" value={newClienteHistForm.nombre}
+                    onChange={e => setNewClienteHistForm({...newClienteHistForm, nombre: e.target.value})}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  <div className="grid grid-cols-2 gap-3">
+                    <input type="text" placeholder="DNI" value={newClienteHistForm.dni} maxLength={8}
+                      onChange={e => setNewClienteHistForm({...newClienteHistForm, dni: e.target.value})}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                    <input type="text" placeholder="RUC" value={newClienteHistForm.ruc} maxLength={11}
+                      onChange={e => setNewClienteHistForm({...newClienteHistForm, ruc: e.target.value})}
+                      className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                  </div>
+                  <input type="tel" placeholder="WhatsApp (opcional)" value={newClienteHistForm.telefono}
+                    onChange={e => setNewClienteHistForm({...newClienteHistForm, telefono: e.target.value})}
+                    className="w-full px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400" />
+                </div>
+                <div className="flex gap-3">
+                  <button onClick={() => setShowNewClienteHistForm(false)}
+                    className="flex-1 py-2.5 bg-gray-100 text-gray-600 font-semibold rounded-xl hover:bg-gray-200 transition-colors text-sm">
+                    Volver
+                  </button>
+                  <button onClick={async () => {
+                    if (!newClienteHistForm.nombre) return alert('Nombre requerido');
+                    try {
+                      const res = await fetch('/api/clientes', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(newClienteHistForm),
+                      });
+                      if (!res.ok) {
+                        const err = await res.json();
+                        return alert(err.error || 'Error al registrar');
+                      }
+                      const nuevo = await res.json();
+                      setClienteHist(nuevo);
+                      setShowClienteSearchHist(false);
+                      setShowNewClienteHistForm(false);
+                      setNewClienteHistForm({ nombre: '', dni: '', ruc: '', telefono: '', email: '' });
+                      setToastHist('✅ Cliente registrado');
+                    } catch { alert('Error de conexión'); }
+                  }}
+                    className="flex-1 py-2.5 bg-blue-600 text-white font-semibold rounded-xl hover:bg-blue-700 transition-colors text-sm">
+                    Guardar
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Modal detallado del pedido */}
       {detailModal && (

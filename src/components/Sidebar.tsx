@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut, ClipboardList, Landmark,
+  Settings, User, LogOut, ClipboardList, Landmark, Megaphone,
 } from 'lucide-react';
 import { usePayments } from '@/hooks/usePayments';
 import { useAuth } from '@/hooks/useAuth';
@@ -16,6 +16,9 @@ type NavbarStyle  = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotan
 const menuItems = [
   { href: '/admin/dashboard',      icon: LayoutDashboard, label: 'Dashboard'      },
   { href: '/admin/inventario',     icon: Package,         label: 'Inventario'     },
+  { href: '/admin/sunat',          icon: Landmark,        label: 'SUNAT'          },
+  { href: '/admin/clientes',       icon: Users,           label: 'Clientes'       },
+  { href: '/admin/promociones',    icon: Megaphone,       label: 'Promociones'    },
   { href: '/admin/personal',       icon: Users,           label: 'Personal'       },
   { href: '/admin/tareas',         icon: ClipboardList,   label: 'Tareas'         },
   { href: '/admin/gastos',         icon: DollarSign,      label: 'Gastos'         },
@@ -102,12 +105,11 @@ export default function Sidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => alert('⚙️ Módulo SUNAT en desarrollo.\n\nPróximamente: Envío de boletas electrónicas, alertas de límite de ingresos y reportes tributarios.')}
+            <Link href="/admin/sunat"
               className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors px-2 py-1.5 rounded-lg"
             >
               <Landmark size={14} /> SUNAT
-            </button>
+            </Link>
             <button onClick={signOut} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
             </button>
@@ -195,14 +197,7 @@ export default function Sidebar() {
           </div>
         </div>
 
-        {/* SUNAT */}
-        <div className={`px-3 py-2 border-t ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
-          <button
-            onClick={() => alert('⚙️ Módulo SUNAT en desarrollo.\n\nPróximamente:\n• Envío de boletas electrónicas a SUNAT\n• Alertas de límite de ingresos\n• Reportes tributarios mensuales\n• Libro de registros de ventas')}
-            className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-xs font-medium ${design === 'azul' ? 'text-amber-300 hover:bg-blue-700' : 'text-amber-600 hover:bg-amber-50 border border-amber-200'}`}>
-            <Landmark size={14} /> SUNAT — Boletas Electrónicas
-          </button>
-        </div>
+
 
         {/* Cerrar sesión */}
         <div className={`px-3 pb-4 border-t pt-3 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
