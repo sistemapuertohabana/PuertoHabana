@@ -54,6 +54,53 @@ export default function MozoHistorialPage() {
     return () => unsub();
   }, []);
 
+  // ── Yape QR Modal ────────────────────────────────────────────────
+  const [yapeQRData, setYapeQRData] = useState<{ comandaId: number; total: number; yapeMonto: number; efectivoMonto: number; metodo: string } | null>(null);
+  const [qrDataUrlHist, setQrDataUrlHist] = useState<string>('');
+
+  function getYapeConfig() {
+    try {
+      const stored = localStorage.getItem('ph_pago_config');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        return {
+          numero: parsed.yapeNumero || '942 902 367',
+          nombre: parsed.yapeNombre || 'PUERTO HABANA',
+        };
+      }
+    } catch {}
+    return { numero: '942 902 367', nombre: 'PUERTO HABANA' };
+  }
+
+  // Generar QR al abrir el modal
+  useEffect(() => {
+    if (!yapeQRData) return;
+    const yapeConfig = getYapeConfig();
+    import('qrcode').then((QRCode) => {
+      QRCode.toDataURL(yapeConfig.numero, {
+        width: 280,
+        margin: 2,
+        color: { dark: '#7408B6', light: '#FFFFFF' },
+      }).then(setQrDataUrlHist).catch(() => {});
+    });
+  }, [yapeQRData]);
+
+  // Sincronizar pago_config desde Supabase
+  useEffect(() => {
+    const syncPagoConfig = async () => {
+      try {
+        const res = await fetch('/api/configuracion?clave=pago_config');
+        if (res.ok) {
+          const { valor } = await res.json();
+          if (valor) {
+            localStorage.setItem('ph_pago_config', JSON.stringify(valor));
+          }
+        }
+      } catch {}
+    };
+    syncPagoConfig();
+  }, []);
+
   // Búsqueda de clientes para boleta electrónica
   useEffect(() => {
     if (!showClienteSearchHist) return;
@@ -469,7 +516,7 @@ export default function MozoHistorialPage() {
                       <div className="space-y-4 mb-6">
                         {/* Pago Rápido Completo */}
                         <div className="flex gap-3">
-                          <button onClick={() => confirmarCobro(c.id, 'Yape')} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md">Todo Yape</button>
+                          <button onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(c.total), efectivoMonto: 0, metodo: 'Yape' })} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md">Todo Yape</button>
                           <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md">Todo Efectivo</button>
                         </div>
 
@@ -482,7 +529,18 @@ export default function MozoHistorialPage() {
                         {/* Entradas Mixtas */}
                         <div className="space-y-3">
                           <div>
-                            <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
+                            <div className="flex items-center justify-between mb-1">
+                              <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
+                              {Number(pagoInputs.yape) > 0 && (
+                                <button
+                                  onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(pagoInputs.yape), efectivoMonto: Number(pagoInputs.efectivo) || 0, metodo: '' })}
+                                  className="text-[10px] text-[#7408B6] font-semibold flex items-center gap-1 hover:text-[#5C0691] transition-colors"
+                                >
+                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
+                                  Ver QR
+                                </button>
+                              )}
+                            </div>
                             <div className="relative mt-1">
                               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
                               <input type="text" inputMode="decimal" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
@@ -547,6 +605,103 @@ export default function MozoHistorialPage() {
           </div>
         )}
       </div>
+
+      {/* ── Modal QR Yape ───────────────────────────────────────────────── */}
+      {yapeQRData && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="bg-white w-full max-w-xs rounded-3xl shadow-2xl p-6 text-center animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {(() => {
+              const yapeConfig = getYapeConfig();
+              return (
+                <>
+                  <div className="flex justify-between items-center mb-3">
+                    <h3 className="text-lg font-bold text-gray-900">Pagar con Yape</h3>
+                    <button
+                      onClick={() => { setYapeQRData(null); setQrDataUrlHist(''); }}
+                      className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+                    >
+                      <X size={18} className="text-gray-400" />
+                    </button>
+                  </div>
+
+                  <div className="bg-white rounded-2xl p-4 border-2 border-[#7408B6]/20 shadow-lg mb-4 inline-block">
+                    {qrDataUrlHist ? (
+                      <img
+                        src={qrDataUrlHist}
+                        alt="QR Yape"
+                        className="w-56 h-56 mx-auto"
+                      />
+                    ) : (
+                      <div className="w-56 h-56 mx-auto flex items-center justify-center bg-gray-50 rounded-xl">
+                        <div className="w-8 h-8 border-2 border-[#7408B6] border-t-transparent rounded-full animate-spin" />
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="space-y-2 mb-4">
+                    <p className="text-sm font-semibold text-gray-900">{yapeConfig.nombre}</p>
+                    <p className="text-lg font-bold text-[#7408B6]">{yapeConfig.numero}</p>
+                    <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
+                      <p className="text-xs text-gray-500">
+                        {yapeQRData.yapeMonto < yapeQRData.total
+                          ? `Pago Yape (parte del total)`
+                          : `Total a pagar`}
+                      </p>
+                      <p className="text-2xl font-black text-gray-900">S/ {yapeQRData.yapeMonto.toFixed(2)}</p>
+                      {yapeQRData.efectivoMonto > 0 && (
+                        <p className="text-xs text-gray-400 mt-1">
+                          + Efectivo: S/ {yapeQRData.efectivoMonto.toFixed(2)}
+                        </p>
+                      )}
+                    </div>
+                    <p className="text-xs text-gray-400">
+                      Escanea el código QR con tu app Yape
+                    </p>
+                  </div>
+
+                  <div className="flex gap-3">
+                    <button
+                      onClick={() => { setYapeQRData(null); setQrDataUrlHist(''); }}
+                      className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors text-sm"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      onClick={() => {
+                        const data = yapeQRData;
+                        setYapeQRData(null);
+                        setQrDataUrlHist('');
+                        if (data.metodo === 'Yape') {
+                          confirmarCobro(data.comandaId, 'Yape');
+                        } else {
+                          // Mixto
+                          const y = data.yapeMonto;
+                          const e = data.efectivoMonto;
+                          const efectivoCobrado = Math.max(0, data.total - y);
+                          let metodo = 'Efectivo';
+                          if (y > 0 && e > 0) {
+                            metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
+                          } else if (y > 0) {
+                            metodo = 'Yape';
+                          }
+                          confirmarCobro(data.comandaId, metodo);
+                        }
+                      }}
+                      className="flex-1 py-3 bg-green-600 text-white font-bold hover:bg-green-700 rounded-2xl transition-colors shadow-md text-sm flex items-center justify-center gap-2"
+                    >
+                      <CheckCircle2 size={18} />
+                      Pagado — S/ {yapeQRData.yapeMonto.toFixed(2)}
+                    </button>
+                  </div>
+                </>
+              );
+            })()}
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toastHist && (
