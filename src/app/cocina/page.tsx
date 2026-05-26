@@ -15,7 +15,7 @@ interface Pedido {
   hora: string;
   fecha: string;
   notas?: string;
-  items?: { nombre: string; cantidad: number; notas?: string }[];
+  items?: { nombre: string; cantidad: number; notas?: string; categoria?: string }[];
 }
 
 function getLocalDateString() {
@@ -344,10 +344,12 @@ export default function CocinaPage() {
                 </div>
               </div>
 
-              {/* Items */}
+              {/* Items — solo mostrar comida */}
               {p.items && p.items.length > 0 && (
                 <ul className="space-y-1 mb-3">
-                  {p.items.map((item, i) => (
+                  {p.items
+                    .filter(item => item.categoria === 'comida' || item.categoria === undefined)
+                    .map((item, i) => (
                     <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
                       <span className="font-medium text-gray-900 w-6 text-right text-xs">{item.cantidad}×</span>
                       <span>{item.nombre}</span>

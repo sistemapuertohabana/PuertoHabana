@@ -280,13 +280,15 @@ export default function InventarioPage() {
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Inventario General</h1>
         <div className="flex gap-2">
-          <button
-            onClick={() => setShowScanner(true)}
-            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm bg-green-600 text-white hover:bg-green-700"
-          >
-            <Barcode size={16} strokeWidth={2} />
-            Escanear
-          </button>
+          {activeSection !== 'comida' && (
+            <button
+              onClick={() => setShowScanner(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm bg-green-600 text-white hover:bg-green-700"
+            >
+              <Barcode size={16} strokeWidth={2} />
+              Escanear
+            </button>
+          )}
           <button
             onClick={handleAdd}
             className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700"
@@ -369,8 +371,8 @@ export default function InventarioPage() {
         </div>
       </div>
 
-      {/* Botones de navegación */}
-      <div className="flex flex-col sm:flex-row gap-2 mb-8">
+      {/* Botones de navegación — scroll horizontal en mobile */}
+      <div className="flex overflow-x-auto gap-2 mb-8 pb-1" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
         <button
           onClick={() => setActiveSection('comida')}
           className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
