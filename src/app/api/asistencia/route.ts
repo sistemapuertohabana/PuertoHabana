@@ -21,11 +21,13 @@ interface AsistenciaRow {
 //   ?fecha=2026-05-25       — filtrar por fecha (opcional, default hoy)
 //   ?usuario_id=xxx         — filtrar por usuario (opcional)
 //   ?today                  — solo las de hoy (shortcut)
+//   ?mes=2026-05            — filtrar por mes completo
 export async function GET(request: Request) {
   const sb = getServiceSupabase();
   const { searchParams } = new URL(request.url);
 
   let fecha = searchParams.get('fecha');
+  const mes = searchParams.get('mes');
   if (!fecha && searchParams.has('today')) {
     const hoy = new Date();
     const utcMs = hoy.getTime() + (hoy.getTimezoneOffset() * 60000);
@@ -49,6 +51,14 @@ export async function GET(request: Request) {
     .order('hora_llegada', { ascending: true });
 
   if (fecha) query = query.eq('fecha', fecha);
+  if (mes) {
+    const [year, month] = mes.split('-').map(Number);
+    const inicio = `${year}-${String(month).padStart(2, '0')}-01`;
+    const fin = month === 12
+      ? `${year + 1}-01-01`
+      : `${year}-${String(month + 1).padStart(2, '0')}-01`;
+    query = query.gte('fecha', inicio).lt('fecha', fin);
+  }
   if (usuarioId) query = query.eq('usuario_id', usuarioId);
 
   const { data, error } = await query;

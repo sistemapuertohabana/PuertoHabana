@@ -242,29 +242,29 @@ export default function ClientesPage() {
                     placeholder="12345678" />
                   <button
                     onClick={async () => {
-                      if (!form.dni || form.dni.length < 8) return;
+                      const dniClean = form.dni.trim();
+                      if (!dniClean || dniClean.length < 8) return setToast('⚠️ Ingresa 8 dígitos del DNI');
                       try {
-                        const res = await fetch(`/api/clientes?dni=${encodeURIComponent(form.dni)}`);
-                        if (res.ok) {
-                          const data = await res.json();
-                          if (data && data.length > 0) {
-                            const c = data[0];
-                            setForm({
-                              nombre: c.nombre || form.nombre,
-                              dni: c.dni || form.dni,
-                              ruc: c.ruc || form.ruc,
-                              telefono: c.telefono || form.telefono,
-                              email: c.email || form.email,
-                              direccion: c.direccion || form.direccion,
-                              notas: c.notas || form.notas,
-                            });
-                            setEditingId(c.id);
-                            setToast('✅ Cliente encontrado: ' + c.nombre);
-                          } else {
-                            setToast('⚠️ No se encontró cliente con ese DNI');
-                          }
+                        const res = await fetch(`/api/clientes?dni=${encodeURIComponent(dniClean)}`);
+                        if (!res.ok) return setToast('⚠️ Error al buscar DNI');
+                        const data = await res.json();
+                        if (data && data.length > 0) {
+                          const c = data[0];
+                          setForm({
+                            nombre: c.nombre || form.nombre,
+                            dni: c.dni || '',
+                            ruc: c.ruc || '',
+                            telefono: c.telefono || '',
+                            email: c.email || '',
+                            direccion: c.direccion || '',
+                            notas: c.notas || '',
+                          });
+                          setEditingId(c.id);
+                          setToast('✅ Cliente encontrado: ' + c.nombre);
+                        } else {
+                          setToast('⚠️ No hay cliente registrado con ese DNI');
                         }
-                      } catch {}
+                      } catch { setToast('⚠️ Error de conexión al buscar DNI'); }
                     }}
                     className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Buscar por DNI"
@@ -282,29 +282,29 @@ export default function ClientesPage() {
                     placeholder="20123456789" />
                   <button
                     onClick={async () => {
-                      if (!form.ruc || form.ruc.length < 11) return;
+                      const rucClean = form.ruc.trim();
+                      if (!rucClean || rucClean.length < 11) return setToast('⚠️ Ingresa 11 dígitos del RUC');
                       try {
-                        const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(form.ruc)}`);
-                        if (res.ok) {
-                          const data = await res.json();
-                          if (data && data.length > 0) {
-                            const c = data[0];
-                            setForm({
-                              nombre: c.nombre || form.nombre,
-                              dni: c.dni || form.dni,
-                              ruc: c.ruc || form.ruc,
-                              telefono: c.telefono || form.telefono,
-                              email: c.email || form.email,
-                              direccion: c.direccion || form.direccion,
-                              notas: c.notas || form.notas,
-                            });
-                            setEditingId(c.id);
-                            setToast('✅ Cliente encontrado: ' + c.nombre);
-                          } else {
-                            setToast('⚠️ No se encontró cliente con ese RUC');
-                          }
+                        const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
+                        if (!res.ok) return setToast('⚠️ Error al buscar RUC');
+                        const data = await res.json();
+                        if (data && data.length > 0) {
+                          const c = data[0];
+                          setForm({
+                            nombre: c.nombre || form.nombre,
+                            dni: c.dni || '',
+                            ruc: c.ruc || '',
+                            telefono: c.telefono || '',
+                            email: c.email || '',
+                            direccion: c.direccion || '',
+                            notas: c.notas || '',
+                          });
+                          setEditingId(c.id);
+                          setToast('✅ Cliente encontrado: ' + c.nombre);
+                        } else {
+                          setToast('⚠️ No hay cliente registrado con ese RUC');
                         }
-                      } catch {}
+                      } catch { setToast('⚠️ Error de conexión al buscar RUC'); }
                     }}
                     className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Buscar por RUC"

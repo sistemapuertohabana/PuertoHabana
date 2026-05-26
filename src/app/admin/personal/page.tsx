@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle, QrCode, Camera, Download, ClipboardList } from 'lucide-react';
+import { User, Plus, X, Loader2, Edit2, Trash2, Clock, CheckCircle, AlertCircle, QrCode, Camera, Download, ClipboardList, CalendarDays, ChevronLeft, ChevronRight, Bed } from 'lucide-react';
 import CarnetPDF from '@/components/CarnetPDF';
 import QRScanner from '@/components/QRScanner';
 import Modal from '@/components/Modal';
@@ -69,6 +69,23 @@ export default function PersonalPage() {
   const [tareaForm, setTareaForm] = useState({ titulo: '', descripcion: '', asignado_a: '', fecha_limite: '' });
   const [tareaError, setTareaError] = useState('');
   const [loadingTareas, setLoadingTareas] = useState(false);
+  const [toast, setToast] = useState<string | null>(null);
+  /* ── Calendar / Descanso state ── */
+  const [calMes, setCalMes] = useState(() => {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+  });
+  const [calAsistencia, setCalAsistencia] = useState<any[]>([]);
+  const [calDescansos, setCalDescansos] = useState<any[]>([]);
+  const [loadingCal, setLoadingCal] = useState(true);
+  const [showDescansoModal, setShowDescansoModal] = useState(false);
+  const [descansoEmpleado, setDescansoEmpleado] = useState<Personal | null>(null);
+  const [descansoFecha, setDescansoFecha] = useState('');
+  const [descansoMotivo, setDescansoMotivo] = useState('');
+  const [descansosLocal, setDescansosLocal] = useState<Record<string, string[]>>({});
+
+  /* ── Auto-descartar toast ── */
+  useEffect(() => { if (toast) { const t = setTimeout(() => setToast(null), 3500); return () => clearTimeout(t); } }, [toast]);
 
   /* ── Cargar personal desde API (MySQL) con fallback a localStorage ── */
   const loadPersonal = useCallback(async () => {
@@ -106,6 +123,98 @@ export default function PersonalPage() {
   }, []);
 
   useEffect(() => { loadTareas(); }, [loadTareas]);
+
+  /* ── Cargar calendario ── */
+  const loadCalendario = useCallback(async (mes: string) => {
+    setLoadingCal(true);
+    try {
+      const asisRes = await fetch(`/api/asistencia?mes=${mes}`);
+      if (asisRes.ok) setCalAsistencia(await asisRes.json());
+    } catch {}
+    // Cargar descansos locales
+    try {
+      const loc = JSON.parse(localStorage.getItem('ph_descansos') || '{}');
+      setDescansosLocal(loc);
+    } catch {}
+    setLoadingCal(false);
+  }, []);
+
+  useEffect(() => { loadCalendario(calMes); }, [calMes, loadCalendario]);
+
+  /* ── Cambiar mes ── */
+  const cambiarMes = (delta: number) => {
+    const [y, m] = calMes.split('-').map(Number);
+    const d = new Date(y, m - 1 + delta, 1);
+    setCalMes(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`);
+  };
+
+  /* ── Asignar descanso ── */
+  const handleAsignarDescanso = async () => {
+    if (!descansoEmpleado || !descansoFecha) return;
+    try {
+      // Guardar en API
+      await fetch('/api/descansos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: descansoEmpleado.id,
+          fecha: descansoFecha,
+          motivo: descansoMotivo || null,
+        }),
+      }).catch(() => {});
+
+      // Guardar en localStorage
+      const loc = { ...descansosLocal };
+      if (!loc[descansoEmpleado.id]) loc[descansoEmpleado.id] = [];
+      if (!loc[descansoEmpleado.id].includes(descansoFecha)) {
+        loc[descansoEmpleado.id].push(descansoFecha);
+      }
+      localStorage.setItem('ph_descansos', JSON.stringify(loc));
+      setDescansosLocal(loc);
+
+      // Notificar al empleado via notificaciones
+      const fechaFormateada = new Date(descansoFecha + 'T00:00:00').toLocaleDateString('es-PE', {
+        weekday: 'long', day: 'numeric', month: 'long'
+      });
+
+      // Crear notificación en la base de datos
+      await fetch('/api/notificaciones', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          usuario_id: descansoEmpleado.id,
+          titulo: '🌴 Día de Descanso',
+          mensaje: `Se te ha asignado descanso el ${fechaFormateada}${descansoMotivo ? ` (${descansoMotivo})` : ''}. ¡Disfruta tu día!`,
+        }),
+      }).catch(() => {});
+
+      setToast('✅ Descanso asignado a ' + descansoEmpleado.nombre);
+      setShowDescansoModal(false);
+      setDescansoEmpleado(null);
+      setDescansoFecha('');
+      setDescansoMotivo('');
+      loadCalendario(calMes);
+    } catch {}
+  };
+
+  /* ── Quitar descanso ── */
+  const handleQuitarDescanso = async (empleadoId: string, fecha: string, nombre: string) => {
+    try {
+      await fetch(`/api/descansos?usuario_id=${empleadoId}&fecha=${fecha}`, { method: 'DELETE' });
+    } catch {}
+
+    // También quitar de localStorage
+    const loc = { ...descansosLocal };
+    if (loc[empleadoId]) {
+      loc[empleadoId] = loc[empleadoId].filter(f => f !== fecha);
+      if (loc[empleadoId].length === 0) delete loc[empleadoId];
+      localStorage.setItem('ph_descansos', JSON.stringify(loc));
+      setDescansosLocal(loc);
+    }
+
+    setToast('❌ Descanso quitado de ' + nombre);
+    loadCalendario(calMes);
+  };
 
   /* ── Cargar asistencias de hoy ── */
   useEffect(() => {
@@ -277,6 +386,61 @@ export default function PersonalPage() {
         </div>
       )}
 
+      {/* Modal asignar descanso */}
+      {showDescansoModal && descansoEmpleado && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm" onClick={() => setShowDescansoModal(false)}>
+          <div className="bg-white rounded-2xl shadow-xl p-6 mx-4 max-w-sm w-full" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-5">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center">
+                  <Bed size={20} className="text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-gray-900">Asignar Descanso</h3>
+                  <p className="text-xs text-gray-500">{descansoEmpleado.nombre}</p>
+                </div>
+              </div>
+              <button onClick={() => setShowDescansoModal(false)} className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-full transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Fecha de descanso</label>
+                <input type="date" value={descansoFecha}
+                  onChange={e => setDescansoFecha(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400" />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-gray-600 uppercase mb-1.5">Motivo (opcional)</label>
+                <textarea value={descansoMotivo}
+                  onChange={e => setDescansoMotivo(e.target.value)}
+                  placeholder="Ej: Descanso programado, asuntos personales..."
+                  rows={2}
+                  className="w-full border border-gray-200 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-400 resize-none" />
+              </div>
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-xl">
+                <p className="text-xs text-amber-700">
+                  🌴 Se le notificará a <strong>{descansoEmpleado.nombre}</strong> sobre su día de descanso.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex gap-3 mt-6">
+              <button onClick={() => setShowDescansoModal(false)}
+                className="flex-1 py-2.5 bg-gray-100 text-gray-600 font-medium rounded-xl hover:bg-gray-200 transition-colors text-sm">
+                Cancelar
+              </button>
+              <button onClick={handleAsignarDescanso} disabled={!descansoFecha}
+                className="flex-1 py-2.5 bg-amber-600 text-white font-semibold rounded-xl hover:bg-amber-700 transition-colors text-sm disabled:opacity-50">
+                Asignar Descanso
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Carnet */}
       {carnetAbierto && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm" onClick={() => setCarnetAbierto(null)}>
@@ -426,7 +590,7 @@ export default function PersonalPage() {
             <table className="w-full min-w-[600px]">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
-                  {['Nombre', 'DNI', 'Gmail', 'Rol', 'Salario', 'Acciones'].map(h => (
+                  {['Nombre', 'DNI', 'Gmail', 'Rol', 'Salario', 'Descanso', 'Acciones'].map(h => (
                     <th key={h} className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{h}</th>
                   ))}
                 </tr>
@@ -455,6 +619,19 @@ export default function PersonalPage() {
                       ) : p.salario_monto ? (
                         `S/ ${Number(p.salario_monto).toFixed(2)} (${p.salario_tipo})`
                       ) : '—'}
+                    </td>
+                    <td className="px-5 py-4">
+                      <button
+                        onClick={() => {
+                          setDescansoEmpleado(p);
+                          setDescansoFecha(new Date().toISOString().split('T')[0]);
+                          setDescansoMotivo('');
+                          setShowDescansoModal(true);
+                        }}
+                        className="p-1.5 text-amber-500 hover:text-amber-700 hover:bg-amber-50 rounded-lg transition-colors"
+                        title="Asignar día de descanso">
+                        <Bed size={15} />
+                      </button>
                     </td>
                     <td className="px-5 py-4">
                       <div className="flex gap-2">
@@ -488,6 +665,14 @@ export default function PersonalPage() {
                     </div>
                   </div>
                   <div className="flex gap-1">
+                    <button onClick={() => {
+                      setDescansoEmpleado(p);
+                      setDescansoFecha(new Date().toISOString().split('T')[0]);
+                      setDescansoMotivo('');
+                      setShowDescansoModal(true);
+                    }} className="p-1.5 text-amber-500 hover:bg-amber-50 rounded-lg transition-colors" title="Descanso">
+                      <Bed size={14} />
+                    </button>
                     <button onClick={() => handleOpenEdit(p)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors">
                       <Edit2 size={15} />
                     </button>
@@ -525,7 +710,7 @@ export default function PersonalPage() {
             </div>
           )}
 
-          {/* ── Asistencias del día ── */}            {/* ── Carnet PDF por empleado ── */}
+          {/* ── Carnet PDF por empleado ── */}
             <div className="mt-10 mb-10">
               <div className="flex items-center gap-3 mb-5">
                 <div className="w-9 h-9 rounded-xl bg-indigo-50 border border-indigo-100 flex items-center justify-center">
@@ -653,6 +838,139 @@ export default function PersonalPage() {
                     })}
                   </tbody>
                 </table>
+              </div>
+            )}
+          </div>
+
+          {/* ── CALENDARIO DE HISTORIAL ── */}
+          <div className="mt-10">
+            <div className="flex items-center justify-between gap-4 mb-5">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center shrink-0">
+                  <CalendarDays size={18} className="text-amber-600" />
+                </div>
+                <div className="min-w-0">
+                  <h2 className="text-lg font-semibold text-gray-900">Historial del Personal</h2>
+                  <p className="text-xs text-gray-400">Asistencia y descansos por día</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button onClick={() => cambiarMes(-1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <ChevronLeft size={16} className="text-gray-500" />
+                </button>
+                <span className="text-sm font-semibold text-gray-700 min-w-[90px] text-center">
+                  {new Date(calMes + '-01').toLocaleDateString('es-PE', { month: 'long', year: 'numeric' })}
+                </span>
+                <button onClick={() => cambiarMes(1)} className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+                  <ChevronRight size={16} className="text-gray-500" />
+                </button>
+              </div>
+            </div>
+
+            {loadingCal ? (
+              <div className="flex justify-center py-10">
+                <Loader2 size={24} className="animate-spin text-gray-300" />
+              </div>
+            ) : (
+              <div className="bg-white border border-gray-200 rounded-xl overflow-x-auto">
+                <table className="w-full min-w-[500px]">
+                  <thead className="bg-gray-50 border-b border-gray-200">
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium sticky left-0 bg-gray-50 z-10">Personal</th>
+                      {(() => {
+                        const [y, m] = calMes.split('-').map(Number);
+                        const dias = new Date(y, m, 0).getDate();
+                        const days = [];
+                        for (let d = 1; d <= dias; d++) {
+                          const fecha = `${calMes}-${String(d).padStart(2, '0')}`;
+                          const diaSem = new Date(fecha + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short' });
+                          const esFinde = diaSem === 'sáb' || diaSem === 'dom';
+                          days.push(
+                            <th key={d}
+                              className={`px-1.5 py-2 text-center text-[10px] font-medium ${
+                                esFinde ? 'text-red-400' : 'text-gray-500'
+                              }`}>
+                              {d}
+                            </th>
+                          );
+                        }
+                        return days;
+                      })()}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100">
+                    {personal.map(p => {
+                      const [y, m] = calMes.split('-').map(Number);
+                      const dias = new Date(y, m, 0).getDate();
+                      const descansosEmpleado = descansosLocal[p.id] || [];
+                      return (
+                        <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                          <td className="px-4 py-3 text-sm font-semibold text-gray-900 sticky left-0 bg-white z-10 border-r border-gray-100 min-w-[120px]">
+                            <div className="flex items-center gap-2">
+                              <div className={`w-6 h-6 rounded-full flex items-center justify-center text-[10px] font-bold shrink-0 ${
+                                p.rol === 'mozo' ? 'bg-blue-100 text-blue-600' :
+                                p.rol === 'cocina' ? 'bg-orange-100 text-orange-600' :
+                                p.rol === 'lavaplato' ? 'bg-gray-100 text-gray-600' :
+                                'bg-green-100 text-green-600'
+                              }`}>
+                                {p.nombre.charAt(0).toUpperCase()}
+                              </div>
+                              <span className="truncate">{p.nombre}</span>
+                            </div>
+                          </td>
+                          {(() => {
+                            const cells = [];
+                            for (let d = 1; d <= dias; d++) {
+                              const fecha = `${calMes}-${String(d).padStart(2, '0')}`;
+                              const diaSem = new Date(fecha + 'T12:00:00').toLocaleDateString('es-PE', { weekday: 'short' });
+                              const esFinde = diaSem === 'sáb' || diaSem === 'dom';
+                              const asistio = calAsistencia.some(
+                                (a: any) => a.usuario_id === p.id && a.fecha === fecha
+                              );
+                              const descansa = descansosEmpleado.includes(fecha);
+                              const esHoy = fecha === new Date().toISOString().split('T')[0];
+
+                              let bg = '';
+                              let icono = null;
+                              if (asistio) {
+                                bg = 'bg-green-100';
+                                icono = <CheckCircle size={10} className="text-green-600" />;
+                              } else if (descansa) {
+                                bg = 'bg-amber-100';
+                                icono = <Bed size={10} className="text-amber-600" />;
+                              } else if (esFinde) {
+                                bg = 'bg-gray-50';
+                              }
+
+                              cells.push(
+                                <td key={d}
+                                  className={`px-1.5 py-2 text-center border-r border-gray-50 cursor-default ${
+                                    esHoy ? 'ring-2 ring-blue-300 ring-inset' : ''
+                                  } ${descansa ? 'cursor-pointer' : ''} ${bg} ${!asistio && !descansa ? 'text-gray-300' : ''}`}
+                                  onClick={descansa ? () => {
+                                    if (confirm(`¿Quitar descanso del ${fecha}?`)) {
+                                      handleQuitarDescanso(p.id, fecha, p.nombre);
+                                    }
+                                  } : undefined}>
+                                  <div className="flex items-center justify-center h-4">
+                                    {icono}
+                                  </div>
+                                </td>
+                              );
+                            }
+                            return cells;
+                          })()}
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+                {/* Leyenda */}
+                <div className="flex items-center gap-4 px-4 py-3 border-t border-gray-100 text-[11px] text-gray-500">
+                  <span className="flex items-center gap-1.5"><CheckCircle size={12} className="text-green-600" /> Asistió</span>
+                  <span className="flex items-center gap-1.5"><Bed size={12} className="text-amber-600" /> Descanso</span>
+                  <span className="flex items-center gap-1.5"><div className="w-3 h-3 rounded ring-2 ring-blue-300 ring-inset" /> Hoy</span>
+                </div>
               </div>
             )}
           </div>
@@ -853,6 +1171,18 @@ export default function PersonalPage() {
             )}
           </div>
         </>
+      )}
+
+      {/* Toast notification */}
+      {toast && (
+        <div className="fixed bottom-20 md:bottom-6 right-4 z-[100] animate-in slide-in-from-bottom-2 fade-in duration-300">
+          <div className="bg-gray-900 text-white text-sm font-medium px-4 py-3 rounded-xl shadow-lg flex items-center gap-2.5">
+            <span>{toast}</span>
+            <button onClick={() => setToast(null)} className="p-0.5 text-gray-400 hover:text-white transition-colors">
+              <X size={14} />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );
