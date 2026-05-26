@@ -66,23 +66,30 @@ export default function MozoHistorialPage() {
         return {
           numero: parsed.yapeNumero || '942 902 367',
           nombre: parsed.yapeNombre || 'PUERTO HABANA',
+          qrImage: parsed.yapeQRImage || '',
         };
       }
     } catch {}
-    return { numero: '942 902 367', nombre: 'PUERTO HABANA' };
+    return { numero: '942 902 367', nombre: 'PUERTO HABANA', qrImage: '' };
   }
 
   // Generar QR al abrir el modal
   useEffect(() => {
     if (!yapeQRData) return;
     const yapeConfig = getYapeConfig();
-    import('qrcode').then((QRCode) => {
-      QRCode.toDataURL(yapeConfig.numero, {
-        width: 280,
-        margin: 2,
-        color: { dark: '#7408B6', light: '#FFFFFF' },
-      }).then(setQrDataUrlHist).catch(() => {});
-    });
+    if (yapeConfig.qrImage) {
+      // Tiene imagen QR propia
+      setQrDataUrlHist(yapeConfig.qrImage);
+    } else {
+      // Generar QR desde el número
+      import('qrcode').then((QRCode) => {
+        QRCode.toDataURL(yapeConfig.numero, {
+          width: 280,
+          margin: 2,
+          color: { dark: '#7408B6', light: '#FFFFFF' },
+        }).then(setQrDataUrlHist).catch(() => {});
+      });
+    }
   }, [yapeQRData]);
 
   // Sincronizar pago_config desde Supabase

@@ -36,7 +36,7 @@ const YAPE_NOMBRE_DEFAULT = 'PUERTO HABANA';
 
 function getYapeConfig() {
   if (typeof window === 'undefined') {
-    return { numero: YAPE_NUMBER_DEFAULT, nombre: YAPE_NOMBRE_DEFAULT };
+    return { numero: YAPE_NUMBER_DEFAULT, nombre: YAPE_NOMBRE_DEFAULT, qrImage: '' };
   }
   try {
     const stored = localStorage.getItem('ph_pago_config');
@@ -45,12 +45,14 @@ function getYapeConfig() {
       return {
         numero: parsed.yapeNumero || process.env.NEXT_PUBLIC_YAPE_NUMBER || YAPE_NUMBER_DEFAULT,
         nombre: parsed.yapeNombre || process.env.NEXT_PUBLIC_YAPE_NOMBRE || YAPE_NOMBRE_DEFAULT,
+        qrImage: parsed.yapeQRImage || '',
       };
     }
   } catch {}
   return {
     numero: process.env.NEXT_PUBLIC_YAPE_NUMBER || YAPE_NUMBER_DEFAULT,
     nombre: process.env.NEXT_PUBLIC_YAPE_NOMBRE || YAPE_NOMBRE_DEFAULT,
+    qrImage: '',
   };
 }
 
@@ -85,9 +87,15 @@ export default function CobrarBoleta({
 
   // Generar QR al abrir el modal
   useEffect(() => {
-    if (showYapeQR) {
+    if (!showYapeQR) return;
+    const config = getYapeConfig();
+    if (config.qrImage) {
+      // Tiene imagen QR propia
+      setQrDataUrl(config.qrImage);
+    } else {
+      // Generar QR desde el número
       import('qrcode').then((QRCode) => {
-        QRCode.toDataURL(yapeConfig.numero, {
+        QRCode.toDataURL(config.numero, {
           width: 280,
           margin: 2,
           color: { dark: '#7408B6', light: '#FFFFFF' },

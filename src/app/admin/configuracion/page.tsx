@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon, Smartphone } from 'lucide-react';
+import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon, Smartphone, QrCode } from 'lucide-react';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -142,7 +142,7 @@ export default function ConfiguracionPage() {
 
   const [sidebarDesign, setSidebarDesign] = useState<SidebarDesign>('normal');
   const [navbarStyle,   setNavbarStyle]   = useState<NavbarStyle>('original');
-  const [pagoConfig, setPagoConfig] = useState({ yapeNumero: '942 902 367', yapeNombre: 'PUERTO HABANA' });
+  const [pagoConfig, setPagoConfig] = useState({ yapeNumero: '942 902 367', yapeNombre: 'PUERTO HABANA', yapeQRImage: '' });
   const [notifActivas, setNotifActivas] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [mounted,setMounted]= useState(false);
@@ -421,7 +421,7 @@ export default function ConfiguracionPage() {
           <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
             <Smartphone size={16} className="text-gray-500" /> Métodos de Pago
           </h2>
-          <p className="text-xs text-gray-400 mb-1">Configura el número y nombre para el QR de Yape que ven los mozos al cobrar.</p>
+          <p className="text-xs text-gray-400 mb-1">Configura el número, nombre y QR de Yape que ven los mozos al cobrar.</p>
           <div>
             <label className="block text-sm font-medium text-gray-600 mb-1.5">
               <span className="inline-flex items-center gap-1.5">
@@ -440,6 +440,44 @@ export default function ConfiguracionPage() {
               onChange={e => setPagoConfig(p => ({ ...p, yapeNombre: e.target.value }))}
               className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7408B6]/30 focus:border-[#7408B6]"
               placeholder="PUERTO HABANA" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5 flex items-center gap-2">
+              <QrCode size={14} className="text-[#7408B6]" />
+              Imagen del QR (opcional)
+            </label>
+            <p className="text-xs text-gray-400 mb-2">Sube una foto de tu QR Yape real. Si no subes una, se generará automáticamente desde el número.</p>
+            <div className="flex items-center gap-4">
+              <div className="w-24 h-24 rounded-xl border-2 border-gray-200 flex items-center justify-center overflow-hidden bg-gray-50 shrink-0">
+                {pagoConfig.yapeQRImage ? (
+                  <img src={pagoConfig.yapeQRImage} alt="QR Yape" className="w-full h-full object-contain" />
+                ) : (
+                  <QrCode size={32} className="text-gray-300" />
+                )}
+              </div>
+              <div>
+                <input type="file" accept="image/*" onChange={e => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  const reader = new FileReader();
+                  reader.onloadend = () => {
+                    setPagoConfig(p => ({ ...p, yapeQRImage: reader.result as string }));
+                  };
+                  reader.readAsDataURL(file);
+                }} className="hidden" id="yape-qr-upload" />
+                <label htmlFor="yape-qr-upload"
+                  className="inline-block px-4 py-2 bg-[#7408B6] text-white rounded-lg text-sm cursor-pointer hover:bg-[#5C0691] transition-colors font-medium">
+                  Subir QR
+                </label>
+                {pagoConfig.yapeQRImage && (
+                  <button onClick={() => setPagoConfig(p => ({ ...p, yapeQRImage: '' }))}
+                    className="block mt-2 text-xs text-red-500 hover:text-red-700 font-medium">
+                    Eliminar QR
+                  </button>
+                )}
+                <p className="text-xs text-gray-400 mt-2">PNG, JPG — recomendado 300×300px</p>
+              </div>
+            </div>
           </div>
         </section>
 

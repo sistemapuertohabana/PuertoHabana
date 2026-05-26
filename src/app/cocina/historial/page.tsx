@@ -5,13 +5,14 @@ import { CheckCircle2, Clock, CalendarDays, UtensilsCrossed } from 'lucide-react
 
 interface Comanda {
   id: number;
+  mesa_nombre: string;
   mesa: string;
   mozo_nombre?: string;
   estado: string;
   hora: string;
   fecha: string;
   total: number;
-  items?: { nombre: string; cantidad: number; precio: number }[];
+  items?: { nombre: string; cantidad: number; precio: number; categoria?: string }[];
 }
 
 function getLocalDateString() {
@@ -32,7 +33,27 @@ export default function HistorialCocinaPage() {
     try {
       const res = await fetch(`/api/pedidos?fecha=${fechaFiltro}&estado=Entregado`);
       if (!res.ok) throw new Error();
-      setComandas(await res.json());
+      const data = await res.json();
+      // Mapear mesa_nombre → mesa y filtrar items solo de comida
+      const mapped: Comanda[] = data.map((c: any) => ({
+        id: c.id,
+        mesa_nombre: c.mesa_nombre || c.mesa || '',
+        mesa: c.mesa_nombre || c.mesa || '',
+        mozo_nombre: c.mozo_nombre,
+        estado: c.estado,
+        hora: c.hora,
+        fecha: c.fecha,
+        total: Number(c.total) || 0,
+        items: (c.items || [])
+          .filter((i: any) => i.categoria === 'comida' || i.categoria === undefined)
+          .map((i: any) => ({
+            nombre: i.nombre,
+            cantidad: i.cantidad,
+            precio: Number(i.precio) || 0,
+            categoria: i.categoria,
+          })),
+      }));
+      setComandas(mapped);
     } catch {
       // Fallback localStorage
       try {
@@ -43,10 +64,10 @@ export default function HistorialCocinaPage() {
         delivered.forEach((p: any) => {
           const key = `${p.mesa}-${p.hora}`;
           if (!grouped[key]) {
-            grouped[key] = { id: p.id, mesa: p.mesa, mozo_nombre: p.mozoNombre, estado: 'Entregado', hora: p.hora, fecha: p.fecha, total: 0, items: [] };
+            grouped[key] = { id: p.id, mesa_nombre: p.mesa, mesa: p.mesa, mozo_nombre: p.mozoNombre, estado: 'Entregado', hora: p.hora, fecha: p.fecha, total: 0, items: [] };
           }
           grouped[key].total += p.precio * p.cantidad;
-          grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio });
+          grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: Number(p.precio) || 0, categoria: p.category });
         });
         setComandas(Object.values(grouped).sort((a, b) => b.id - a.id));
       } catch { setComandas([]); }
