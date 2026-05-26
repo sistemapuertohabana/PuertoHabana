@@ -1,11 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock, Barcode } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock, Wine } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
-import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
 
 interface MesaConfig {
   id: string;
@@ -149,7 +148,6 @@ export default function MozoPage() {
   const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
-  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
@@ -315,6 +313,59 @@ export default function MozoPage() {
 
   const total = cart.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0);
 
+  // ─── Render helpers ────────────────────────────────────────
+
+  const RenderQtyControls = ({
+    itemKey, itemName, itemPrice, qty, category, cart: cartProp, updateCart: updateCartProp, toggleCortesia: toggleCortesiaProp,
+  }: {
+    itemKey: string;
+    itemName: string;
+    itemPrice: number;
+    qty: number;
+    category: string;
+    cart: { name: string; price: number; qty: number; category: string; esCortesia?: boolean }[];
+    updateCart: (item: MenuItem, delta: number) => void;
+    toggleCortesia: (itemName: string) => void;
+  }) => (
+    <div className="flex items-center gap-1.5">
+      <button onClick={() => updateCartProp({ name: itemKey, price: itemPrice, category }, -1)} disabled={qty === 0}
+        className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center disabled:opacity-30 hover:bg-red-100 transition-colors">
+        <Minus size={12} className="text-red-500" />
+      </button>
+      <span className="w-5 text-center text-base font-semibold text-gray-900">{qty}</span>
+      <button onClick={() => updateCartProp({ name: itemKey, price: itemPrice, category }, 1)}
+        className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-200">
+        <Plus size={12} />
+      </button>
+    </div>
+  );
+
+  const renderProductItem = (item: MenuItem, qty: number) => (
+    <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+      <div className="min-w-0 flex-1">
+        <p className="text-sm text-gray-900 truncate">
+          {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia && <span className="mr-1">🎁</span>}
+          {item.name}
+        </p>
+        <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+          {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(item.price).toFixed(2)}`}
+        </p>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+        <RenderQtyControls
+          itemKey={item.name}
+          itemName={item.name}
+          itemPrice={item.price}
+          qty={qty}
+          category={item.category}
+          cart={cart}
+          updateCart={updateCart}
+          toggleCortesia={toggleCortesia}
+        />
+      </div>
+    </div>
+  );
+
   const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
     
@@ -339,7 +390,7 @@ export default function MozoPage() {
     } catch {}
 
     const items = cart.map(c => ({
-      nombre: c.esCortesia ? `🎁 ${c.name}` : c.name,
+      nombre: c.esCortesia ? `🎁 ${c.name.replace('||', ' ')}` : c.name.replace('||', ' '),
       cantidad: c.qty,
       precio: c.esCortesia ? 0 : c.price,
       categoria: c.category,
@@ -514,13 +565,6 @@ export default function MozoPage() {
               </button>
             )
           )}
-          <button
-            onClick={() => setShowScanner(true)}
-            className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center justify-center"
-            title="Escanear producto"
-          >
-            <Barcode size={16} strokeWidth={1.5} />
-          </button>
           <button 
             onClick={() => setIsConfigMode(!isConfigMode)}
             className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${
@@ -665,65 +709,164 @@ export default function MozoPage() {
           {/* Productos */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
             {['comida', 'bebidas', 'tapers'].map(cat => {
-              const items = cat === 'comida'
-                ? comidaDinamica.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }))
-                : cat === 'bebidas'
-                  ? bebidasDinamica.map(b => ({ name: b.nombre, price: b.precio, category: 'bebidas' }))
-                  : tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }));
-              if (items.length === 0) return null;
-              return (
-                <div key={cat}>
-                  <div className="flex items-center gap-2 mb-3">
-                    {cat === 'tapers' && <Package size={14} className="text-gray-400" />}
-                    <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">
-                      {cat === 'tapers' ? 'Envases / Tapers' : cat}
-                    </h3>
-                    <span className="text-[10px] text-gray-300">({items.length})</span>
+              if (cat === 'comida') {
+                const items = comidaDinamica.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }));
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">{cat}</h3>
+                      <span className="text-[10px] text-gray-300">({items.length})</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.map(item => {
+                        const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                        return renderProductItem(item, qty);
+                      })}
+                    </div>
                   </div>
-                  <div className="space-y-1.5">
-                    {items.map(item => {
-                      const qty = cart.find(c => c.name === item.name)?.qty || 0;
-                      return (
-                        <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
-                          <div>
-                            <p className="text-sm text-gray-900">
-                              {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia && <span className="mr-1">🎁</span>}
-                              {item.name}
-                            </p>
-                            <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
-                              {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(item.price).toFixed(2)}`}
-                            </p>
+                );
+              }
+              if (cat === 'tapers') {
+                const items = tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }));
+                if (items.length === 0) return null;
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Package size={14} className="text-gray-400" />
+                      <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">Envases / Tapers</h3>
+                      <span className="text-[10px] text-gray-300">({items.length})</span>
+                    </div>
+                    <div className="space-y-1.5">
+                      {items.map(item => {
+                        const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                        return renderProductItem(item, qty);
+                      })}
+                    </div>
+                  </div>
+                );
+              }
+              // Bebidas — con categorías, tamaños y stock
+              if (cat === 'bebidas') {
+                if (bebidasDinamica.length === 0) return null;
+                // Agrupar por categoría
+                const grouped = bebidasDinamica.reduce((acc: Record<string, typeof bebidasDinamica>, b) => {
+                  const catName = b.categoria || 'Otras';
+                  if (!acc[catName]) acc[catName] = [];
+                  acc[catName].push(b);
+                  return acc;
+                }, {});
+                return (
+                  <div key={cat}>
+                    <div className="flex items-center gap-2 mb-3">
+                      <Wine size={14} className="text-gray-400" />
+                      <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">Bebidas</h3>
+                      <span className="text-[10px] text-gray-300">({bebidasDinamica.length})</span>
+                    </div>
+                    <div className="space-y-4">
+                      {Object.entries(grouped).map(([catName, items]) => (
+                        <div key={catName}>
+                          <div className="flex items-center gap-2 mb-2">
+                            <span className="text-[11px] font-semibold text-gray-600">{catName}</span>
+                            <span className="text-[10px] text-gray-300">({items.length})</span>
                           </div>
-                          <div className="flex items-center gap-1.5">
-                            {qty > 0 && (
-                              <button
-                                onClick={() => toggleCortesia(item.name)}
-                                className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
-                                  cart.find(c => c.name === item.name)?.esCortesia
-                                    ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
-                                    : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
-                                }`}
-                                title="Marcar como Cortesía de la Casa"
-                              >
-                                🎁
-                              </button>
-                            )}
-                            <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
-                              className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center disabled:opacity-30 hover:bg-red-100 transition-colors">
-                              <Minus size={12} className="text-red-500" />
-                            </button>
-                            <span className="w-5 text-center text-base font-semibold text-gray-900">{qty}</span>
-                            <button onClick={() => updateCart(item, 1)}
-                              className="w-8 h-8 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all shadow-sm shadow-blue-200">
-                              <Plus size={12} />
-                            </button>
+                          <div className="space-y-1.5">
+                            {items.map(bebida => {
+                              // Si tiene tamaños, mostrar cada tamaño como item separado
+                              if (bebida.tamanos && bebida.tamanos.length > 0) {
+                                return bebida.tamanos.map((t: any, ti: number) => {
+                                  const itemKey = `${bebida.nombre}||${t.nombre}`;
+                                  const cartItem = cart.find(c => c.name === itemKey);
+                                  const qty = cartItem?.qty || 0;
+                                  return (
+                                    <div key={itemKey} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                                      <div className="min-w-0 flex-1">
+                                        <p className="text-sm text-gray-900 truncate">
+                                          {qty > 0 && cartItem?.esCortesia && <span className="mr-1">🎁</span>}
+                                          {bebida.nombre} <span className="text-gray-500 font-medium">{t.nombre}</span>
+                                        </p>
+                                        <div className="flex items-center gap-2 mt-0.5">
+                                          <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                            {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
+                                          </p>
+                                          <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 5) ? 'text-red-500' : 'text-gray-400'}`}>
+                                            Stock: {bebida.cantidad}
+                                          </span>
+                                        </div>
+                                      </div>
+                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                        {qty > 0 && (
+                                          <button
+                                            onClick={() => {
+                                              const cartItemName = cart.find(c => c.name === itemKey);
+                                              if (cartItemName) toggleCortesia(cartItemName.name);
+                                            }}
+                                            className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                                              cartItem?.esCortesia
+                                                ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                                                : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+                                            }`}
+                                            title="Marcar como Cortesía"
+                                          >
+                                            🎁
+                                          </button>
+                                        )}
+                                        <RenderQtyControls
+                                          itemKey={itemKey}
+                                          itemName={`${bebida.nombre} ${t.nombre}`}
+                                          itemPrice={t.precio}
+                                          qty={qty}
+                                          category="bebidas"
+                                          cart={cart}
+                                          updateCart={updateCart}
+                                          toggleCortesia={toggleCortesia}
+                                        />
+                                      </div>
+                                    </div>
+                                  );
+                                });
+                              }
+                              // Sin tamaños, mostrar item normal
+                              const qty = cart.find(c => c.name === bebida.nombre)?.qty || 0;
+                              return (
+                                <div key={bebida.id} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                                  <div className="min-w-0 flex-1">
+                                    <p className="text-sm text-gray-900 truncate">
+                                      {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia && <span className="mr-1">🎁</span>}
+                                      {bebida.nombre}
+                                    </p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                      <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                        {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
+                                      </p>
+                                      <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 5) ? 'text-red-500' : 'text-gray-400'}`}>
+                                        Stock: {bebida.cantidad}
+                                      </span>
+                                    </div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                    <RenderQtyControls
+                                      itemKey={bebida.nombre}
+                                      itemName={bebida.nombre}
+                                      itemPrice={bebida.precio}
+                                      qty={qty}
+                                      category="bebidas"
+                                      cart={cart}
+                                      updateCart={updateCart}
+                                      toggleCortesia={toggleCortesia}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
-                      );
-                    })}
+                      ))}
+                    </div>
                   </div>
-                </div>
-              );
+                );
+              }
+              return null;
             })}
           </div>
 
@@ -764,52 +907,6 @@ export default function MozoPage() {
                 <span className="font-medium text-gray-700">{a.hora_llegada.slice(0, 5)} hrs</span>
               </div>
             ))}
-          </div>
-        </div>
-      )}
-
-      {/* Modal de escáner de código de barras */}
-      {showScanner && (
-        <div
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
-          onClick={(e) => {
-            if (e.target === e.currentTarget) setShowScanner(false);
-          }}
-        >
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            <InventoryBarcodeScanner
-              onScan={async (result) => {
-                setShowScanner(false);
-                // Buscar el producto en inventario
-                try {
-                  const res = await fetch(`/api/inventario?codigo_barras=${encodeURIComponent(result.barcode)}`);
-                  if (res.ok) {
-                    const data = await res.json();
-                    if (data && data.length > 0) {
-                      const product = data[0];
-                      if (product.seccion === 'bebidas' || product.seccion === 'tapers') {
-                        if (activeMesa) {
-                          // Si hay una mesa activa, agregar al carrito
-                          const item = { name: product.nombre, price: product.precio, category: product.seccion };
-                          updateCart(item, 1);
-                          alert(`✅ ${product.nombre} agregado al pedido`);
-                        } else {
-                          // Si no hay mesa activa, mostrar mensaje
-                          alert(`✅ ${product.nombre} encontrado. Selecciona una mesa primero.`);
-                        }
-                      } else {
-                        alert(`⚠️ ${product.nombre} es de la sección "${product.seccion}". Solo puedes agregar bebidas y tapers.`);
-                      }
-                    } else {
-                      alert(`⚠️ Código ${result.barcode} no encontrado en inventario`);
-                    }
-                  }
-                } catch {
-                  alert('Error al buscar producto');
-                }
-              }}
-              onClose={() => setShowScanner(false)}
-            />
           </div>
         </div>
       )}
