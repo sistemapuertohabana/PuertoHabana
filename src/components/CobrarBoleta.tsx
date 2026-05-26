@@ -31,8 +31,28 @@ interface CobrarBoletaProps {
   className?: string;
 }
 
-const YAPE_NUMBER = process.env.NEXT_PUBLIC_YAPE_NUMBER || '942 902 367';
-const YAPE_NOMBRE = process.env.NEXT_PUBLIC_YAPE_NOMBRE || 'PUERTO HABANA';
+const YAPE_NUMBER_DEFAULT = '942 902 367';
+const YAPE_NOMBRE_DEFAULT = 'PUERTO HABANA';
+
+function getYapeConfig() {
+  if (typeof window === 'undefined') {
+    return { numero: YAPE_NUMBER_DEFAULT, nombre: YAPE_NOMBRE_DEFAULT };
+  }
+  try {
+    const stored = localStorage.getItem('ph_pago_config');
+    if (stored) {
+      const parsed = JSON.parse(stored);
+      return {
+        numero: parsed.yapeNumero || process.env.NEXT_PUBLIC_YAPE_NUMBER || YAPE_NUMBER_DEFAULT,
+        nombre: parsed.yapeNombre || process.env.NEXT_PUBLIC_YAPE_NOMBRE || YAPE_NOMBRE_DEFAULT,
+      };
+    }
+  } catch {}
+  return {
+    numero: process.env.NEXT_PUBLIC_YAPE_NUMBER || YAPE_NUMBER_DEFAULT,
+    nombre: process.env.NEXT_PUBLIC_YAPE_NOMBRE || YAPE_NOMBRE_DEFAULT,
+  };
+}
 
 export default function CobrarBoleta({
   pedidos,
@@ -67,7 +87,7 @@ export default function CobrarBoleta({
   useEffect(() => {
     if (showYapeQR) {
       import('qrcode').then((QRCode) => {
-        QRCode.toDataURL(YAPE_NUMBER, {
+        QRCode.toDataURL(yapeConfig.numero, {
           width: 280,
           margin: 2,
           color: { dark: '#7408B6', light: '#FFFFFF' },
@@ -93,6 +113,7 @@ export default function CobrarBoleta({
     return () => clearTimeout(debounce);
   }, [clienteSearch, showClienteSearch]);
 
+  const yapeConfig = getYapeConfig();
   const total = pedidos.reduce((sum, p) => sum + p.precio * p.cantidad, 0);
 
   const handleEnviarWhatsApp = async () => {
@@ -301,8 +322,8 @@ export default function CobrarBoleta({
             </div>
 
             <div className="space-y-2 mb-4">
-              <p className="text-sm font-semibold text-gray-900">{YAPE_NOMBRE}</p>
-              <p className="text-lg font-bold text-[#7408B6]">{YAPE_NUMBER}</p>
+              <p className="text-sm font-semibold text-gray-900">{yapeConfig.nombre}</p>
+              <p className="text-lg font-bold text-[#7408B6]">{yapeConfig.numero}</p>
               <div className="bg-purple-50 rounded-xl p-3 border border-purple-100">
                 <p className="text-xs text-gray-500">Total a pagar</p>
                 <p className="text-2xl font-black text-gray-900">S/ {total.toFixed(2)}</p>

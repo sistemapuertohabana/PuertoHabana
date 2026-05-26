@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon } from 'lucide-react';
+import { MapPin, Phone, Mail, Save, User, Layout, Palette, Check, BellRing, Clock, Sun, Moon, Smartphone } from 'lucide-react';
 
 interface Configuracion {
   nombreEmpresa: string;
@@ -142,6 +142,7 @@ export default function ConfiguracionPage() {
 
   const [sidebarDesign, setSidebarDesign] = useState<SidebarDesign>('normal');
   const [navbarStyle,   setNavbarStyle]   = useState<NavbarStyle>('original');
+  const [pagoConfig, setPagoConfig] = useState({ yapeNumero: '942 902 367', yapeNombre: 'PUERTO HABANA' });
   const [notifActivas, setNotifActivas] = useState(false);
   const [saved,  setSaved]  = useState(false);
   const [mounted,setMounted]= useState(false);
@@ -168,6 +169,7 @@ export default function ConfiguracionPage() {
     const fp  = localStorage.getItem('fotoPerfil');
     const cfg = localStorage.getItem('ph_config');
     const tc  = localStorage.getItem('ph_turnos_config');
+    const pc  = localStorage.getItem('ph_pago_config');
     
     // Leer configuración guardada y aplicar en lote
     let configUpdate: Partial<Configuracion> = {};
@@ -179,6 +181,7 @@ export default function ConfiguracionPage() {
     if (ns) setNavbarStyle(ns);
     setConfig(p => ({ ...p, ...configUpdate }));
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
+    if (pc) { try { setPagoConfig(JSON.parse(pc)); } catch {} }
     setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
     
     // Sincronizar desde Supabase para recoger cambios hechos desde otros dispositivos
@@ -210,11 +213,17 @@ export default function ConfiguracionPage() {
       horarioTarde:  config.horarioTarde,
     }));
     localStorage.setItem('ph_turnos_config', JSON.stringify(turnosConfig));
+    localStorage.setItem('ph_pago_config', JSON.stringify(pagoConfig));
     // Sincronizar con Supabase para que empleados en otros dispositivos reciban los cambios
     fetch('/api/configuracion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clave: 'turnos_config', valor: turnosConfig }),
+    }).catch(() => {});
+    fetch('/api/configuracion', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ clave: 'pago_config', valor: pagoConfig }),
     }).catch(() => {});
     window.dispatchEvent(new Event('ph_store_update'));
     setSaved(true);
@@ -404,6 +413,33 @@ export default function ConfiguracionPage() {
               </label>
               <p className="text-xs text-gray-400 mt-2">JPG, PNG — máx. 5 MB</p>
             </div>
+          </div>
+        </section>
+
+        {/* ── Métodos de Pago ──────────────────────────────────────────────── */}
+        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
+          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
+            <Smartphone size={16} className="text-gray-500" /> Métodos de Pago
+          </h2>
+          <p className="text-xs text-gray-400 mb-1">Configura el número y nombre para el QR de Yape que ven los mozos al cobrar.</p>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">
+              <span className="inline-flex items-center gap-1.5">
+                <span className="w-3 h-3 rounded-full bg-[#7408B6]"></span>
+                Número Yape
+              </span>
+            </label>
+            <input type="text" value={pagoConfig.yapeNumero}
+              onChange={e => setPagoConfig(p => ({ ...p, yapeNumero: e.target.value }))}
+              className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7408B6]/30 focus:border-[#7408B6]"
+              placeholder="942 902 367" />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-600 mb-1.5">Nombre (titular)</label>
+            <input type="text" value={pagoConfig.yapeNombre}
+              onChange={e => setPagoConfig(p => ({ ...p, yapeNombre: e.target.value }))}
+              className="w-full px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-[#7408B6]/30 focus:border-[#7408B6]"
+              placeholder="PUERTO HABANA" />
           </div>
         </section>
 
