@@ -36,7 +36,16 @@ export async function GET(request: Request) {
     }
 
     const data = await response.json();
-    return NextResponse.json(data);
+    
+    // Mapear campos de decolecta (inglés) al formato esperado por el frontend
+    const mapped = {
+      nombres: data.first_name || data.nombres || '',
+      apellidoPaterno: data.first_last_name || data.apellidoPaterno || '',
+      apellidoMaterno: data.second_last_name || data.apellidoMaterno || '',
+      dni: data.document_number || data.dni || dni,
+      full_name: data.full_name || '',
+    };
+    return NextResponse.json(mapped);
   } catch (err) {
     console.error('Error consultando RENIEC:', err);
     return NextResponse.json({ error: 'Error de conexión con el servicio RENIEC' }, { status: 502 });
