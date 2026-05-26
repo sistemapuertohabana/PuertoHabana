@@ -6,17 +6,25 @@ export const dynamic = 'force-dynamic';
 
 // POST /api/sunat/enviar
 export async function POST(request: Request) {
-  const sb = getServiceSupabase();
-  const body = await request.json();
-  const { comanda_id, cliente_id, tipo_doc, items, cliente } = body;
-
-  if (!items || !items.length) {
-    return NextResponse.json({ error: 'items requeridos' }, { status: 400 });
-  }
-
   try {
+    const sb = getServiceSupabase();
+    const body = await request.json();
+    const { comanda_id, cliente_id, tipo_doc, items, cliente } = body;
+
+    if (!items || !items.length) {
+      return NextResponse.json({ error: 'items requeridos' }, { status: 400 });
+    }
+
+    // Safety: asegurar que cliente siempre tenga valores
+    const clienteData = {
+      tipo_doc: (cliente?.tipo_doc as 'DNI' | 'RUC') || 'DNI',
+      numero_doc: cliente?.numero_doc || '00000000',
+      razon_social: cliente?.razon_social || 'CLIENTE VARIOS',
+      direccion: cliente?.direccion || '',
+    };
+
     // Obtener el último número de boleta emitida
-    const { data: ultima } = await sb
+    const { data: ultima, error: queryError } = await sb
       .from('boletas_electronicas')
       .select('numero, nubefact_id')
       .eq('tipo_doc', tipo_doc || 'boleta')
@@ -24,18 +32,15 @@ export async function POST(request: Request) {
       .limit(1)
       .maybeSingle();
 
+    if (queryError) console.error('[SUNAT] Error consultando última boleta:', queryError.message);
+
     const ultimoNumero = ultima?.numero ? parseInt(ultima.numero) : 0;
     const { serie, numero } = generarSerie(tipo_doc === 'factura' ? 'FACTURA' : 'BOLETA', ultimoNumero);
 
     // Generar payload completo
     const payload = generarPayloadBoleta({
       tipoDoc: tipo_doc === 'factura' ? 'FACTURA' : 'BOLETA',
-      cliente: {
-        tipo_doc: cliente.tipo_doc || 'DNI',
-        numero_doc: cliente.numero_doc || '00000000',
-        razon_social: cliente.razon_social || 'CLIENTE VARIOS',
-        direccion: cliente.direccion || '',
-      },
+      cliente: clienteData,
       items,
       serie,
       observaciones: body.observaciones,
@@ -85,7 +90,7 @@ export async function POST(request: Request) {
     }, { status: resultado.success ? 201 : 500 });
   } catch (err) {
     const msg = err instanceof Error ? err.message : 'Error interno';
-    console.error('[SUNAT] Error:', msg);
+    console.error('[SUNAT] Error:', err);
     return NextResponse.json({ error: msg }, { status: 500 });
   }
 }
