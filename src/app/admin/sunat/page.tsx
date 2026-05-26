@@ -119,14 +119,14 @@ export default function SunatPage() {
     setAnio(nuevoAnio);
   };
 
-  const limpiarRechazados = async () => {
-    if (!confirm('¿Estás seguro de eliminar todas las boletas rechazadas del historial? Esta acción no se puede deshacer.')) return;
+  const limpiarHistorial = async () => {
+    if (!confirm('¿Estás seguro de ELIMINAR TODO EL HISTORIAL de boletas? Esta acción no se puede deshacer.')) return;
     
     setLoading(true);
     try {
-      const res = await fetch('/api/sunat/limpiar-rechazados', { method: 'DELETE' });
+      const res = await fetch('/api/sunat/limpiar-historial', { method: 'DELETE' });
       if (res.ok) {
-        setResultado('✅ Historial de boletas rechazadas limpiado');
+        setResultado('✅ Todo el historial de boletas ha sido limpiado');
         if (activeTab === 'historial') loadHistorial();
         if (activeTab === 'reportes') loadReportes();
       } else {
@@ -224,12 +224,12 @@ export default function SunatPage() {
             </div>
             
             <button 
-              onClick={limpiarRechazados}
+              onClick={limpiarHistorial}
               disabled={loading}
               className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium border border-red-200"
             >
               <Trash2 size={16} />
-              Limpiar Rechazados
+              Limpiar Todo el Historial
             </button>
           </div>
 
