@@ -199,7 +199,7 @@ export async function consultarEstado(tipoDoc: string, serie: string, numero: st
  * Generar serie y número correlativo para boleta/factura
  */
 export function generarSerie(tipoDoc: 'BOLETA' | 'FACTURA', ultimoNumero: number = 0): { serie: string; numero: string } {
-  const prefijo = tipoDoc === 'BOLETA' ? 'B001' : 'F001';
+  const prefijo = tipoDoc === 'BOLETA' ? 'BBB1' : 'FFF1';
   const numero = String(ultimoNumero + 1).padStart(8, '0');
   return { serie: prefijo, numero };
 }
