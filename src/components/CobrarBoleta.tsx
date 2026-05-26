@@ -85,11 +85,7 @@ export default function CobrarBoleta({
   const [sendingSunat, setSendingSunat] = useState(false);
   const [sunatResult, setSunatResult] = useState<string | null>(null);
 
-  // Estados para Mercado Pago (Tarjeta)
-  const [mpPreferencia, setMpPreferencia] = useState<{ initPoint: string; comandaTotal: number } | null>(null);
-  const [mpQrDataUrl, setMpQrDataUrl] = useState('');
-  const [mpLoading, setMpLoading] = useState(false);
-  const [mpChecking, setMpChecking] = useState(false);
+
 
   // Generar QR al abrir el modal
   useEffect(() => {
@@ -130,37 +126,7 @@ export default function CobrarBoleta({
   const yapeConfig = getYapeConfig();
   const total = pedidos.reduce((sum, p) => sum + p.precio * p.cantidad, 0);
 
-  const handleMercadoPago = async () => {
-    setMpLoading(true);
-    try {
-      const res = await fetch('/api/mercadopago/create-preference', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          comanda_id: comandaId,
-          total,
-          mesa: mesaLabel,
-          items: pedidos.map(p => ({ nombre: p.item, cantidad: p.cantidad, precio: p.precio })),
-          origin: typeof window !== 'undefined' ? window.location.origin : '',
-        }),
-      });
-      const data = await res.json();
-      if (data.success) {
-        setMpPreferencia({ initPoint: data.init_point, comandaTotal: total });
-        import('qrcode').then((QRCode) => {
-          QRCode.toDataURL(data.init_point, {
-            width: 280,
-            margin: 2,
-            color: { dark: '#00B9FF', light: '#FFFFFF' },
-          }).then(setMpQrDataUrl).catch(() => {});
-        });
-      } else {
-        setToast(`❌ ${data.error || 'Error al crear pago'}`);
-      }
-    } catch {
-      setToast('❌ Error de conexión con Mercado Pago');
-    } finally { setMpLoading(false); }
-  };
+
 
   const handleEnviarWhatsApp = async () => {
     if (!clienteSelected?.telefono) {
@@ -290,18 +256,7 @@ export default function CobrarBoleta({
           <QrCode size={16} />
           QR Yape
         </button>
-        <button
-          onClick={handleMercadoPago}
-          disabled={mpLoading}
-          className="flex-1 flex items-center justify-center gap-2 bg-[#00B9FF] text-white px-4 py-2.5 rounded-xl hover:bg-[#009EE0] transition-colors text-sm font-semibold disabled:opacity-50"
-        >
-          {mpLoading ? (
-            <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-          ) : (
-            <CreditCard size={16} />
-          )}
-          {mpLoading ? 'Generando...' : 'Tarjeta'}
-        </button>
+
         <button
           onClick={() => setShowBoleta(true)}
           className="flex-1 flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
@@ -417,106 +372,7 @@ export default function CobrarBoleta({
         </div>
       )}
 
-      {/* Modal Mercado Pago (Tarjeta) */}
-      {mpPreferencia && (
-        <div
-          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200"
-          onClick={(e) => { if (e.target === e.currentTarget) setMpPreferencia(null); }}
-        >
-          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-in zoom-in-95 duration-200">
-            <div className="flex justify-between items-center mb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-[#00B9FF]/10 flex items-center justify-center">
-                  <CreditCard size={16} className="text-[#00B9FF]" />
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">Pagar con Tarjeta</h3>
-              </div>
-              <button
-                onClick={() => setMpPreferencia(null)}
-                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
-              >
-                <X size={18} className="text-gray-400" />
-              </button>
-            </div>
 
-            <div className="mb-1">
-              <p className="text-xs text-gray-400 mb-1">Escanea el código QR con tu celular</p>
-              <div className="bg-white rounded-2xl p-3 border-2 border-[#00B9FF]/20 shadow-lg mb-3 inline-block">
-                {mpQrDataUrl ? (
-                  <img
-                    src={mpQrDataUrl}
-                    alt="QR Mercado Pago"
-                    className="w-56 h-56 mx-auto"
-                  />
-                ) : (
-                  <div className="w-56 h-56 mx-auto flex items-center justify-center bg-gray-50 rounded-xl">
-                    <div className="w-8 h-8 border-2 border-[#00B9FF] border-t-transparent rounded-full animate-spin" />
-                  </div>
-                )}
-              </div>
-            </div>
-
-            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-3">
-              <p className="text-xs text-gray-500">Total a pagar</p>
-              <p className="text-2xl font-black text-gray-900">S/ {total.toFixed(2)}</p>
-              <p className="text-xs text-gray-400 mt-1">
-                {mesaLabel} · {mozoNombre}
-              </p>
-            </div>
-
-            <div className="space-y-2">
-              <a
-                href={mpPreferencia.initPoint}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="block w-full py-2.5 bg-[#00B9FF] text-white rounded-xl hover:bg-[#009EE0] transition-colors text-sm font-semibold"
-              >
-                Abrir enlace de pago
-              </a>
-              <button
-                onClick={async () => {
-                  setMpChecking(true);
-                  try {
-                    const res = await fetch(`/api/mercadopago/check-payment?external_reference=${comandaId || ''}`);
-                    const data = await res.json();
-                    if (data.paid) {
-                      setToast('✅ Pago aprobado con Mercado Pago');
-                      setMpPreferencia(null);
-                      onSuccess?.();
-                    } else {
-                      setToast('⏳ El pago aún no se ha completado');
-                    }
-                  } catch { setToast('❌ Error al verificar pago'); }
-                  setMpChecking(false);
-                }}
-                disabled={mpChecking}
-                className="w-full py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {mpChecking ? (
-                  <>
-                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                    Verificando...
-                  </>
-                ) : (
-                  '✓ Verificar pago'
-                )}
-              </button>
-              <button
-                onClick={() => setMpPreferencia(null)}
-                className="w-full py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors text-xs font-medium"
-              >
-                Cancelar
-              </button>
-            </div>
-
-            <div className="mt-4 pt-3 border-t border-gray-100">
-              <p className="text-[10px] text-gray-400">
-                Pagos procesados por <span className="font-semibold text-[#00B9FF]">Mercado Pago</span>
-              </p>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Modal Búsqueda de Cliente */}
       {showClienteSearch && (

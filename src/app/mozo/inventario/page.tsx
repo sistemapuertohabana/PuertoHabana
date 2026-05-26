@@ -196,7 +196,7 @@ export default function MozoInventarioPage() {
                   Stock:{' '}
                   <span
                     className={`font-semibold ${
-                      item.cantidad <= (item.minimo || 5)
+                      item.cantidad <= (item.minimo || 3)
                         ? 'text-red-600'
                         : 'text-gray-800'
                     }`}
@@ -283,17 +283,17 @@ export default function MozoInventarioPage() {
                   </p>
                 </div>
                 <div className={`rounded-xl p-4 border ${
-                  detailItem.cantidad <= (detailItem.minimo || 5)
+                  detailItem.cantidad <= (detailItem.minimo || 3)
                     ? 'bg-red-50 border-red-100'
                     : 'bg-green-50 border-green-100'
                 }`}>
                   <p className="text-xs font-semibold uppercase tracking-wider ${
-                    detailItem.cantidad <= (detailItem.minimo || 5)
+                    detailItem.cantidad <= (detailItem.minimo || 3)
                       ? 'text-red-500'
                       : 'text-green-500'
                   }">Stock</p>
                   <p className={`text-2xl font-bold mt-1 ${
-                    detailItem.cantidad <= (detailItem.minimo || 5)
+                    detailItem.cantidad <= (detailItem.minimo || 3)
                       ? 'text-red-700'
                       : 'text-green-700'
                   }`}>

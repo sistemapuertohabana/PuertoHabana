@@ -112,7 +112,7 @@ export default function InventarioPage() {
     // Detectar items con bajo stock
     const checkLowStock = () => {
       const allItems = [...comida, ...bebidas, ...tapers, ...insumos];
-      const low = allItems.filter(i => i.cantidad <= (i.minimo || 5));
+      const low = allItems.filter(i => i.cantidad <= (i.minimo || 3));
       setItemsConBajoStock(low);
     };
     checkLowStock();
@@ -139,7 +139,7 @@ export default function InventarioPage() {
     if (activeSection === 'tapers') {
       setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0, unidad: 'unidad', codigo_barras: '', imagen_url: '', costo: 0 });
     } else if (activeSection === 'insumos') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 5, codigo_barras: '', imagen_url: '', costo: 0 });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 3, codigo_barras: '', imagen_url: '', costo: 0 });
     } else if (activeSection === 'bebidas') {
       setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [] });
     } else {
@@ -177,7 +177,7 @@ export default function InventarioPage() {
     if (activeSection === 'tapers') {
       setFormData({ ...baseForm, tipo: item.tipo, unidad: item.unidad || 'unidad' });
     } else if (activeSection === 'insumos') {
-      setFormData({ ...baseForm, unidad: item.unidad || 'unidad', minimo: item.minimo || 5 });
+      setFormData({ ...baseForm, unidad: item.unidad || 'unidad', minimo: item.minimo || 3 });
     } else {
       setFormData(baseForm);
     }
@@ -765,10 +765,10 @@ export default function InventarioPage() {
                           <div className="w-full bg-red-200 rounded-full h-2">
                             <div
                               className="bg-red-500 h-2 rounded-full transition-all"
-                              style={{ width: `${Math.min(100, (item.cantidad / (item.minimo || 5)) * 100)}%` }}
+                              style={{ width: `${Math.min(100, (item.cantidad / (item.minimo || 3)) * 100)}%` }}
                             />
                           </div>
-                          <p className="text-[10px] text-gray-400 mt-1">Mínimo: {item.minimo || 5} {item.unidad || 'unid'}</p>
+                          <p className="text-[10px] text-gray-400 mt-1">Mínimo: {item.minimo || 3} {item.unidad || 'unid'}</p>
                         </div>
                         <div className="text-right shrink-0">
                           <p className="text-xs text-gray-500">Precio</p>
@@ -790,7 +790,7 @@ export default function InventarioPage() {
                             precio: item.precio,
                             cantidad: item.cantidad,
                             unidad: item.unidad || 'unidad',
-                            minimo: item.minimo || 5,
+                            minimo: item.minimo || 3,
                             codigo_barras: item.codigo_barras,
                             imagen_url: item.imagen_url,
                             costo: item.costo,
@@ -854,7 +854,7 @@ export default function InventarioPage() {
                   </div>
                   <div>
                     <p className="text-xs text-gray-500">Stock</p>
-                    <p className={`text-sm font-medium ${item.cantidad <= (item.minimo || 5) ? 'text-red-600' : 'text-gray-900'}`}>
+                    <p className={`text-sm font-medium ${item.cantidad <= (item.minimo || 3) ? 'text-red-600' : 'text-gray-900'}`}>
                       {item.cantidad} {item.unidad || 'unid'}
                     </p>
                   </div>

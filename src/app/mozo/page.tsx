@@ -793,7 +793,7 @@ export default function MozoPage() {
                                           <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
                                             {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
                                           </p>
-                                          <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 5) ? 'text-red-500' : 'text-gray-400'}`}>
+                                          <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
                                             Stock: {bebida.cantidad}
                                           </span>
                                         </div>
@@ -843,7 +843,7 @@ export default function MozoPage() {
                                       <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
                                         {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
                                       </p>
-                                      <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 5) ? 'text-red-500' : 'text-gray-400'}`}>
+                                      <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
                                         Stock: {bebida.cantidad}
                                       </span>
                                     </div>

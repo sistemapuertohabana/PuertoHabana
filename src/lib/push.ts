@@ -12,7 +12,7 @@ export async function checkAndNotifyLowStock(item: {
   minimo?: number;
   unidad?: string;
 }): Promise<void> {
-  const minimo = item.minimo ?? 5;
+  const minimo = item.minimo ?? 3;
   if (item.cantidad > minimo) return;
 
   const sb = getServiceSupabase();

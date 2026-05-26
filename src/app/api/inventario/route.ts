@@ -38,7 +38,7 @@ export async function POST(request: Request) {
       precio: precio || 0,
       cantidad: cantidad || 0,
       unidad: unidad || 'unidad',
-      minimo: minimo ?? 5,
+      minimo: minimo ?? 3,
       codigo_barras: codigo_barras || null,
       imagen_url: imagen_url || null,
       costo: costo || 0,

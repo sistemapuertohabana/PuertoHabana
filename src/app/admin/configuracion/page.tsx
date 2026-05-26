@@ -144,10 +144,6 @@ export default function ConfiguracionPage() {
   const [navbarStyle,   setNavbarStyle]   = useState<NavbarStyle>('original');
   const [pagoConfig, setPagoConfig] = useState({ yapeNumero: '942 902 367', yapeNombre: 'PUERTO HABANA', yapeQRImage: '' });
   const [notifActivas, setNotifActivas] = useState(false);
-  const [mpAccessToken, setMpAccessToken] = useState('');
-  const [showMpToken, setShowMpToken] = useState(false);
-  const [mpTesting, setMpTesting] = useState(false);
-  const [mpTestResult, setMpTestResult] = useState('');
   const [saved,  setSaved]  = useState(false);
   const [mounted,setMounted]= useState(false);
   const [turnosConfig, setTurnosConfig] = useState<TurnosConfig>(TURNOS_CONFIG_DEFAULT);
@@ -174,8 +170,6 @@ export default function ConfiguracionPage() {
     const cfg = localStorage.getItem('ph_config');
     const tc  = localStorage.getItem('ph_turnos_config');
     const pc  = localStorage.getItem('ph_pago_config');
-    const mpToken = localStorage.getItem('ph_mp_access_token');
-    
     // Leer configuración guardada y aplicar en lote
     let configUpdate: Partial<Configuracion> = {};
     if (fp) configUpdate.fotoPerfil = fp;
@@ -186,27 +180,10 @@ export default function ConfiguracionPage() {
     if (ns) setNavbarStyle(ns);
     setConfig(p => ({ ...p, ...configUpdate }));
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
-    if (pc) { try { setPagoConfig(JSON.parse(pc)); } catch {} }
-    if (mpToken) setMpAccessToken(mpToken);
     setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
     
     // Sincronizar desde Supabase para recoger cambios hechos desde otros dispositivos
     syncTurnosConfigFromServer();
-    
-    // Sincronizar MP token desde Supabase
-    const syncMpToken = async () => {
-      try {
-        const res = await fetch('/api/configuracion?clave=mp_access_token');
-        if (res.ok) {
-          const { valor } = await res.json();
-          if (valor && valor !== mpToken) {
-            setMpAccessToken(valor);
-            localStorage.setItem('ph_mp_access_token', valor);
-          }
-        }
-      } catch {}
-    };
-    syncMpToken();
   }, []);
 
   /* Cambia sidebar en tiempo real */
@@ -246,16 +223,6 @@ export default function ConfiguracionPage() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ clave: 'pago_config', valor: pagoConfig }),
     }).catch(() => {});
-    if (mpAccessToken) {
-      localStorage.setItem('ph_mp_access_token', mpAccessToken);
-      fetch('/api/configuracion', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ clave: 'mp_access_token', valor: mpAccessToken }),
-      }).catch(() => {});
-    } else {
-      localStorage.removeItem('ph_mp_access_token');
-    }
     window.dispatchEvent(new Event('ph_store_update'));
     setSaved(true);
     setTimeout(() => setSaved(false), 3000);
@@ -512,68 +479,6 @@ export default function ConfiguracionPage() {
           </div>
         </section>
 
-        {/* ── Mercado Pago (Pagos con Tarjeta) ─────────────────────────── */}
-        <section className="bg-white border border-gray-200 rounded-xl p-6 space-y-4">
-          <h2 className="text-base font-semibold text-gray-900 flex items-center gap-2">
-            <CreditCard size={16} className="text-gray-500" /> Mercado Pago — Pagos con Tarjeta
-          </h2>
-          <p className="text-xs text-gray-400">
-            Configura el Access Token de Mercado Pago para que los mozos puedan cobrar con tarjeta.
-            Obtén tu token en{' '}
-            <a href="https://mercadopago.com.pe/developers" target="_blank" rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 underline">
-              mercadopago.com.pe/developers
-            </a>
-          </p>
-          <div>
-            <label className="block text-sm font-medium text-gray-600 mb-1.5">Access Token</label>
-            <div className="flex gap-2">
-              <input type={showMpToken ? 'text' : 'password'} value={mpAccessToken}
-                onChange={e => setMpAccessToken(e.target.value)}
-                className="flex-1 px-3.5 py-2.5 border border-gray-200 bg-white text-gray-900 rounded-lg text-sm font-mono focus:outline-none focus:ring-2 focus:ring-[#00B9FF]/30 focus:border-[#00B9FF]"
-                placeholder="APP_USR-123456789-..." />
-              <button onClick={() => setShowMpToken(!showMpToken)}
-                className="px-3 py-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors text-xs font-semibold">
-                {showMpToken ? 'Ocultar' : 'Mostrar'}
-              </button>
-            </div>
-            <p className="text-xs text-gray-400 mt-1">Token de producción (APP_USR) — <strong>nunca compartas este token</strong></p>
-          </div>
-          <div>
-            <button
-              onClick={async () => {
-                setMpTesting(true);
-                try {
-                  const res = await fetch('/api/mercadopago/test', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ access_token: mpAccessToken }),
-                  });
-                  const data = await res.json();
-                  setMpTestResult(data.success ? '✅ Conexión exitosa' : `❌ ${data.error || 'Error de conexión'}`);
-                } catch { setMpTestResult('❌ Error de conexión'); }
-                setMpTesting(false);
-              }}
-              disabled={mpTesting || !mpAccessToken}
-              className="px-4 py-2 bg-[#00B9FF] text-white rounded-lg text-sm font-semibold hover:bg-[#009EE0] transition-colors disabled:opacity-50"
-            >
-              {mpTesting ? 'Probando...' : 'Probar conexión'}
-            </button>
-            {mpTestResult && (
-              <span className="ml-3 text-xs font-medium">{mpTestResult}</span>
-            )}
-          </div>
-          <div className="bg-blue-50 border border-blue-100 rounded-xl p-4">
-            <p className="text-xs text-blue-700 font-medium">💡 ¿Cómo funciona?</p>
-            <ul className="mt-2 text-xs text-blue-600 space-y-1 list-disc list-inside">
-              <li>El mozo selecciona <strong>"Pagar con Tarjeta"</strong> al cobrar una comanda</li>
-              <li>Se genera un <strong>código QR</strong> con el link de pago de Mercado Pago</li>
-              <li>El cliente escanea el QR con su celular y paga desde su banco o app Yape/Plin</li>
-              <li>Cuando el pago se aprueba, la comanda se marca como <strong>pagada automáticamente</strong></li>
-              <li>La comisión de Mercado Pago es de aproximadamente <strong>3.99% + S/1.00</strong></li>
-            </ul>
-          </div>
-        </section>
 
         {/* ── Diseño del Sidebar ───────────────────────────────────────────── */}
         <section className="bg-white border border-gray-200 rounded-xl p-6">
