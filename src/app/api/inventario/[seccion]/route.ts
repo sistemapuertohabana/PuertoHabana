@@ -10,7 +10,7 @@ export async function GET(
   const sb = getServiceSupabase();
   const { data, error } = await sb
     .from('inventario')
-    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo')
+    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos')
     .eq('seccion', seccion)
     .order('nombre');
 

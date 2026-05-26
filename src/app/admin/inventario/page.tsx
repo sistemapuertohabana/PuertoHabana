@@ -1,13 +1,15 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Edit, Trash2, Plus, Utensils, Wine, Package } from 'lucide-react';
+import { Edit, Trash2, Plus, Utensils, Wine, Package, Barcode, Camera, Image as ImageIcon, DollarSign, AlertTriangle, History, TrendingUp, X as XIcon, ScanLine, CheckCircle } from 'lucide-react';
 import {
   subscribeInventario,
   addInventarioItem,
   updateInventarioItem,
   deleteInventarioItem,
+  type InventarioMovimiento,
 } from '@/lib/db';
+import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
 
 // Interfaces
 interface Comida {
@@ -16,6 +18,11 @@ interface Comida {
   categoria?: string;
   precio: number;
   cantidad: number;
+  costo?: number;
+  minimo?: number;
+  unidad?: string;
+  codigo_barras?: string;
+  imagen_url?: string;
 }
 
 interface Bebida {
@@ -24,6 +31,11 @@ interface Bebida {
   categoria?: string;
   precio: number;
   cantidad: number;
+  costo?: number;
+  minimo?: number;
+  codigo_barras?: string;
+  imagen_url?: string;
+  tamanos?: Array<{nombre: string; precio: number; costo?: number}>;
 }
 
 interface Taper {
@@ -32,9 +44,14 @@ interface Taper {
   tipo?: string;
   precio: number;
   cantidad: number;
+  costo?: number;
+  minimo?: number;
+  unidad?: string;
+  codigo_barras?: string;
+  imagen_url?: string;
 }
 
-type ActiveSection = 'comida' | 'bebidas' | 'tapers' | 'insumos' | 'nuevo-plato';
+type ActiveSection = 'comida' | 'bebidas' | 'tapers' | 'insumos' | 'nuevo-plato' | 'historial' | 'alertas';
 
 export default function InventarioPage() {
   const [activeSection, setActiveSection] = useState<ActiveSection>('comida');
@@ -75,6 +92,32 @@ export default function InventarioPage() {
   const [editingItem, setEditingItem] = useState<any>(null);
   const [formData, setFormData] = useState<any>({});
 
+  // Scanner & nuevos campos
+  const [showScanner, setShowScanner] = useState(false);
+  const [movimientos, setMovimientos] = useState<InventarioMovimiento[]>([]);
+  const [itemsConBajoStock, setItemsConBajoStock] = useState<any[]>([]);
+
+  // Cargar movimientos y alertas
+  useEffect(() => {
+    const loadMovimientos = async () => {
+      try {
+        const res = await fetch('/api/inventario/stock?limit=20');
+        if (res.ok) {
+          setMovimientos(await res.json());
+        }
+      } catch {}
+    };
+    loadMovimientos();
+
+    // Detectar items con bajo stock
+    const checkLowStock = () => {
+      const allItems = [...comida, ...bebidas, ...tapers, ...insumos];
+      const low = allItems.filter(i => i.cantidad <= (i.minimo || 5));
+      setItemsConBajoStock(low);
+    };
+    checkLowStock();
+  }, [comida, bebidas, tapers, insumos]);
+
   // Estados para el formulario de nuevo plato
   const [nombrePlato, setNombrePlato] = useState('');
   const [categoriaPlato, setCategoriaPlato] = useState('');
@@ -94,23 +137,49 @@ export default function InventarioPage() {
   const handleAdd = () => {
     setEditingItem(null);
     if (activeSection === 'tapers') {
-      setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0, unidad: 'unidad' });
+      setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0, unidad: 'unidad', codigo_barras: '', imagen_url: '', costo: 0 });
     } else if (activeSection === 'insumos') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 5 });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 5, codigo_barras: '', imagen_url: '', costo: 0 });
+    } else if (activeSection === 'bebidas') {
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [] });
     } else {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0 });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0 });
     }
+    setShowModal(true);
+  };
+
+  // Manejar escaneo de código de barras
+  const handleBarcodeScan = (result: { barcode: string; productInfo?: { nombre?: string; precio?: number; imagen_url?: string } }) => {
+    setFormData({
+      ...formData,
+      codigo_barras: result.barcode,
+      nombre: result.productInfo?.nombre || formData.nombre || '',
+      precio: result.productInfo?.precio ?? formData.precio ?? 0,
+      imagen_url: result.productInfo?.imagen_url || formData.imagen_url || '',
+    });
+    setShowScanner(false);
     setShowModal(true);
   };
 
   const handleEdit = (item: any) => {
     setEditingItem(item);
+    const baseForm = {
+      nombre: item.nombre,
+      categoria: item.categoria,
+      tipo: item.tipo,
+      precio: item.precio,
+      cantidad: item.cantidad,
+      codigo_barras: item.codigo_barras || '',
+      imagen_url: item.imagen_url || '',
+      costo: item.costo || 0,
+      tamanos: item.tamanos || [],
+    };
     if (activeSection === 'tapers') {
-      setFormData({ nombre: item.nombre, tipo: item.tipo, precio: item.precio, cantidad: item.cantidad, unidad: item.unidad || 'unidad' });
+      setFormData({ ...baseForm, tipo: item.tipo, unidad: item.unidad || 'unidad' });
     } else if (activeSection === 'insumos') {
-      setFormData({ nombre: item.nombre, categoria: item.categoria, precio: item.precio, cantidad: item.cantidad, unidad: item.unidad || 'unidad', minimo: item.minimo || 5 });
+      setFormData({ ...baseForm, unidad: item.unidad || 'unidad', minimo: item.minimo || 5 });
     } else {
-      setFormData({ nombre: item.nombre, categoria: item.categoria, precio: item.precio, cantidad: item.cantidad });
+      setFormData(baseForm);
     }
     setShowModal(true);
   };
@@ -196,6 +265,8 @@ export default function InventarioPage() {
       case 'tapers': return 'Gestión de Tapers';
       case 'insumos': return 'Gestión de Insumos';
       case 'nuevo-plato': return 'Crear Nuevo Plato';
+      case 'historial': return 'Historial de Movimientos';
+      case 'alertas': return 'Alertas de Stock';
       default: return 'Inventario';
     }
   };
@@ -208,14 +279,47 @@ export default function InventarioPage() {
     <div className="animate-in fade-in duration-300">
       <div className="flex flex-col md:flex-row md:justify-between md:items-center mb-8 gap-4">
         <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Inventario General</h1>
-        <button
-          onClick={handleAdd}
-          className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm w-full md:w-auto bg-blue-600 text-white hover:bg-blue-700"
-        >
-          <Plus size={16} strokeWidth={2} />
-          Agregar {activeSection === 'comida' ? 'Platillo' : activeSection === 'bebidas' ? 'Bebida' : activeSection === 'insumos' ? 'Insumo' : 'Taper'}
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowScanner(true)}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm bg-green-600 text-white hover:bg-green-700"
+          >
+            <Barcode size={16} strokeWidth={2} />
+            Escanear
+          </button>
+          <button
+            onClick={handleAdd}
+            className="flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg transition-colors text-sm bg-blue-600 text-white hover:bg-blue-700"
+          >
+            <Plus size={16} strokeWidth={2} />
+            Agregar {activeSection === 'comida' ? 'Platillo' : activeSection === 'bebidas' ? 'Bebida' : activeSection === 'insumos' ? 'Insumo' : 'Taper'}
+          </button>
+        </div>
       </div>
+
+      {/* Stock Alerts Banner */}
+      {itemsConBajoStock.length > 0 && (
+        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={20} className="text-red-500 mt-0.5 shrink-0" />
+            <div className="flex-1">
+              <h3 className="text-sm font-semibold text-red-800">
+                Stock Bajo - {itemsConBajoStock.length} producto{itemsConBajoStock.length !== 1 ? 's' : ''}
+              </h3>
+              <div className="flex flex-wrap gap-2 mt-2">
+                {itemsConBajoStock.slice(0, 5).map(item => (
+                  <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700">
+                    {item.nombre} <span className="text-red-400">({item.cantidad} {item.unidad || 'unid'})</span>
+                  </span>
+                ))}
+                {itemsConBajoStock.length > 5 && (
+                  <span className="text-xs text-red-500 font-medium self-center">+{itemsConBajoStock.length - 5} más</span>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Gráfico de resumen */}
       <div className="border rounded-lg p-6 mb-8 bg-white border-gray-200">
@@ -321,6 +425,28 @@ export default function InventarioPage() {
         >
           <Plus size={16} strokeWidth={2} />
           Crear Plato
+        </button>
+        <button
+          onClick={() => setActiveSection('historial')}
+          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
+            activeSection === 'historial'
+              ? 'bg-black text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <History size={16} strokeWidth={2} />
+          Historial
+        </button>
+        <button
+          onClick={() => setActiveSection('alertas')}
+          className={`flex items-center justify-center gap-2 px-4 py-3 rounded-lg transition-colors text-sm font-medium ${
+            activeSection === 'alertas'
+              ? 'bg-red-600 text-white'
+              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+          }`}
+        >
+          <AlertTriangle size={16} strokeWidth={2} />
+          Alertas
         </button>
       </div>
 
@@ -549,17 +675,161 @@ export default function InventarioPage() {
               </button>
             </div>
           </div>
+        ) : activeSection === 'historial' ? (
+          /* Vista de historial de movimientos */
+          <div>
+            <h4 className="text-base font-medium text-gray-900 mb-4">Historial de Movimientos de Inventario</h4>
+            {movimientos.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                <History size={32} className="mx-auto text-gray-300 mb-2" />
+                <p className="text-sm text-gray-500">No hay movimientos registrados aún</p>
+                <p className="text-xs text-gray-400 mt-1">Los movimientos se registran automáticamente al crear pedidos o ajustar stock.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {movimientos.map((mov: any) => (
+                  <div key={mov.id} className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
+                      mov.tipo === 'entrada' ? 'bg-green-100' : mov.tipo === 'salida' ? 'bg-red-100' : 'bg-yellow-100'
+                    }`}>
+                      {mov.tipo === 'entrada' ? (
+                        <Plus size={16} className="text-green-600" />
+                      ) : mov.tipo === 'salida' ? (
+                        <span className="text-red-600 font-bold">−</span>
+                      ) : (
+                        <span className="text-yellow-600">~</span>
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium text-gray-900">
+                        {mov.inventario?.nombre || `Item #${mov.inventario_id}`}
+                        <span className="text-xs text-gray-400 ml-2">({mov.inventario?.seccion || ''})</span>
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Stock: {mov.stock_anterior} → {mov.stock_nuevo}
+                        {mov.referencia && <span className="ml-2">• {mov.referencia} #{mov.referencia_id}</span>}
+                        {mov.notas && <span className="ml-2">• {mov.notas}</span>}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-sm font-bold ${
+                        mov.tipo === 'entrada' ? 'text-green-600' : mov.tipo === 'salida' ? 'text-red-600' : 'text-yellow-600'
+                      }`}>
+                        {mov.tipo === 'entrada' ? '+' : mov.tipo === 'salida' ? '-' : '±'}{mov.cantidad}
+                      </span>
+                      <p className="text-[10px] text-gray-400 mt-0.5">
+                        {new Date(mov.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : activeSection === 'alertas' ? (
+          /* Vista de alertas de stock */
+          <div>
+            <h4 className="text-base font-medium text-gray-900 mb-2">Alertas de Stock Bajo</h4>
+            <p className="text-xs text-gray-500 mb-4">
+              Productos cuya cantidad está por debajo del mínimo establecido.
+            </p>
+            {itemsConBajoStock.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                <CheckCircle size={32} className="mx-auto text-green-300 mb-2" />
+                <p className="text-sm text-gray-500">Todo en orden</p>
+                <p className="text-xs text-gray-400 mt-1">No hay productos con stock bajo.</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {itemsConBajoStock.map(item => {
+                  const margen = item.precio > 0 && item.costo ? ((item.precio - item.costo) / item.precio * 100).toFixed(0) : null;
+                  return (
+                    <div key={item.id} className="border border-red-200 bg-red-50 rounded-lg p-4">
+                      <div className="flex justify-between items-start mb-2">
+                        <div className="flex items-center gap-2">
+                          <AlertTriangle size={16} className="text-red-500 shrink-0" />
+                          <div>
+                            <h4 className="text-sm font-medium text-gray-900">{item.nombre}</h4>
+                            <p className="text-xs text-gray-500">{item.categoria || item.tipo || item.seccion}</p>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3 mt-3">
+                        <div className="flex-1">
+                          <div className="flex justify-between text-xs mb-1">
+                            <span className="text-gray-500">Stock actual</span>
+                            <span className="font-bold text-red-600">{item.cantidad} {item.unidad || 'unid'}</span>
+                          </div>
+                          <div className="w-full bg-red-200 rounded-full h-2">
+                            <div
+                              className="bg-red-500 h-2 rounded-full transition-all"
+                              style={{ width: `${Math.min(100, (item.cantidad / (item.minimo || 5)) * 100)}%` }}
+                            />
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-1">Mínimo: {item.minimo || 5} {item.unidad || 'unid'}</p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-gray-500">Precio</p>
+                          <p className="text-sm font-bold text-gray-900">S/ {Number(item.precio).toFixed(2)}</p>
+                          {margen && (
+                            <p className={`text-xs font-medium ${Number(margen) >= 30 ? 'text-green-600' : Number(margen) > 0 ? 'text-yellow-600' : 'text-red-600'}`}>
+                              {margen}% margen
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => {
+                          setEditingItem(item);
+                          setFormData({
+                            nombre: item.nombre,
+                            categoria: item.categoria,
+                            tipo: item.tipo,
+                            precio: item.precio,
+                            cantidad: item.cantidad,
+                            unidad: item.unidad || 'unidad',
+                            minimo: item.minimo || 5,
+                            codigo_barras: item.codigo_barras,
+                            imagen_url: item.imagen_url,
+                            costo: item.costo,
+                            tamanos: item.tamanos,
+                          });
+                          setShowModal(true);
+                        }}
+                        className="mt-3 w-full px-3 py-2 bg-white border border-red-200 rounded-lg text-xs font-medium text-red-700 hover:bg-red-50 transition-colors"
+                      >
+                        Reabastecer / Editar
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
         ) : (
           /* Vista de tarjetas para móvil y escritorio */
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {getCurrentData().map((item: any) => (
-              <div key={item.id} className="border border-gray-200 rounded-lg p-4">
+            {getCurrentData().map((item: any) => (                <div key={item.id} className="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
                 <div className="flex justify-between items-start mb-3">
-                  <div>
-                    <h4 className="text-sm font-medium text-gray-900">{item.nombre}</h4>
-                    <p className="text-xs text-gray-500">{activeSection === 'tapers' ? item.tipo : item.categoria}</p>
+                  <div className="flex items-start gap-3 min-w-0">
+                    {/* Imagen thumbnail */}
+                    {item.imagen_url ? (
+                      <img
+                        src={item.imagen_url}
+                        alt={item.nombre}
+                        className="w-10 h-10 rounded-lg object-cover border border-gray-200 shrink-0"
+                        onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                      />
+                    ) : null}
+                    <div className="min-w-0">
+                      <h4 className="text-sm font-medium text-gray-900 truncate">{item.nombre}</h4>
+                      <p className="text-xs text-gray-500">{activeSection === 'tapers' ? item.tipo : item.categoria}</p>
+                      {item.codigo_barras && (
+                        <p className="text-[10px] text-gray-400 mt-0.5 font-mono">#{item.codigo_barras}</p>
+                      )}
+                    </div>
                   </div>
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 shrink-0">
                     <button
                       onClick={() => handleEdit(item)}
                       className="text-gray-500 hover:text-black transition-colors p-1"
@@ -577,23 +847,73 @@ export default function InventarioPage() {
                 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <p className="text-xs text-gray-500">Precio</p>
+                    <p className="text-xs text-gray-500">Venta</p>
                     <p className="text-sm font-medium text-gray-900">S/ {Number(item.precio).toFixed(2)}</p>
                   </div>
                   <div>
-                    <p className="text-xs text-gray-500">Cantidad</p>
-                    <p className="text-sm font-medium text-gray-900">{item.cantidad}</p>
+                    <p className="text-xs text-gray-500">Stock</p>
+                    <p className={`text-sm font-medium ${item.cantidad <= (item.minimo || 5) ? 'text-red-600' : 'text-gray-900'}`}>
+                      {item.cantidad} {item.unidad || 'unid'}
+                    </p>
                   </div>
-                  <div className="col-span-2">
-                    <p className="text-xs text-gray-500">Total</p>
-                    <p className="text-sm font-medium text-gray-900">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</p>
-                  </div>
+                  {item.costo > 0 && (
+                    <>
+                      <div>
+                        <p className="text-xs text-gray-500">Costo</p>
+                        <p className="text-sm font-medium text-gray-900">S/ {Number(item.costo).toFixed(2)}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-500">Margen</p>
+                        <p className={`text-sm font-medium ${item.precio - item.costo > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          {item.precio > 0 ? `${(((item.precio - item.costo) / item.precio) * 100).toFixed(0)}%` : '—'}
+                        </p>
+                      </div>
+                    </>
+                  )}
+                  {!item.costo && (
+                    <div className="col-span-2">
+                      <p className="text-xs text-gray-500">Total</p>
+                      <p className="text-sm font-medium text-gray-900">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</p>
+                    </div>
+                  )}
                 </div>
+
+                {/* Tamaños para bebidas */}
+                {item.tamanos && item.tamanos.length > 0 && (
+                  <div className="mt-3 pt-3 border-t border-gray-100">
+                    <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2">Presentaciones</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {item.tamanos.map((t: any, i: number) => (
+                        <span key={i} className="inline-flex items-center gap-1 px-2 py-1 bg-gray-50 border border-gray-200 rounded-md text-[10px]">
+                          <span className="font-medium text-gray-700">{t.nombre}</span>
+                          <span className="text-gray-400">S/ {Number(t.precio).toFixed(2)}</span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
             ))}
           </div>
         )}
       </div>
+
+      {/* Modal de escáner de código de barras */}
+      {showScanner && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowScanner(false);
+          }}
+        >
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <InventoryBarcodeScanner
+              onScan={handleBarcodeScan}
+              onClose={() => setShowScanner(false)}
+            />
+          </div>
+        </div>
+      )}
 
       {/* Modal */}
       {showModal && (
@@ -629,6 +949,51 @@ export default function InventarioPage() {
             {/* Body */}
             <div className="px-8 py-6">
               <div className="space-y-6">
+                {/* Código de Barras */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <Barcode size={14} /> Código de Barras
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.codigo_barras || ''}
+                      onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                      placeholder="Ej: 7750101001000"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowScanner(true)}
+                      className="px-3 py-2 bg-gray-100 border border-gray-200 rounded-xl hover:bg-gray-200 transition-colors text-gray-600"
+                      title="Escanear código de barras"
+                    >
+                      <ScanLine size={18} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Imagen URL */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <ImageIcon size={14} /> URL de Imagen
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.imagen_url || ''}
+                      onChange={(e) => setFormData({ ...formData, imagen_url: e.target.value })}
+                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                      placeholder="https://ejemplo.com/imagen.jpg"
+                    />
+                    {formData.imagen_url && (
+                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                        <img src={formData.imagen_url} alt="preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-3">
                     Nombre
@@ -717,21 +1082,47 @@ export default function InventarioPage() {
                   </div>
                 )}
 
-                <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
-                    Precio
-                  </label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
-                    <input
-                      type="text"
-                      inputMode="decimal"
-                      pattern="[0-9.]*"
-                      value={formData.precio || ''}
-                      onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : e.target.value })}
-                      className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
-                      placeholder="0.00"
-                    />
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <DollarSign size={14} className="inline mr-1" />
+                      Precio Venta
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={formData.precio || ''}
+                        onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : e.target.value })}
+                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
+                        placeholder="0.00"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      <TrendingUp size={14} className="inline mr-1" />
+                      Precio Costo
+                    </label>
+                    <div className="relative">
+                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
+                      <input
+                        type="text"
+                        inputMode="decimal"
+                        pattern="[0-9.]*"
+                        value={formData.costo || ''}
+                        onChange={(e) => setFormData({ ...formData, costo: e.target.value === '' ? 0 : e.target.value })}
+                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
+                        placeholder="0.00"
+                      />
+                    </div>
+                    {formData.precio > 0 && formData.costo > 0 && (
+                      <p className={`text-xs mt-1 ${formData.precio > formData.costo ? 'text-green-600' : 'text-red-600'}`}>
+                        Margen: S/ {(formData.precio - formData.costo).toFixed(2)} ({((formData.precio - formData.costo) / formData.precio * 100).toFixed(0)}%)
+                      </p>
+                    )}
                   </div>
                 </div>
                 <div>
@@ -748,6 +1139,69 @@ export default function InventarioPage() {
                     placeholder="0"
                   />
                 </div>
+
+                {/* Editor de Tamaños (solo para bebidas) */}
+                {activeSection === 'bebidas' && (
+                  <div className="border-t border-gray-100 pt-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                      Tamaños / Presentaciones
+                    </label>
+                    <p className="text-xs text-gray-400 mb-4">
+                      Define diferentes tamaños y precios para esta bebida (ej: Litro, 1/2 Litro, Vaso)
+                    </p>
+                    <div className="space-y-3">
+                      {(formData.tamanos || []).map((t: any, idx: number) => (
+                        <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                          <input
+                            type="text"
+                            value={t.nombre}
+                            onChange={(e) => {
+                              const nuevos = [...(formData.tamanos || [])];
+                              nuevos[idx] = { ...nuevos[idx], nombre: e.target.value };
+                              setFormData({ ...formData, tamanos: nuevos });
+                            }}
+                            placeholder="Nombre (ej: Litro)"
+                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                          />
+                          <div className="relative w-24">
+                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                            <input
+                              type="text"
+                              inputMode="decimal"
+                              value={t.precio || ''}
+                              onChange={(e) => {
+                                const nuevos = [...(formData.tamanos || [])];
+                                nuevos[idx] = { ...nuevos[idx], precio: parseFloat(e.target.value) || 0 };
+                                setFormData({ ...formData, tamanos: nuevos });
+                              }}
+                              placeholder="Precio"
+                              className="w-full pl-7 pr-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <button
+                            onClick={() => {
+                              const nuevos = (formData.tamanos || []).filter((_: any, i: number) => i !== idx);
+                              setFormData({ ...formData, tamanos: nuevos });
+                            }}
+                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                          >
+                            <XIcon size={16} />
+                          </button>
+                        </div>
+                      ))}
+                      <button
+                        onClick={() => {
+                          const nuevos = [...(formData.tamanos || []), { nombre: '', precio: 0, costo: 0 }];
+                          setFormData({ ...formData, tamanos: nuevos });
+                        }}
+                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                      >
+                        <Plus size={14} />
+                        Agregar Tamaño
+                      </button>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

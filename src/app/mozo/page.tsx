@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock } from 'lucide-react';
+import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock, Barcode } from 'lucide-react';
 import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
+import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
 
 interface MesaConfig {
   id: string;
@@ -146,6 +147,7 @@ export default function MozoPage() {
   const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
+  const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
     const unsub = subscribeInventario('tapers', (data) => setTapers(data));
@@ -500,6 +502,13 @@ export default function MozoPage() {
               </button>
             )
           )}
+          <button
+            onClick={() => setShowScanner(true)}
+            className="w-9 h-9 rounded-lg bg-gray-100 text-gray-500 hover:bg-blue-100 hover:text-blue-600 transition-colors flex items-center justify-center"
+            title="Escanear producto"
+          >
+            <Barcode size={16} strokeWidth={1.5} />
+          </button>
           <button 
             onClick={() => setIsConfigMode(!isConfigMode)}
             className={`w-9 h-9 rounded-lg transition-colors flex items-center justify-center ${
@@ -741,6 +750,52 @@ export default function MozoPage() {
                 <span className="font-medium text-gray-700">{a.hora_llegada.slice(0, 5)} hrs</span>
               </div>
             ))}
+          </div>
+        </div>
+      )}
+
+      {/* Modal de escáner de código de barras */}
+      {showScanner && (
+        <div
+          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setShowScanner(false);
+          }}
+        >
+          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
+            <InventoryBarcodeScanner
+              onScan={async (result) => {
+                setShowScanner(false);
+                // Buscar el producto en inventario
+                try {
+                  const res = await fetch(`/api/inventario?codigo_barras=${encodeURIComponent(result.barcode)}`);
+                  if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.length > 0) {
+                      const product = data[0];
+                      if (product.seccion === 'bebidas' || product.seccion === 'tapers') {
+                        if (activeMesa) {
+                          // Si hay una mesa activa, agregar al carrito
+                          const item = { name: product.nombre, price: product.precio, category: product.seccion };
+                          updateCart(item, 1);
+                          alert(`✅ ${product.nombre} agregado al pedido`);
+                        } else {
+                          // Si no hay mesa activa, mostrar mensaje
+                          alert(`✅ ${product.nombre} encontrado. Selecciona una mesa primero.`);
+                        }
+                      } else {
+                        alert(`⚠️ ${product.nombre} es de la sección "${product.seccion}". Solo puedes agregar bebidas y tapers.`);
+                      }
+                    } else {
+                      alert(`⚠️ Código ${result.barcode} no encontrado en inventario`);
+                    }
+                  }
+                } catch {
+                  alert('Error al buscar producto');
+                }
+              }}
+              onClose={() => setShowScanner(false)}
+            />
           </div>
         </div>
       )}

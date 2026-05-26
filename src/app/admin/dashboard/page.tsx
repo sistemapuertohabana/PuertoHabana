@@ -7,6 +7,16 @@ import Boleta from '@/components/Boleta';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 
+interface InventoryItem {
+  id: string | number;
+  seccion: string;
+  nombre: string;
+  precio: number;
+  costo: number;
+  cantidad: number;
+  categoria?: string;
+}
+
 // Helper para obtener fecha local en formato YYYY-MM-DD
 function getLocalDateString(d: Date = new Date()) {
   const year = d.getFullYear();
@@ -137,6 +147,7 @@ export default function DashboardPage() {
   const [insumosWasted, setInsumosWasted] = useState<InsumoWaste[]>([]);
   
   const [staffPayments, setStaffPayments] = useState<StaffPayment[]>([]);
+  const [inventarioItems, setInventarioItems] = useState<InventoryItem[]>([]);
 
 
   // Forms state
@@ -285,6 +296,17 @@ export default function DashboardPage() {
             }
           } catch {
             try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
+          }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/inventario');
+            if (res.ok) {
+              const data = await res.json();
+              setInventarioItems(data);
+            }
+          } catch {
+            try { setInventarioItems(JSON.parse(localStorage.getItem('ph_inventario') || '[]')); } catch {}
           }
         })(),
       ]);
@@ -478,6 +500,63 @@ export default function DashboardPage() {
       await fetch(`/api/reportes/payments?id=${id}`, { method: 'DELETE' });
     } catch {}
     setStaffPayments(prev => prev.filter((p: StaffPayment) => String(p.id) !== String(id)));
+  };
+
+  // ── Cálculo de margen de ganancia real basado en costo del inventario ──
+  const getMargenData = () => {
+    // Crear un mapa de nombre -> costo desde inventario
+    const costMap: Record<string, number> = {};
+    inventarioItems.forEach(item => {
+      const key = item.nombre.toLowerCase().trim();
+      // Si hay múltiples items con el mismo nombre, tomamos el costo promedio
+      if (costMap[key]) {
+        costMap[key] = (costMap[key] + (item.costo || 0)) / 2;
+      } else {
+        costMap[key] = item.costo || 0;
+      }
+    });
+
+    // Calcular margen por producto vendido
+    const productMargins: Record<string, { ventas: number; costoTotal: number; qty: number; category: string }> = {};
+    pedidos.forEach(p => {
+      const key = p.item;
+      const costo = costMap[p.item.toLowerCase().trim()] || 0;
+      if (!productMargins[key]) {
+        productMargins[key] = { ventas: 0, costoTotal: 0, qty: 0, category: p.category };
+      }
+      productMargins[key].ventas += p.precio * p.cantidad;
+      productMargins[key].costoTotal += costo * p.cantidad;
+      productMargins[key].qty += p.cantidad;
+    });
+
+    return Object.entries(productMargins)
+      .map(([name, data]) => ({
+        name,
+        ventas: data.ventas,
+        costo: data.costoTotal,
+        ganancia: data.ventas - data.costoTotal,
+        margen: data.ventas > 0 ? ((data.ventas - data.costoTotal) / data.ventas * 100) : 0,
+        qty: data.qty,
+        category: data.category,
+      }))
+      .sort((a, b) => b.ganancia - a.ganancia);
+  };
+
+  const getMargenPorCategoria = () => {
+    const categorias: Record<string, { ventas: number; costo: number }> = {};
+    getMargenData().forEach(p => {
+      const cat = p.category === 'bebidas' ? 'Bebidas' : p.category === 'comida' ? 'Comida' : 'Tapers';
+      if (!categorias[cat]) categorias[cat] = { ventas: 0, costo: 0 };
+      categorias[cat].ventas += p.ventas;
+      categorias[cat].costo += p.costo;
+    });
+    return Object.entries(categorias).map(([nombre, data]) => ({
+      nombre,
+      ventas: data.ventas,
+      costo: data.costo,
+      ganancia: data.ventas - data.costo,
+      margen: data.ventas > 0 ? ((data.ventas - data.costo) / data.ventas * 100) : 0,
+    }));
   };
 
   // Helper to extract top dishes data dynamically from the orders list
@@ -1378,10 +1457,11 @@ export default function DashboardPage() {
                 <ClipboardList size={36} className="mx-auto text-gray-300 dark:text-gray-700 mb-3" />
                 <p className="text-sm font-semibold text-gray-400">Sin datos de venta</p>
                 <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">No se registraron transacciones que coincidan con la búsqueda en el rango de fechas actual.</p>
+                  </div>
+                )}
               </div>
-            )}
-          </div>
-        </div>
+
+            </div>
       )}
 
       {/* Tab 3: Vendido por Mozo */}
@@ -1883,23 +1963,136 @@ export default function DashboardPage() {
                 </div>
               </div>
 
-              {/* Pronósticos y Inteligencia de Negocio */}
+              {/* Margen de Ganancia Real */}
               <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
                 <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
-                  <Sparkles size={14} className="text-amber-500" />
-                  Pronósticos y Proyección de Demanda
+                  <TrendingUp size={14} className="text-emerald-500" />
+                  Margen de Ganancia por Categoría
                 </h3>
 
-                <div className="space-y-4 text-xs font-medium">
-                  
-                  {/* Empty Data State */}
-                  <div className={`p-8 text-center rounded-lg border border-dashed bg-gray-50 border-gray-200 text-gray-400`}>
-                    <Sparkles size={24} className="mx-auto mb-2 opacity-50" />
-                    <p className="font-semibold uppercase tracking-widest text-[10px]">Recopilando Datos Reales</p>
-                    <p className="mt-1 text-xs font-normal">Las proyecciones de volumen y participación se generarán automáticamente a medida que el sistema procese más ventas históricas.</p>
+                {(() => {
+                  const margenData = getMargenData();
+                  const margenPorCategoria = getMargenPorCategoria();
+                  return margenPorCategoria.length > 0 ? (
+                  <div className="space-y-5">
+                    {margenPorCategoria.map((cat, idx) => {
+                      const maxVentas = Math.max(...margenPorCategoria.map(c => c.ventas), 1);
+                      return (
+                        <div key={idx} className="space-y-2">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-semibold text-gray-700">{cat.nombre}</span>
+                            <span className={`text-xs font-bold ${cat.margen >= 40 ? 'text-green-600' : cat.margen >= 20 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {cat.margen.toFixed(1)}% margen
+                            </span>
+                          </div>
+                          {/* Barra de ingresos vs costos */}
+                          <div className="flex gap-1 h-4 w-full">
+                            <div 
+                              className="bg-emerald-500 rounded-l-full transition-all duration-700"
+                              style={{ width: `${(cat.ventas / maxVentas) * 100}%` }}
+                              title={`Ventas: S/ ${cat.ventas.toFixed(2)}`}
+                            ></div>
+                            <div 
+                              className="bg-red-400 rounded-r-full transition-all duration-700"
+                              style={{ width: `${(cat.costo / maxVentas) * 100}%` }}
+                              title={`Costo: S/ ${cat.costo.toFixed(2)}`}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-gray-500">
+                            <span>Ventas: S/ {cat.ventas.toFixed(2)}</span>
+                            <span>Costo: S/ {cat.costo.toFixed(2)}</span>
+                            <span className="font-semibold text-emerald-600">+ S/ {cat.ganancia.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    
+                    {/* Total general */}
+                    <div className={`pt-4 mt-2 border-t border-gray-200`}>
+                      {(() => {
+                        const totalVentas = margenPorCategoria.reduce((s, c) => s + c.ventas, 0);
+                        const totalCosto = margenPorCategoria.reduce((s, c) => s + c.costo, 0);
+                        const totalGanancia = totalVentas - totalCosto;
+                        const totalMargen = totalVentas > 0 ? (totalGanancia / totalVentas * 100) : 0;
+                        return (
+                          <div className="flex justify-between items-center">
+                            <div>
+                              <span className="text-xs font-semibold text-gray-900">Margen Total</span>
+                              <p className="text-[10px] text-gray-500">S/ {totalGanancia.toFixed(2)} ganancia {totalCosto === 0 && <span className="text-amber-500 font-semibold">*</span>}</p>
+                            </div>
+                            <span className={`text-lg font-bold ${totalMargen >= 40 ? 'text-green-600' : totalMargen >= 20 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {totalMargen.toFixed(1)}%{totalCosto === 0 ? <span className="text-[10px] text-amber-500 font-normal ml-1">*</span> : ''}
+                            </span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                    {margenData.length > 0 && margenData.some(p => p.costo === 0) && (
+                      <p className="text-[9px] text-amber-500 italic mt-2">* Margen estimado — algunos productos no tienen costo registrado en inventario.</p>
+                    )}
                   </div>
+                ) : (
+                  <div className={`p-8 text-center rounded-lg border border-dashed bg-gray-50 border-gray-200 text-gray-400`}>
+                    <DollarSign size={24} className="mx-auto mb-2 opacity-50" />
+                    <p className="font-semibold uppercase tracking-widest text-[10px]">Sin datos de costo</p>
+                    <p className="mt-1 text-xs font-normal">Registra el costo de los productos en el inventario para ver el margen de ganancia real.</p>
+                  </div>
+                );})()}
+              </div>
 
-                </div>
+              {/* Margen por Producto - Top 5 */}
+              <div className={`p-6 rounded-xl border bg-white border-gray-150 shadow-sm`}>
+                <h3 className="text-sm font-bold uppercase tracking-wider text-gray-400 mb-4 flex items-center gap-1.5">
+                  <Award size={14} className="text-amber-500" />
+                  Top 5 Productos por Ganancia
+                </h3>
+
+                {(() => { const md = getMargenData(); return md.slice(0, 5).length > 0 ? (
+                  <div className="space-y-3">
+                    {md.slice(0, 5).map((p, idx) => {
+                      const maxGanancia = Math.max(...md.map(x => x.ganancia), 1);
+                      const percent = (p.ganancia / maxGanancia) * 100;
+                      return (
+                        <div key={idx} className="space-y-1.5">
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0 ${
+                                idx === 0 ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'
+                              }`}>{idx + 1}</span>
+                              <span className="text-xs font-medium truncate">{p.name}</span>
+                            </div>
+                            <span className={`text-[10px] font-bold shrink-0 ml-2 ${p.margen >= 40 ? 'text-green-600' : p.margen >= 20 ? 'text-amber-600' : 'text-red-600'}`}>
+                              {p.margen.toFixed(0)}%
+                            </span>
+                          </div>
+                          <div className="w-full h-2 rounded-full overflow-hidden bg-gray-100">
+                            <div 
+                              className={`h-full rounded-full transition-all duration-700 ${
+                                idx === 0 
+                                  ? 'bg-gradient-to-r from-emerald-500 to-green-500' 
+                                  : idx === 1 
+                                  ? 'bg-gradient-to-r from-blue-500 to-cyan-500' 
+                                  : 'bg-gradient-to-r from-slate-400 to-slate-500'
+                              }`}
+                              style={{ width: `${percent}%` }}
+                            ></div>
+                          </div>
+                          <div className="flex justify-between text-[10px] text-gray-400">
+                            <span>S/ {p.costo.toFixed(2)} costo</span>
+                            <span>S/ {p.ventas.toFixed(2)} venta</span>
+                            <span className="text-emerald-600 font-semibold">+ S/ {p.ganancia.toFixed(2)}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className={`p-8 text-center rounded-lg border border-dashed bg-gray-50 border-gray-200 text-gray-400`}>
+                    <Award size={24} className="mx-auto mb-2 opacity-50" />
+                    <p className="font-semibold uppercase tracking-widest text-[10px]">Sin datos</p>
+                    <p className="mt-1 text-xs font-normal">Registra pedidos y asigna costos en el inventario para ver este análisis.</p>
+                  </div>
+                );})()}
               </div>
 
             </div>

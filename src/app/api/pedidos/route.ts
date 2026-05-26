@@ -72,5 +72,47 @@ export async function POST(request: Request) {
     p_tapers: totalTapers,
   }).maybeSingle();
 
+  // ── Decrementar inventario para bebidas y tapers ────────────────────
+  // Buscar items en inventario por nombre para descontar stock
+  const itemsParaDescontar = items.filter((i: any) => i.categoria === 'bebidas' || i.categoria === 'tapers');
+  if (itemsParaDescontar.length > 0) {
+    for (const item of itemsParaDescontar) {
+      // Buscar el item en inventario por nombre
+      const { data: inventoryItems } = await sb
+        .from('inventario')
+        .select('id, cantidad')
+        .eq('seccion', item.categoria)
+        .eq('nombre', item.nombre.replace(/^🎁\s*/, '')) // quitar prefijo 🎁 de cortesía
+        .limit(1);
+
+      if (inventoryItems && inventoryItems.length > 0) {
+        const invItem = inventoryItems[0];
+        const delta = -item.cantidad; // negativo = salida
+        const stockAnterior = invItem.cantidad;
+        const stockNuevo = Math.max(0, stockAnterior + delta);
+
+        await sb
+          .from('inventario')
+          .update({ cantidad: stockNuevo })
+          .eq('id', invItem.id);
+
+        // Registrar movimiento
+        await sb
+          .from('inventario_movimientos')
+          .insert([{
+            inventario_id: invItem.id,
+            tipo: 'salida',
+            cantidad: item.cantidad,
+            stock_anterior: stockAnterior,
+            stock_nuevo: stockNuevo,
+            referencia: 'pedido',
+            referencia_id: String(comanda.id),
+            notas: `Pedido #${comanda.id} - ${mesa_nombre}`,
+          }])
+          .maybeSingle();
+      }
+    }
+  }
+
   return NextResponse.json({ success: true, id: comanda.id }, { status: 201 });
 }

@@ -5,11 +5,23 @@ import { getServiceSupabase } from '@/lib/supabase';
 export async function PUT(request: Request, { params }: { params: Promise<{ seccion: string; id: string }> }) {
   const sb = getServiceSupabase();
   const { id } = await params;
-  const { nombre, categoria, tipo, precio, cantidad, unidad, minimo } = await request.json();
+  const { nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos } = await request.json();
 
   const { error } = await sb
     .from('inventario')
-    .update({ nombre, categoria: categoria || null, tipo: tipo || null, precio: precio || 0, cantidad: cantidad || 0, unidad: unidad || 'unidad', minimo: minimo || 5 })
+    .update({
+      nombre,
+      categoria: categoria || null,
+      tipo: tipo || null,
+      precio: precio || 0,
+      cantidad: cantidad || 0,
+      unidad: unidad || 'unidad',
+      minimo: minimo ?? 5,
+      codigo_barras: codigo_barras || null,
+      imagen_url: imagen_url || null,
+      costo: costo || 0,
+      tamanos: tamanos || null,
+    })
     .eq('id', id);
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });

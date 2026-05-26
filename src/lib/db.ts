@@ -4,6 +4,12 @@
 
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
+export interface TamanoOption {
+  nombre: string;
+  precio: number;
+  costo?: number;
+}
+
 export interface InventarioItem {
   id: string;
   nombre: string;
@@ -14,7 +20,25 @@ export interface InventarioItem {
   seccion?: string;
   unidad?: string;
   minimo?: number;
+  codigo_barras?: string;
+  imagen_url?: string;
+  costo?: number;
+  tamanos?: TamanoOption[];
   [key: string]: any;
+}
+
+export interface InventarioMovimiento {
+  id: string;
+  inventario_id: string;
+  tipo: 'entrada' | 'salida' | 'ajuste';
+  cantidad: number;
+  stock_anterior: number;
+  stock_nuevo: number;
+  referencia?: string;
+  referencia_id?: string;
+  notas?: string;
+  created_at: string;
+  inventario?: { nombre: string; seccion: string };
 }
 
 const LS_KEY = 'ph_inventario';
