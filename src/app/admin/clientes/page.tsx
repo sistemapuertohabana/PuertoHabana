@@ -233,84 +233,84 @@ export default function ClientesPage() {
                   className="w-full mt-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
                   placeholder="Nombre completo" />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase">DNI</label>
-                  <div className="flex gap-2 mt-1">
-                    <input type="text" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})} maxLength={8}
-                      className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      placeholder="12345678" />
-                    <button
-                      onClick={async () => {
-                        if (!form.dni || form.dni.length < 8) return;
-                        try {
-                          const res = await fetch(`/api/clientes?dni=${encodeURIComponent(form.dni)}`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            if (data && data.length > 0) {
-                              const c = data[0];
-                              setForm({
-                                nombre: c.nombre || form.nombre,
-                                dni: c.dni || form.dni,
-                                ruc: c.ruc || form.ruc,
-                                telefono: c.telefono || form.telefono,
-                                email: c.email || form.email,
-                                direccion: c.direccion || form.direccion,
-                                notas: c.notas || form.notas,
-                              });
-                              setEditingId(c.id);
-                              alert('✅ Cliente encontrado: ' + c.nombre);
-                            } else {
-                              alert('⚠️ No se encontró cliente con ese DNI');
-                            }
+              {/* DNI — vertical */}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase">DNI</label>
+                <div className="flex gap-2 mt-1">
+                  <input type="text" value={form.dni} onChange={e => setForm({...form, dni: e.target.value})} maxLength={8}
+                    className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="12345678" />
+                  <button
+                    onClick={async () => {
+                      if (!form.dni || form.dni.length < 8) return;
+                      try {
+                        const res = await fetch(`/api/clientes?dni=${encodeURIComponent(form.dni)}`);
+                        if (res.ok) {
+                          const data = await res.json();
+                          if (data && data.length > 0) {
+                            const c = data[0];
+                            setForm({
+                              nombre: c.nombre || form.nombre,
+                              dni: c.dni || form.dni,
+                              ruc: c.ruc || form.ruc,
+                              telefono: c.telefono || form.telefono,
+                              email: c.email || form.email,
+                              direccion: c.direccion || form.direccion,
+                              notas: c.notas || form.notas,
+                            });
+                            setEditingId(c.id);
+                            setToast('✅ Cliente encontrado: ' + c.nombre);
+                          } else {
+                            setToast('⚠️ No se encontró cliente con ese DNI');
                           }
-                        } catch {}
-                      }}
-                      className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
-                      title="Buscar por DNI"
-                    >
-                      <Scan size={14} />
-                    </button>
-                  </div>
+                        }
+                      } catch {}
+                    }}
+                    className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
+                    title="Buscar por DNI"
+                  >
+                    <Scan size={14} />
+                  </button>
                 </div>
-                <div>
-                  <label className="text-xs font-semibold text-gray-600 uppercase">RUC</label>
-                  <div className="flex gap-2 mt-1">
-                    <input type="text" value={form.ruc} onChange={e => setForm({...form, ruc: e.target.value})} maxLength={11}
-                      className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-                      placeholder="20123456789" />
-                    <button
-                      onClick={async () => {
-                        if (!form.ruc || form.ruc.length < 11) return;
-                        try {
-                          const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(form.ruc)}`);
-                          if (res.ok) {
-                            const data = await res.json();
-                            if (data && data.length > 0) {
-                              const c = data[0];
-                              setForm({
-                                nombre: c.nombre || form.nombre,
-                                dni: c.dni || form.dni,
-                                ruc: c.ruc || form.ruc,
-                                telefono: c.telefono || form.telefono,
-                                email: c.email || form.email,
-                                direccion: c.direccion || form.direccion,
-                                notas: c.notas || form.notas,
-                              });
-                              setEditingId(c.id);
-                              alert('✅ Cliente encontrado: ' + c.nombre);
-                            } else {
-                              alert('⚠️ No se encontró cliente con ese RUC');
-                            }
+              </div>
+              {/* RUC — vertical */}
+              <div>
+                <label className="text-xs font-semibold text-gray-600 uppercase">RUC</label>
+                <div className="flex gap-2 mt-1">
+                  <input type="text" value={form.ruc} onChange={e => setForm({...form, ruc: e.target.value})} maxLength={11}
+                    className="flex-1 px-3.5 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
+                    placeholder="20123456789" />
+                  <button
+                    onClick={async () => {
+                      if (!form.ruc || form.ruc.length < 11) return;
+                      try {
+                        const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(form.ruc)}`);
+                        if (res.ok) {
+                          const data = await res.json();
+                          if (data && data.length > 0) {
+                            const c = data[0];
+                            setForm({
+                              nombre: c.nombre || form.nombre,
+                              dni: c.dni || form.dni,
+                              ruc: c.ruc || form.ruc,
+                              telefono: c.telefono || form.telefono,
+                              email: c.email || form.email,
+                              direccion: c.direccion || form.direccion,
+                              notas: c.notas || form.notas,
+                            });
+                            setEditingId(c.id);
+                            setToast('✅ Cliente encontrado: ' + c.nombre);
+                          } else {
+                            setToast('⚠️ No se encontró cliente con ese RUC');
                           }
-                        } catch {}
-                      }}
-                      className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
-                      title="Buscar por RUC"
-                    >
-                      <Scan size={14} />
-                    </button>
-                  </div>
+                        }
+                      } catch {}
+                    }}
+                    className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
+                    title="Buscar por RUC"
+                  >
+                    <Scan size={14} />
+                  </button>
                 </div>
               </div>
               <div>
@@ -346,7 +346,7 @@ export default function ClientesPage() {
               </button>
               <button onClick={handleSave}
                 className="flex-1 py-3 bg-blue-600 text-white font-bold rounded-xl hover:bg-blue-700 transition-colors shadow-md">
-                {editingId ? 'Actualizar' : 'Guardar Cliente'}
+                {editingId ? 'Actualizar' : 'Guardar'}
               </button>
             </div>
           </div>

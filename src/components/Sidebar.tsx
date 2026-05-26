@@ -57,7 +57,7 @@ const menuGroups: MenuGroup[] = [
 const flatMenuItems = menuGroups.flatMap(g => g.items);
 
 const ICON_SIZE_DESKTOP = 18;
-const ICON_SIZE_MOBILE = 17;
+const ICON_SIZE_MOBILE = 20;
 
 function ProfileAvatar({ src, fallback }: { src: string; fallback: React.ReactNode }) {
   if (src) return <img src={src} alt="Perfil" className="w-full h-full object-cover" />;  // eslint-disable-line
@@ -220,7 +220,10 @@ export default function Sidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
-
+            <Link href="/admin/sunat"
+              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors px-2 py-1.5 rounded-lg">
+              <Landmark size={14} /> SUNAT
+            </Link>
             <button onClick={signOut}
               className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
@@ -229,17 +232,17 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* ══ MOBILE BOTTOM NAV — icon-only, compact ══════════ */}
+      {/* ══ MOBILE BOTTOM NAV — icon-only, bigger icons ════ */}
       <nav className={`lg:hidden fixed bottom-0 inset-x-0 z-50 ${navbarBg(navbar)}`}>
-        <div className={`flex ${layout} items-center py-1.5 px-1`}>
-          {flatMenuItems.map(({ href, icon: Icon, label }) => {
+        <div className={`flex ${layout} items-center py-2 px-1`}>
+          {flatMenuItems.filter(i => i.href !== '/admin/sunat').map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
                 className={`flex items-center justify-center transition-all ${
                   isFlotante
-                    ? 'rounded-full w-11 h-11'
-                    : 'rounded-xl px-2 py-1.5'
+                    ? 'rounded-full w-12 h-12'
+                    : 'rounded-xl px-3 py-2'
                 } ${navbarItem(navbar, active)}`}
                 title={label}
               >

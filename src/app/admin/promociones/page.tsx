@@ -178,19 +178,19 @@ export default function PromocionesPage() {
       )}
 
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 rounded-2xl bg-pink-100 flex items-center justify-center">
-            <Megaphone size={24} className="text-pink-600" />
+      <div className="flex items-center justify-between mb-8 gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-2xl bg-pink-100 flex items-center justify-center shrink-0">
+            <Megaphone size={20} className="text-pink-600" />
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900">Promociones</h1>
-            <p className="text-sm text-gray-500 mt-0.5">Crea y envía promociones a tus clientes</p>
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-gray-900 truncate">Promociones</h1>
+            <p className="text-xs sm:text-sm text-gray-500 mt-0.5">Crea y envía promociones a tus clientes</p>
           </div>
         </div>
         <button onClick={openNew}
-          className="px-5 py-2.5 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors text-sm font-semibold flex items-center gap-2">
-          <Plus size={16} /> Nueva Promoción
+          className="shrink-0 px-4 sm:px-5 py-2.5 bg-pink-600 text-white rounded-xl hover:bg-pink-700 transition-colors text-sm font-semibold flex items-center gap-2 whitespace-nowrap">
+          <Plus size={16} /> <span className="hidden sm:inline">Nueva Promoción</span><span className="sm:hidden">Nueva</span>
         </button>
       </div>
 
@@ -378,7 +378,7 @@ export default function PromocionesPage() {
                 className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition-colors">Cancelar</button>
               <button onClick={handleSave}
                 className="flex-1 py-3 bg-pink-600 text-white font-bold rounded-xl hover:bg-pink-700 transition-colors shadow-md">
-                {editingId ? 'Actualizar' : 'Crear Promoción'}
+                {editingId ? 'Actualizar' : 'Crear'}
               </button>
             </div>
           </div>
