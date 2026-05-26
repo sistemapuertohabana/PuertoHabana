@@ -283,13 +283,110 @@ export default function SunatPage() {
               <Download size={16} /> Exportar Reportes Tributarios
             </h3>
             <div className="flex flex-wrap gap-3">
-              <button className="px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium flex items-center gap-2">
+              <button onClick={async () => {
+                try {
+                  const res = await fetch('/api/sunat/reportes?tipo=libro-ventas');
+                  if (!res.ok) { setResultado('❌ Error al obtener datos'); return; }
+                  const data = await res.json();
+                  const registros = data.registros || [];
+                  // Generar CSV con BOM para Excel
+                  const headers = 'Fecha,Tipo,Serie,Número,Cliente RUC,Cliente Nombre,Total,IGV,Estado\n';
+                  const rows = registros.map((r: any) =>
+                    `"${r.fecha}","${r.tipo_doc}","${r.serie}","${r.numero}","${r.cliente_ruc}","${r.cliente_nombre}",${r.total},${r.igv},"${r.estado}"`
+                  ).join('\n');
+                  const blob = new Blob(['\uFEFF' + headers + rows], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = `libro_ventas_${mes}_${anio}.csv`; a.click();
+                  URL.revokeObjectURL(url);
+                  setResultado(`✅ Libro de ventas exportado (${registros.length} registros)`);
+                } catch { setResultado('❌ Error al exportar'); }
+              }} className="px-4 py-2.5 bg-amber-600 text-white rounded-lg hover:bg-amber-700 transition-colors text-sm font-medium flex items-center gap-2">
                 <Download size={14} /> Libro de Ventas (CSV)
               </button>
-              <button className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2">
+              <button onClick={async () => {
+                try {
+                  const res = await fetch(`/api/sunat/reportes?tipo=mensual&mes=${mes}&anio=${anio}`);
+                  if (!res.ok) { setResultado('❌ Error al obtener datos'); return; }
+                  const data = await res.json();
+                  const r = data.resumen || {};
+                  const boletas = data.boletas || [];
+                  // Generar HTML para imprimir como PDF
+                  const html = `
+<!DOCTYPE html><html><head><meta charset="utf-8">
+<title>Reporte SUNAT ${mes}/${anio}</title>
+<style>
+body{font-family:sans-serif;padding:20px;color:#333}
+h1{font-size:18px;color:#1a1a2e;border-bottom:2px solid #f59e0b;padding-bottom:8px}
+.resumen{display:flex;gap:16px;margin:16px 0;flex-wrap:wrap}
+.card{background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:12px 16px;min-width:120px}
+.card p{margin:0;font-size:11px;color:#6b7280;text-transform:uppercase}
+.card strong{font-size:16px;color:#111827}
+table{width:100%;border-collapse:collapse;margin-top:16px;font-size:12px}
+th{background:#f3f4f6;text-align:left;padding:8px;border-bottom:1px solid #d1d5db;color:#374151}
+td{padding:8px;border-bottom:1px solid #e5e7eb}
+.footer{margin-top:24px;font-size:10px;color:#9ca3af;text-align:center}
+</style></head><body>
+<h1>📊 Puerto Habana Cevichería — Reporte Tributario</h1>
+<p style="color:#6b7280;font-size:13px">Periodo: ${new Date(anio, mes-1).toLocaleDateString('es-PE',{month:'long',year:'numeric'})} | RUC: 10429025546</p>
+<div class="resumen">
+<div class="card"><p>Total Emitido</p><strong>S/ ${(r.total_emitido || 0).toFixed(2)}</strong></div>
+<div class="card"><p>IGV</p><strong>S/ ${(r.total_igv || 0).toFixed(2)}</strong></div>
+<div class="card"><p>Boletas</p><strong>${r.total_boletas || 0}</strong></div>
+<div class="card"><p>Aceptadas</p><strong>${r.aceptadas || 0}</strong></div>
+</div>
+${boletas.length ? `<table><thead><tr><th>Doc</th><th>Cliente</th><th>Total</th><th>IGV</th><th>Estado</th></tr></thead><tbody>${boletas.map((b:any)=>`<tr><td>${b.numero_doc}</td><td>${b.razon_social||'-'}</td><td>S/ ${Number(b.total).toFixed(2)}</td><td>S/ ${Number(b.igv).toFixed(2)}</td><td>${b.estado_sunat}</td></tr>`).join('')}</tbody></table>` : '<p style="color:#9ca3af">Sin boletas en este período.</p>'}
+<p class="footer">Reporte generado automáticamente — Puerto Habana Cevichería</p>
+</body></html>`;
+                  const w = window.open('', '_blank');
+                  if (w) { w.document.write(html); w.document.close(); w.print(); setResultado('✅ Reporte mensual abierto para imprimir/guardar PDF'); }
+                  else { setResultado('❌ Bloqueador de ventanas emergentes impidió abrir el reporte'); }
+                } catch { setResultado('❌ Error al generar reporte'); }
+              }} className="px-4 py-2.5 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors text-sm font-medium flex items-center gap-2">
                 <Download size={14} /> Reporte Mensual (PDF)
               </button>
-              <button className="px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2">
+              <button onClick={async () => {
+                try {
+                  const [resMensual, resLimite] = await Promise.all([
+                    fetch(`/api/sunat/reportes?tipo=mensual&mes=${mes}&anio=${anio}`),
+                    fetch(`/api/sunat/reportes?tipo=limite&mes=${mes}&anio=${anio}`),
+                  ]);
+                  if (!resMensual.ok && !resLimite.ok) { setResultado('❌ Error al obtener datos'); return; }
+                  const m = resMensual.ok ? await resMensual.json() : null;
+                  const l = resLimite.ok ? await resLimite.json() : null;
+                  const r = m?.resumen || {};
+                  const txt = [
+                    '════════════════════════════════════',
+                    '  RESUMEN TRIBUTARIO',
+                    '  Puerto Habana Cevichería',
+                    `  RUC: 10429025546`,
+                    `  Periodo: ${new Date(anio, mes-1).toLocaleDateString('es-PE',{month:'long',year:'numeric'})}`,
+                    '════════════════════════════════════',
+                    '',
+                    `📊 Boletas emitidas: ${r.total_boletas || 0}`,
+                    `✅ Aceptadas: ${r.aceptadas || 0}`,
+                    `❌ Rechazadas: ${r.rechazadas || 0}`,
+                    `💰 Total emitido: S/ ${(r.total_emitido || 0).toFixed(2)}`,
+                    `🧾 IGV total: S/ ${(r.total_igv || 0).toFixed(2)}`,
+                    '',
+                    l ? `📈 Ingresos anuales: S/ ${(l.ingresos_anuales || 0).toLocaleString('es-PE', {minimumFractionDigits:2})}` : '',
+                    l ? `📊 Límite RUS: S/ ${(l.limite_rus || 0).toLocaleString('es-PE')}` : '',
+                    l ? `📊 Límite Rég. General: S/ ${(l.limite_general || 0).toLocaleString('es-PE')}` : '',
+                    l ? `📊 % usado: ${(l.porcentaje_usado || 0).toFixed(1)}%` : '',
+                    l ? `⚠️ Alerta: ${l.alerta || 'Sin datos'}` : '',
+                    '',
+                    '────────────────────────────',
+                    'Puerto Habana Cevichería',
+                    '════════════════════════════════════',
+                  ].filter(Boolean).join('\n');
+                  const blob = new Blob([txt], { type: 'text/plain;charset=utf-8' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url; a.download = `resumen_tributario_${mes}_${anio}.txt`; a.click();
+                  URL.revokeObjectURL(url);
+                  setResultado('✅ Resumen tributario descargado');
+                } catch { setResultado('❌ Error al exportar'); }
+              }} className="px-4 py-2.5 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition-colors text-sm font-medium flex items-center gap-2">
                 <Download size={14} /> Resumen Tributario
               </button>
             </div>
