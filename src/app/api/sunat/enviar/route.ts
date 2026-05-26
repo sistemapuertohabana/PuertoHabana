@@ -43,6 +43,7 @@ export async function POST(request: Request) {
       cliente: clienteData,
       items,
       serie,
+      numero: parseInt(numero, 10),
       observaciones: body.observaciones,
     });
 
