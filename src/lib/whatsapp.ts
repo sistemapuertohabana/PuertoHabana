@@ -1,10 +1,11 @@
 // src/lib/whatsapp.ts
-// Integración con WhatsApp Business API para envío de mensajes
+// Integración con UltraMsg para envío de WhatsApp (alternativa simple a WhatsApp Business API)
+// Docs: https://docs.ultramsg.com/
+// Setup: crear cuenta en https://ultramsg.com → crear instancia → escanear QR → obtener token
 
-export interface WhatsAppConfig {
+export interface UltraMsgConfig {
+  instanceId: string;
   token: string;
-  phoneNumberId: string;
-  businessAccountId?: string;
 }
 
 export interface WhatsAppMessageResult {
@@ -13,22 +14,21 @@ export interface WhatsAppMessageResult {
   error?: string;
 }
 
-function getConfig(): WhatsAppConfig | null {
-  const token = process.env.WHATSAPP_TOKEN || '';
-  const phoneNumberId = process.env.WHATSAPP_PHONE_NUMBER_ID || '';
+function getConfig(): UltraMsgConfig | null {
+  const instanceId = process.env.ULTRAMSG_INSTANCE_ID || '';
+  const token = process.env.ULTRAMSG_TOKEN || '';
 
-  if (!token || !phoneNumberId) {
+  if (!instanceId || !token) {
     return null;
   }
 
-  return { token, phoneNumberId };
+  return { instanceId, token };
 }
 
-const WHATSAPP_API_VERSION = 'v22.0';
-const WHATSAPP_BASE_URL = 'https://graph.facebook.com';
+const ULTRAMSG_BASE = 'https://api.ultramsg.com';
 
 /**
- * Enviar mensaje de texto a un número de WhatsApp
+ * Enviar mensaje de texto por WhatsApp vía UltraMsg
  */
 export async function enviarMensajeTexto(
   telefono: string,
@@ -37,59 +37,57 @@ export async function enviarMensajeTexto(
   const config = getConfig();
 
   if (!config) {
-    console.warn('[WhatsApp] Token/PhoneNumberID no configurados — simulando envío');
+    console.warn('[WhatsApp] ULTRAMSG_INSTANCE_ID/TOKEN no configurados — simulando envío');
     return { success: true, messageId: `sim-${Date.now()}` };
   }
 
-  // Limpiar formato del teléfono: solo dígitos
   const telefonoLimpio = telefono.replace(/[^0-9]/g, '');
   if (telefonoLimpio.length < 9) {
     return { success: false, error: 'Número de teléfono inválido' };
   }
 
   // Si no tiene código de país, asumir Perú (+51)
-  const telefonoCompleto = telefonoLimpio.startsWith('51') ? telefonoLimpio : `51${telefonoLimpio}`;
+  const telefonoCompleto = telefonoLimpio.startsWith('51')
+    ? telefonoLimpio
+    : `51${telefonoLimpio}`;
 
   try {
-    const url = `${WHATSAPP_BASE_URL}/${WHATSAPP_API_VERSION}/${config.phoneNumberId}/messages`;
+    const url = `${ULTRAMSG_BASE}/${config.instanceId}/messages/chat`;
+
+    const body = new URLSearchParams();
+    body.append('token', config.token);
+    body.append('to', telefonoCompleto);
+    body.append('body', mensaje);
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.token}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: telefonoCompleto,
-        type: 'text',
-        text: { body: mensaje },
-      }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
 
     const data = await res.json();
 
-    if (!res.ok) {
+    if (!res.ok || data.error) {
       return {
         success: false,
-        error: data.error?.message || `Error HTTP ${res.status}`,
+        error: data.error || `Error HTTP ${res.status}`,
       };
     }
 
     return {
       success: true,
-      messageId: data.messages?.[0]?.id || `sent-${Date.now()}`,
+      messageId: String(data.messageId || data.id || `sent-${Date.now()}`),
     };
   } catch (err) {
     return {
       success: false,
-      error: err instanceof Error ? err.message : 'Error de conexión WhatsApp',
+      error: err instanceof Error ? err.message : 'Error de conexión con UltraMsg',
     };
   }
 }
 
 /**
- * Enviar PDF de boleta/voucher por WhatsApp
+ * Enviar documento PDF por WhatsApp vía UltraMsg
  */
 export async function enviarPDF(
   telefono: string,
@@ -104,36 +102,33 @@ export async function enviarPDF(
   }
 
   const telefonoLimpio = telefono.replace(/[^0-9]/g, '');
-  const telefonoCompleto = telefonoLimpio.startsWith('51') ? telefonoLimpio : `51${telefonoLimpio}`;
+  const telefonoCompleto = telefonoLimpio.startsWith('51')
+    ? telefonoLimpio
+    : `51${telefonoLimpio}`;
 
   try {
-    const url = `${WHATSAPP_BASE_URL}/${WHATSAPP_API_VERSION}/${config.phoneNumberId}/messages`;
+    const url = `${ULTRAMSG_BASE}/${config.instanceId}/messages/document`;
+
+    const body = new URLSearchParams();
+    body.append('token', config.token);
+    body.append('to', telefonoCompleto);
+    body.append('filename', 'boleta_puerto_habana.pdf');
+    body.append('document', pdfUrl);
+    body.append('caption', caption);
 
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.token}`,
-      },
-      body: JSON.stringify({
-        messaging_product: 'whatsapp',
-        to: telefonoCompleto,
-        type: 'document',
-        document: {
-          link: pdfUrl,
-          caption,
-          filename: `boleta_puerto_habana.pdf`,
-        },
-      }),
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: body.toString(),
     });
 
     const data = await res.json();
 
-    if (!res.ok) {
-      return { success: false, error: data.error?.message || `Error HTTP ${res.status}` };
+    if (!res.ok || data.error) {
+      return { success: false, error: data.error || `Error HTTP ${res.status}` };
     }
 
-    return { success: true, messageId: data.messages?.[0]?.id };
+    return { success: true, messageId: String(data.messageId || data.id) };
   } catch (err) {
     return { success: false, error: err instanceof Error ? err.message : 'Error de conexión' };
   }
@@ -167,7 +162,6 @@ export async function enviarMensajeMasivo(
       resultados.push(r);
     }
 
-    // Pequeña pausa entre lotes para no exceder rate limits
     if (lotes.length > 1) {
       await new Promise(resolve => setTimeout(resolve, 500));
     }

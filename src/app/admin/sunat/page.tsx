@@ -436,7 +436,7 @@ export default function SunatPage() {
               <p className="text-gray-400 text-sm">Cargando configuración...</p>
             )}
           </div>
-          <p className="text-xs text-gray-400 mt-6">Configura NUBEFACT_TOKEN y WHATSAPP_TOKEN en tu archivo .env.local</p>
+          <p className="text-xs text-gray-400 mt-6">Configura NUBEFACT_TOKEN, ULTRAMSG_INSTANCE_ID y ULTRAMSG_TOKEN en tu archivo .env.local</p>
         </div>
       )}
     </div>

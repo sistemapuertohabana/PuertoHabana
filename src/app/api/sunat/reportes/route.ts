@@ -112,8 +112,8 @@ export async function GET(request: Request) {
           nubefact_token: token,
           nubefact_endpoint: endpoint,
           ruc_negocio: ruc,
-          whatsapp_token: process.env.WHATSAPP_TOKEN ? 'Configurado' : 'No configurado',
-          whatsapp_phone: process.env.WHATSAPP_PHONE_NUMBER_ID || 'No configurado',
+          ultramsg_token: process.env.ULTRAMSG_TOKEN ? 'Configurado' : 'No configurado',
+          ultramsg_instance: process.env.ULTRAMSG_INSTANCE_ID ? 'Configurado' : 'No configurado',
         });
       }
 
