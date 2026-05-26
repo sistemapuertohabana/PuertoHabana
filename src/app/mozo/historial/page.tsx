@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, Send } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, CreditCard } from 'lucide-react';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 
 interface Comanda {
@@ -41,6 +41,12 @@ export default function MozoHistorialPage() {
   const [sendingWhatsAppHist, setSendingWhatsAppHist] = useState(false);
   const [sendingSunatHist, setSendingSunatHist] = useState(false);
   const [toastHist, setToastHist] = useState<string | null>(null);
+
+  // Estados para Mercado Pago (Tarjeta)
+  const [mpPreferencia, setMpPreferencia] = useState<{ initPoint: string; total?: number } | null>(null);
+  const [mpQrDataUrl, setMpQrDataUrl] = useState('');
+  const [mpLoading, setMpLoading] = useState(false);
+  const [mpChecking, setMpChecking] = useState(false);
 
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
@@ -471,12 +477,19 @@ export default function MozoHistorialPage() {
                                 } finally { setSendingSunatHist(false); }
                               }}
                               disabled={sendingSunatHist}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-amber-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-amber-700 transition-colors disabled:opacity-50"
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-2.5 rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none shadow-md"
                             >
                               {sendingSunatHist ? (
                                 <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : <FileText size={13} />}
-                              {sendingSunatHist ? 'Enviando...' : '🧾 Boleta Electrónica'}
+                              ) : (
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                                  <polyline points="14 2 14 8 20 8"/>
+                                  <line x1="16" y1="13" x2="8" y2="13"/>
+                                  <line x1="16" y1="17" x2="8" y2="17"/>
+                                </svg>
+                              )}
+                              {sendingSunatHist ? 'Enviando...' : 'Boleta Electrónica'}
                             </button>
                             {clienteHist.telefono && (
                               <button
@@ -508,12 +521,16 @@ export default function MozoHistorialPage() {
                                   } finally { setSendingWhatsAppHist(false); }
                                 }}
                                 disabled={sendingWhatsAppHist}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 text-white px-3 py-2 rounded-lg text-xs font-semibold hover:bg-green-700 transition-colors disabled:opacity-50"
+                                className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-2.5 rounded-xl text-xs font-bold hover:from-green-600 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none shadow-md"
                               >
                                 {sendingWhatsAppHist ? (
                                   <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : <Send size={13} />}
-                                {sendingWhatsAppHist ? 'Enviando...' : '📱 WhatsApp'}
+                                ) : (
+                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+                                  </svg>
+                                )}
+                                {sendingWhatsAppHist ? 'Enviando...' : 'WhatsApp'}
                               </button>
                             )}
                           </div>
@@ -522,9 +539,47 @@ export default function MozoHistorialPage() {
 
                       <div className="space-y-4 mb-6">
                         {/* Pago Rápido Completo */}
-                        <div className="flex gap-3">
-                          <button onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(c.total), efectivoMonto: 0, metodo: 'Yape' })} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md">Todo Yape</button>
-                          <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md">Todo Efectivo</button>
+                        <div className="flex gap-2">
+                          <button onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(c.total), efectivoMonto: 0, metodo: 'Yape' })} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md text-sm">Yape</button>
+                          <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md text-sm">Efectivo</button>
+                          <button
+                            onClick={async () => {
+                              setMpLoading(true);
+                              try {
+                                const res = await fetch('/api/mercadopago/create-preference', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    comanda_id: c.id,
+                                    total: Number(c.total),
+                                    mesa: c.mesa,
+                                    items: c.items || [],
+                                    origin: window.location.origin,
+                                  }),
+                                });
+                                const data = await res.json();
+                                if (data.success) {
+                                  setMpPreferencia({ initPoint: data.init_point, total: Number(c.total) });
+                                  import('qrcode').then((QRCode) => {
+                                    QRCode.toDataURL(data.init_point, {
+                                      width: 280,
+                                      margin: 2,
+                                      color: { dark: '#00B9FF', light: '#FFFFFF' },
+                                    }).then(setMpQrDataUrl).catch(() => {});
+                                  });
+                                } else {
+                                  setToastHist(`❌ ${data.error || 'Error al crear pago'}`);
+                                }
+                              } catch { setToastHist('❌ Error de conexión con Mercado Pago'); }
+                              setMpLoading(false);
+                            }}
+                            disabled={mpLoading}
+                            className="flex-1 bg-[#00B9FF] text-white py-3 rounded-2xl font-bold hover:bg-[#009EE0] transition-colors shadow-md text-sm disabled:opacity-50 flex items-center justify-center gap-1"
+                          >
+                            {mpLoading ? (
+                              <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : '💳 Tarjeta'}
+                          </button>
                         </div>
 
                         <div className="relative flex items-center py-2">
@@ -695,6 +750,94 @@ export default function MozoHistorialPage() {
         </div>
       )}
 
+      {/* ── Modal Mercado Pago (Tarjeta) ────────────────────────────────────── */}
+      {mpPreferencia && (
+        <div
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200"
+          onClick={(e) => { if (e.target === e.currentTarget) setMpPreferencia(null); }}
+        >
+          <div className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 text-center animate-in zoom-in-95 duration-200">
+            <div className="flex justify-between items-center mb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 rounded-lg bg-[#00B9FF]/10 flex items-center justify-center">
+                  <CreditCard size={16} className="text-[#00B9FF]" />
+                </div>
+                <h3 className="text-lg font-bold text-gray-900">Pagar con Tarjeta</h3>
+              </div>
+              <button onClick={() => setMpPreferencia(null)}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            <p className="text-xs text-gray-400 mb-3">Escanea el código QR con tu celular para pagar</p>
+
+            <div className="bg-white rounded-2xl p-3 border-2 border-[#00B9FF]/20 shadow-lg mb-3 inline-block">
+              {mpQrDataUrl ? (
+                <img src={mpQrDataUrl} alt="QR Mercado Pago" className="w-56 h-56 mx-auto" />
+              ) : (
+                <div className="w-56 h-56 mx-auto flex items-center justify-center bg-gray-50 rounded-xl">
+                  <div className="w-8 h-8 border-2 border-[#00B9FF] border-t-transparent rounded-full animate-spin" />
+                </div>
+              )}
+            </div>
+
+            <div className="bg-gray-50 rounded-xl p-3 border border-gray-100 mb-3">
+              <p className="text-xs text-gray-500">Total a pagar</p>
+              <p className="text-2xl font-black text-gray-900">S/ {(mpPreferencia.total || 0).toFixed(2)}</p>
+            </div>
+
+            <div className="space-y-2">
+              <a
+                href={mpPreferencia.initPoint}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="block w-full py-2.5 bg-[#00B9FF] text-white rounded-xl hover:bg-[#009EE0] transition-colors text-sm font-semibold"
+              >
+                Abrir enlace de pago
+              </a>
+              <button
+                onClick={async () => {
+                  if (!pagoModalData) return;
+                  setMpChecking(true);
+                  try {
+                    const res = await fetch(`/api/mercadopago/check-payment?external_reference=${pagoModalData.id}`);
+                    const data = await res.json();
+                    if (data.paid) {
+                      setToastHist('✅ Pago con Tarjeta aprobado');
+                      confirmarCobro(pagoModalData.id, 'Tarjeta');
+                      setMpPreferencia(null);
+                    } else {
+                      setToastHist(data.status === 'rejected' ? '❌ Pago rechazado' : '⏳ El pago aún no se ha completado');
+                    }
+                  } catch { setToastHist('❌ Error al verificar pago'); }
+                  setMpChecking(false);
+                }}
+                disabled={mpChecking}
+                className="w-full py-2.5 bg-gray-900 text-white rounded-xl hover:bg-gray-800 transition-colors text-sm font-semibold disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                {mpChecking ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    Verificando...
+                  </>
+                ) : '✓ Verificar pago'}
+              </button>
+              <button onClick={() => setMpPreferencia(null)}
+                className="w-full py-2 bg-gray-100 text-gray-600 rounded-xl hover:bg-gray-200 transition-colors text-xs font-medium">
+                Cancelar
+              </button>
+            </div>
+
+            <div className="mt-4 pt-3 border-t border-gray-100">
+              <p className="text-[10px] text-gray-400">
+                Pagos procesados por <span className="font-semibold text-[#00B9FF]">Mercado Pago</span>
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Toast */}
       {toastHist && (
         <div className="fixed top-4 right-4 z-[200] bg-gray-900 text-white px-5 py-3 rounded-xl shadow-lg text-sm font-medium animate-in slide-in-from-top">
@@ -790,14 +933,10 @@ export default function MozoHistorialPage() {
                               const localData = await localRes.json();
                               if (localData && localData.length > 0) {
                                 const c = localData[0];
-                                setNewClienteHistForm({
-                                  nombre: c.nombre || '',
-                                  dni: c.dni || '',
-                                  ruc: c.ruc || '',
-                                  telefono: c.telefono || '',
-                                  email: c.email || '',
-                                });
-                                return setToastHist('✅ Cliente encontrado en BD: ' + c.nombre);
+                                setClienteHist({ id: c.id, nombre: c.nombre, dni: c.dni, ruc: c.ruc, telefono: c.telefono });
+                                setShowClienteSearchHist(false);
+                                setShowNewClienteHistForm(false);
+                                return setToastHist('✅ Cliente cargado: ' + c.nombre);
                               }
                             }
                             // 2. Si no existe en BD, consultar API RENIEC
@@ -849,14 +988,10 @@ export default function MozoHistorialPage() {
                               const localData = await localRes.json();
                               if (localData && localData.length > 0) {
                                 const c = localData[0];
-                                setNewClienteHistForm({
-                                  nombre: c.nombre || '',
-                                  dni: c.dni || '',
-                                  ruc: c.ruc || '',
-                                  telefono: c.telefono || '',
-                                  email: c.email || '',
-                                });
-                                return setToastHist('✅ Cliente encontrado en BD: ' + c.nombre);
+                                setClienteHist({ id: c.id, nombre: c.nombre, dni: c.dni, ruc: c.ruc, telefono: c.telefono });
+                                setShowClienteSearchHist(false);
+                                setShowNewClienteHistForm(false);
+                                return setToastHist('✅ Cliente cargado: ' + c.nombre);
                               }
                             }
                             // 2. Si no existe en BD, consultar API SUNAT
@@ -902,12 +1037,19 @@ export default function MozoHistorialPage() {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify(newClienteHistForm),
                       });
+                      const data = await res.json();
                       if (!res.ok) {
-                        const err = await res.json();
-                        return alert(err.error || 'Error al registrar');
+                        // 409: el DNI/RUC ya existe — usar cliente existente
+                        if (res.status === 409 && data.id) {
+                          setClienteHist({ id: data.id, ...newClienteHistForm });
+                          setShowClienteSearchHist(false);
+                          setShowNewClienteHistForm(false);
+                          setNewClienteHistForm({ nombre: '', dni: '', ruc: '', telefono: '', email: '' });
+                          return setToastHist('✅ Cliente ya existía, usando datos registrados');
+                        }
+                        return alert(data.error || 'Error al registrar');
                       }
-                      const nuevo = await res.json();
-                      setClienteHist(nuevo);
+                      setClienteHist(data);
                       setShowClienteSearchHist(false);
                       setShowNewClienteHistForm(false);
                       setNewClienteHistForm({ nombre: '', dni: '', ruc: '', telefono: '', email: '' });
