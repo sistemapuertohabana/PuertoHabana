@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
-import Modal from '@/components/Modal';
 import Boleta from '@/components/Boleta';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
@@ -33,7 +32,6 @@ import {
   Clock,
   Plus,
   Search,
-  Check,
   ChevronLeft,
   ChevronRight,
   TrendingUp,
@@ -42,7 +40,8 @@ import {
   Sparkles,
   ClipboardList,
   Download,
-  Trash2
+  Trash2,
+  Printer
 } from 'lucide-react';
 
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
@@ -133,9 +132,8 @@ export default function DashboardPage() {
   const [platosMenuDynamic] = useState(platosMenu);
   
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
-  const [selectedMozo, setSelectedMozo] = useState<{ id: string; nombre: string; pedidos: Pedido[] } | null>(null);
   const [selectedWaiterId, setSelectedWaiterId] = useState<string>('');
-  const [showBoleta, setShowBoleta] = useState(false);
+  const [selectedMesaBoleta, setSelectedMesaBoleta] = useState<{ mesa: string; mozoNombre: string; items: Pedido[]; hora: string } | null>(null);
   
   // Date Simulation
   const [simulatedDate, setSimulatedDate] = useState('2026-05-19');
@@ -796,9 +794,7 @@ export default function DashboardPage() {
       String(p.id) === String(orderId) ? { ...p, estado: nextStatus } : p
     );
     setPedidos(updated);
-    if (selectedMozo) {
-      setSelectedMozo({ ...selectedMozo, pedidos: updated.filter((p: Pedido) => p.fecha === simulatedDate && p.mozoId === selectedMozo.id) });
-    }
+    // Mesa-based grouping — no mozo-level filter needed
   };
 
   // Date ranges calculations for History
@@ -922,16 +918,17 @@ export default function DashboardPage() {
     }
   };
 
-  // Group active orders by mozo (for Active Tab)
+  // Group active orders by mesa (for Active Tab)
   const activeOrdersForSimDate = pedidos.filter(p => p.fecha === simulatedDate);
-  const mozosPedidos = mozosList.map((mozo) => {
-    const mozoOrders = activeOrdersForSimDate.filter(p => p.mozoId === mozo.id);
-    return {
-      id: mozo.id,
-      nombre: mozo.nombre,
-      pedidos: mozoOrders,
-    };
-  });
+  const mesasPedidos = Array.from(new Set(activeOrdersForSimDate.map(p => p.mesa)))
+    .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
+    .map(mesa => {
+      const mesaOrders = activeOrdersForSimDate.filter(p => p.mesa === mesa);
+      const mozoNombre = mesaOrders[0]?.mozoNombre || '';
+      const hora = mesaOrders[0]?.hora || '';
+      const total = mesaOrders.reduce((sum, p) => sum + (Number(p.precio) * p.cantidad), 0);
+      return { mesa, mozoNombre, hora, total, pedidos: mesaOrders };
+    });
 
   // Waiter statistics calculations (for Waiter Sales Tab)
   const rangeOrdersForWaiter = pedidos.filter(p => isDateInRange(p.fecha));
@@ -1231,9 +1228,9 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h2 className={`text-xl md:text-2xl font-medium text-gray-900`}>
-                Pedidos por Mozo (En Vivo)
+                Pedidos por Mesa
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitoreo de comandas activas del día.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitoreo de comandas activas agrupadas por mesa.</p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
@@ -1245,78 +1242,100 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-4 w-full">
-            {mozosPedidos.map((mozo) => (
+            {mesasPedidos.map((mesa) => (
               <div 
-                key={mozo.id} 
-                className={`border rounded-xl p-4 md:p-6 hover:shadow-md transition-all duration-200 cursor-pointer flex flex-col justify-between ${
+                key={mesa.mesa} 
+                className={`border rounded-xl p-4 md:p-6 transition-all duration-200 flex flex-col justify-between ${
                   'bg-white border-gray-200 hover:border-gray-300 shadow-sm'
                 }`}
-                onClick={() => setSelectedMozo(mozo)}
               >
                 <div>
+                  {/* Header: Mesa + mozo + total badge */}
                   <div className="flex justify-between items-center mb-4">
-                    <h3 className={`text-base md:text-lg font-medium text-gray-900`}>{mozo.nombre}</h3>
-                    <span className={`text-[10px] font-semibold uppercase tracking-wider px-2 py-0.5 rounded-full ${
-                      mozo.pedidos.length > 0
-                        ? 'bg-blue-50 text-blue-600 border border-blue-100'
-                        : 'bg-gray-50 text-gray-400 border border-gray-100'
-                    }`}>
-                      {mozo.pedidos.length} {mozo.pedidos.length === 1 ? 'pedido' : 'pedidos'}
-                    </span>
+                    <div>
+                      <h3 className={`text-base md:text-lg font-bold text-gray-900`}>{mesa.mesa}</h3>
+                      <p className={`text-xs text-gray-500 mt-0.5`}>Mozo: {mesa.mozoNombre}</p>
+                    </div>
+                    <div className="text-right">
+                      <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                        mesa.pedidos.length > 0
+                          ? 'bg-blue-50 text-blue-600 border border-blue-100'
+                          : 'bg-gray-50 text-gray-400 border border-gray-100'
+                      }`}>
+                        {mesa.pedidos.length} {mesa.pedidos.length === 1 ? 'item' : 'items'}
+                      </span>
+                    </div>
                   </div>
                   
-                  {mozo.pedidos.length > 0 ? (
+                  {/* Items detallados — TODOS, sin límite */}
+                  {mesa.pedidos.length > 0 ? (
                     <div className="space-y-2">
-                      {mozo.pedidos.slice(0, 3).map((pedido, idx) => (
+                      {mesa.pedidos.map((pedido, idx) => (
                         <div key={idx} className={`flex justify-between items-center py-2.5 border-b last:border-0 ${
                           'border-gray-100'
                         }`}>
-                          <div className="flex-1">
+                          <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <p className={`text-sm font-medium text-gray-900`}>{pedido.item}</p>
-                              <span className={`w-1.5 h-1.5 rounded-full ${
+                              <p className={`text-sm font-medium text-gray-900 truncate`}>{pedido.item}</p>
+                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
                                 pedido.estado === 'Listo' ? 'bg-green-500' : pedido.estado === 'En preparación' ? 'bg-yellow-500' : 'bg-gray-400'
                               }`}></span>
                             </div>
                             <div className="flex items-center gap-2 mt-1">
-                              <p className={`text-xs text-gray-500`}>{pedido.mesa} • {pedido.hora}</p>
-                              {pedido.metodo_pago && (
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                                  pedido.metodo_pago === 'Yape' ? 'bg-purple-100 text-purple-700' :
-                                  pedido.metodo_pago === 'Efectivo' ? 'bg-green-100 text-green-700' :
-                                  'bg-gray-100 text-gray-600'
-                                }`}>
-                                  {pedido.metodo_pago === 'Yape' ? '📱' : pedido.metodo_pago === 'Efectivo' ? '💵' : ''} {pedido.metodo_pago}
+                              <p className={`text-xs text-gray-500`}>{pedido.hora}</p>
+                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
+                                pedido.category === 'comida' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'
+                              }`}>
+                                {pedido.category}
+                              </span>
+                              {pedido.notas && (
+                                <span className="text-[10px] text-gray-400 italic truncate max-w-[100px]" title={pedido.notas}>
+                                  📝 {pedido.notas}
                                 </span>
                               )}
                             </div>
                           </div>
-                          <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                            'text-gray-800 bg-gray-100'
-                          }`}>{pedido.cantidad}</span>
+                          <div className="text-right shrink-0 ml-2">
+                            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
+                              'text-gray-800 bg-gray-100'
+                            }`}>x{pedido.cantidad}</span>
+                            <p className="text-[11px] font-semibold text-green-600 mt-0.5">
+                              S/ {(Number(pedido.precio) * pedido.cantidad).toFixed(2)}
+                            </p>
+                          </div>
                         </div>
                       ))}
-                      {mozo.pedidos.length > 3 && (
-                        <p className="text-xs text-center text-blue-500 font-medium pt-3 hover:underline">
-                          Ver {mozo.pedidos.length - 3} pedidos más...
-                        </p>
-                      )}
                     </div>
                   ) : (
                     <div className="py-8 text-center">
-                      <p className={`text-sm text-gray-400`}>Sin pedidos para hoy</p>
+                      <p className={`text-sm text-gray-400`}>Sin pedidos para esta mesa</p>
                     </div>
                   )}
                 </div>
                 
-                {mozo.pedidos.length > 0 && (
-                  <div className={`mt-4 pt-3 border-t flex justify-between items-center text-xs ${
-                    'border-gray-100 text-gray-500'
+                {/* Footer: Total + Print button */}
+                {mesa.pedidos.length > 0 && (
+                  <div className={`mt-4 pt-3 border-t flex justify-between items-center ${
+                    'border-gray-100'
                   }`}>
-                    <span>Total ventas:</span>
-                    <span className="font-semibold text-inherit dark:text-white">
-                      S/ {mozo.pedidos.reduce((total, p) => total + (Number(p.precio) * p.cantidad), 0).toFixed(2)}
-                    </span>
+                    <div>
+                      <span className="text-xs text-gray-500">Total:</span>
+                      <span className="font-bold text-sm text-gray-900 ml-2">
+                        S/ {mesa.total.toFixed(2)}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => setSelectedMesaBoleta({
+                        mesa: mesa.mesa,
+                        mozoNombre: mesa.mozoNombre,
+                        items: mesa.pedidos,
+                        hora: mesa.hora,
+                      })}
+                      className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold shadow-sm"
+                    >
+                      <Printer size={14} />
+                      Imprimir Boleta
+                    </button>
                   </div>
                 )}
               </div>
@@ -2134,150 +2153,20 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Modal: View active orders of a Waiter */}
-      {selectedMozo && (
-        <Modal
-          isOpen={!!selectedMozo}
-          onClose={() => setSelectedMozo(null)}
-          title={`Pedidos de ${selectedMozo.nombre}`}
-        >
-          <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1">
-            {selectedMozo.pedidos.length > 0 ? (
-              selectedMozo.pedidos.map((pedido) => (
-                <div key={pedido.id} className={`rounded-xl p-4 border transition-all ${
-                  'bg-gray-50 border-gray-200 shadow-sm'
-                }`}>
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className={`text-base font-semibold text-gray-900`}>{pedido.item}</h4>
-                      <p className={`text-xs text-gray-500`}>{pedido.mesa}</p>
-                    </div>
-                    <span className={`text-base font-bold text-gray-900`}>
-                      S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
-                    </span>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 text-xs mb-4">
-                    <div>
-                      <p className="text-gray-400">Cantidad</p>
-                      <p className={`font-semibold mt-0.5 text-gray-900`}>{pedido.cantidad}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Precio Unit.</p>
-                      <p className={`font-semibold mt-0.5 text-gray-900`}>S/ {Number(pedido.precio).toFixed(2)}</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Hora</p>
-                      <p className={`font-semibold mt-0.5 text-gray-900`}>{pedido.hora} hrs</p>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Estado</p>
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 ${
-                        pedido.estado === 'Listo' 
-                          ? 'bg-green-100 text-green-800 dark:bg-green-950/30 dark:text-green-400' 
-                          : pedido.estado === 'En preparación'
-                          ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-950/30 dark:text-yellow-400'
-                          : pedido.estado === 'Entregado'
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950/30 dark:text-blue-400'
-                          : 'bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-300'
-                      }`}>
-                        {pedido.estado}
-                      </span>
-                    </div>
-                    <div>
-                      <p className="text-gray-400">Pago</p>
-                      {pedido.metodo_pago ? (
-                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-bold rounded-full mt-1 ${
-                          pedido.metodo_pago === 'Yape' ? 'bg-purple-100 text-purple-700' :
-                          pedido.metodo_pago === 'Efectivo' ? 'bg-green-100 text-green-700' :
-                          pedido.metodo_pago === 'Otro' ? 'bg-orange-100 text-orange-700' :
-                          'bg-gray-100 text-gray-600'
-                        }`}>
-                          {pedido.metodo_pago === 'Yape' ? '📱 Yape' :
-                           pedido.metodo_pago === 'Efectivo' ? '💵 Efectivo' :
-                           pedido.metodo_pago === 'Otro' ? '🔀 Mixto' :
-                           pedido.metodo_pago}
-                        </span>
-                      ) : (
-                        <span className="inline-flex px-2 py-0.5 text-[10px] font-semibold rounded-full mt-1 bg-gray-100 text-gray-400">
-                          Sin cobrar
-                        </span>
-                      )}
-                    </div>
-                  </div>
-
-                  {pedido.notas && (
-                    <div className={`pt-3 border-t mb-4 border-gray-200`}>
-                      <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider">Notas Especiales</p>
-                      <p className="text-xs text-gray-600 dark:text-gray-300 mt-1 leading-snug">{pedido.notas}</p>
-                    </div>
-                  )}
-
-                  {/* Order Actions */}
-                  <div className="flex gap-2 justify-end">
-                    {pedido.estado === 'Pendiente' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(String(pedido.id), 'En preparación')}
-                        className="bg-yellow-600 hover:bg-yellow-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors"
-                      >
-                        Iniciar Preparación
-                      </button>
-                    )}
-                    {pedido.estado === 'En preparación' && (
-                      <button
-                        onClick={() => handleUpdateOrderStatus(String(pedido.id), 'Listo')}
-                        className="bg-green-600 hover:bg-green-700 text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1"
-                      >
-                        <Check size={12} />
-                        Marcar Listo
-                      </button>
-                    )}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="py-12 text-center">
-                <p className="text-sm text-gray-400 font-semibold">Sin pedidos pendientes</p>
-                <p className="text-xs text-gray-500 mt-1">Este mozo no cuenta con comandas ingresadas hoy.</p>
-              </div>
-            )}
-            
-            {selectedMozo.pedidos.length > 0 && (
-              <div className={`border-t pt-4 mt-6 space-y-3 ${
-                'border-gray-200'
-              }`}>
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-semibold text-gray-500">Monto Acumulado Hoy</span>
-                  <span className="text-lg font-bold text-green-600 dark:text-green-500">
-                    S/ {selectedMozo.pedidos.reduce((total, p) => total + (p.precio * p.cantidad), 0).toFixed(2)}
-                  </span>
-                </div>
-                <button
-                  onClick={() => setShowBoleta(true)}
-                  className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
-                >
-                  🧾 Imprimir Boleta
-                </button>
-              </div>
-            )}
-          </div>
-        </Modal>
-      )}
-
-      {/* Boleta de consumo */}
-      {showBoleta && selectedMozo && selectedMozo.pedidos.length > 0 && (
+      {/* Boleta de consumo por Mesa */}
+      {selectedMesaBoleta && (
         <Boleta
-          mesa={selectedMozo.pedidos[0].mesa}
-          mozoNombre={selectedMozo.nombre}
+          mesa={selectedMesaBoleta.mesa}
+          mozoNombre={selectedMesaBoleta.mozoNombre}
           fecha={simulatedDate}
-          hora={new Date().toLocaleTimeString('es-PE', { hour: '2-digit', minute: '2-digit' })}
-          items={selectedMozo.pedidos.map(p => ({
+          hora={selectedMesaBoleta.hora}
+          items={selectedMesaBoleta.items.map(p => ({
             item: p.item,
             cantidad: p.cantidad,
             precio: p.precio,
             notas: p.notas,
           }))}
-          onClose={() => setShowBoleta(false)}
+          onClose={() => setSelectedMesaBoleta(null)}
         />
       )}
 
