@@ -133,6 +133,8 @@ export default function MozoPage() {
   const [success, setSuccess] = useState(false);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
+  const [comidaDinamica, setComidaDinamica] = useState<InventarioItem[]>([]);
+  const [bebidasDinamica, setBebidasDinamica] = useState<InventarioItem[]>([]);
   
   const [isConfigMode, setIsConfigMode] = useState(false);
   const [mesas, setMesas] = useState<MesaConfig[]>([]);
@@ -150,8 +152,14 @@ export default function MozoPage() {
   const [showScanner, setShowScanner] = useState(false);
 
   useEffect(() => {
-    const unsub = subscribeInventario('tapers', (data) => setTapers(data));
-    return () => unsub();
+    const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
+    const unsubComida = subscribeInventario('comida', (data) => setComidaDinamica(data));
+    const unsubBebidas = subscribeInventario('bebidas', (data) => setBebidasDinamica(data));
+    return () => {
+      unsubTapers();
+      unsubComida();
+      unsubBebidas();
+    };
   }, []);  // Sincronizar turnos config desde Supabase a localStorage
   const syncTurnosConfig = async () => {
     try {
@@ -282,7 +290,11 @@ export default function MozoPage() {
     return () => clearInterval(interval);
   }, []);
 
-  const allItems: MenuItem[] = [...MENU, ...tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))];
+  const allItems: MenuItem[] = [
+    ...comidaDinamica.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' as const })),
+    ...bebidasDinamica.map(b => ({ name: b.nombre, price: b.precio, category: 'bebidas' as const })),
+    ...tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' as const })),
+  ];
 
   const toggleCortesia = (itemName: string) => {
     setCart(prev => prev.map(c => c.name === itemName ? { ...c, esCortesia: !c.esCortesia } : c));
@@ -653,9 +665,11 @@ export default function MozoPage() {
           {/* Productos */}
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
             {['comida', 'bebidas', 'tapers'].map(cat => {
-              const items = cat === 'tapers'
-                ? tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))
-                : MENU.filter(m => m.category === cat);
+              const items = cat === 'comida'
+                ? comidaDinamica.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }))
+                : cat === 'bebidas'
+                  ? bebidasDinamica.map(b => ({ name: b.nombre, price: b.precio, category: 'bebidas' }))
+                  : tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }));
               if (items.length === 0) return null;
               return (
                 <div key={cat}>

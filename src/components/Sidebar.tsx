@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut, ClipboardList,
+  Settings, User, LogOut, ClipboardList, Landmark,
 } from 'lucide-react';
 import { usePayments } from '@/hooks/usePayments';
 import { useAuth } from '@/hooks/useAuth';
@@ -102,6 +102,12 @@ export default function Sidebar() {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={() => alert('⚙️ Módulo SUNAT en desarrollo.\n\nPróximamente: Envío de boletas electrónicas, alertas de límite de ingresos y reportes tributarios.')}
+              className="flex items-center gap-1.5 text-xs text-amber-600 hover:text-amber-800 hover:bg-amber-50 transition-colors px-2 py-1.5 rounded-lg"
+            >
+              <Landmark size={14} /> SUNAT
+            </button>
             <button onClick={signOut} className="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 hover:bg-red-50 transition-colors px-2 py-1.5 rounded-lg">
               <LogOut size={14} /> Salir
             </button>
@@ -187,6 +193,15 @@ export default function Sidebar() {
               <option value="flotante_blue_new">FLOTANTE BLUE NEW</option>
             </select>
           </div>
+        </div>
+
+        {/* SUNAT */}
+        <div className={`px-3 py-2 border-t ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
+          <button
+            onClick={() => alert('⚙️ Módulo SUNAT en desarrollo.\n\nPróximamente:\n• Envío de boletas electrónicas a SUNAT\n• Alertas de límite de ingresos\n• Reportes tributarios mensuales\n• Libro de registros de ventas')}
+            className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-xs font-medium ${design === 'azul' ? 'text-amber-300 hover:bg-blue-700' : 'text-amber-600 hover:bg-amber-50 border border-amber-200'}`}>
+            <Landmark size={14} /> SUNAT — Boletas Electrónicas
+          </button>
         </div>
 
         {/* Cerrar sesión */}

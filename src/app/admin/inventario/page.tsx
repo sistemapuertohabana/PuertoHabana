@@ -915,30 +915,30 @@ export default function InventarioPage() {
         </div>
       )}
 
-      {/* Modal */}
+      {/* Modal — responsive con scroll interno y footer fijo */}
       {showModal && (
         <div 
-          className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300"
+          className="fixed inset-0 bg-black/50 flex items-end sm:items-center justify-center z-50 p-0 sm:p-4 animate-in fade-in duration-300"
           onClick={(e) => {
             if (e.target === e.currentTarget) {
               setShowModal(false);
             }
           }}
         >
-          <div className="bg-white w-full max-w-lg rounded-2xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300">
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-start">
-              <div>
-                <h2 className="text-2xl font-semibold text-gray-900">
+          <div className="bg-white w-full sm:max-w-lg rounded-t-2xl sm:rounded-2xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-300 flex flex-col max-h-[95dvh] sm:max-h-[90vh]">
+            {/* Header — siempre visible */}
+            <div className="px-5 sm:px-8 py-4 sm:py-6 border-b border-gray-100 flex justify-between items-start shrink-0">
+              <div className="min-w-0 flex-1">
+                <h2 className="text-xl sm:text-2xl font-semibold text-gray-900 truncate pr-2">
                   {editingItem ? 'Editar' : 'Agregar'} {activeSection === 'comida' ? 'Platillo' : activeSection === 'bebidas' ? 'Bebida' : activeSection === 'insumos' ? 'Insumo' : 'Taper'}
                 </h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  {editingItem ? 'Modifica los datos del elemento' : 'Completa la información del nuevo elemento'}
+                <p className="text-xs sm:text-sm text-gray-500 mt-0.5">
+                  {editingItem ? 'Modifica los datos del elemento' : 'Completa la información'}
                 </p>
               </div>
               <button
                 onClick={() => setShowModal(false)}
-                className="p-2 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 hover:bg-gray-100 rounded-full transition-colors shrink-0"
               >
                 <svg className="w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
@@ -946,12 +946,12 @@ export default function InventarioPage() {
               </button>
             </div>
             
-            {/* Body */}
-            <div className="px-8 py-6">
-              <div className="space-y-6">
+            {/* Body — scrollable */}
+            <div className="flex-1 overflow-y-auto px-5 sm:px-8 py-4 sm:py-6 overscroll-contain">
+              <div className="space-y-4 sm:space-y-6">
                 {/* Código de Barras */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
                     <Barcode size={14} /> Código de Barras
                   </label>
                   <div className="flex gap-2">
@@ -959,7 +959,7 @@ export default function InventarioPage() {
                       type="text"
                       value={formData.codigo_barras || ''}
                       onChange={(e) => setFormData({ ...formData, codigo_barras: e.target.value })}
-                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                      className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm"
                       placeholder="Ej: 7750101001000"
                     />
                     <button
@@ -975,7 +975,7 @@ export default function InventarioPage() {
 
                 {/* Imagen URL */}
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
                     <ImageIcon size={14} /> URL de Imagen
                   </label>
                   <div className="flex gap-2">
@@ -983,11 +983,11 @@ export default function InventarioPage() {
                       type="text"
                       value={formData.imagen_url || ''}
                       onChange={(e) => setFormData({ ...formData, imagen_url: e.target.value })}
-                      className="flex-1 px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                      className="flex-1 px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm"
                       placeholder="https://ejemplo.com/imagen.jpg"
                     />
                     {formData.imagen_url && (
-                      <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 shrink-0">
+                      <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-lg overflow-hidden border border-gray-200 shrink-0">
                         <img src={formData.imagen_url} alt="preview" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
                       </div>
                     )}
@@ -995,20 +995,20 @@ export default function InventarioPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                     Nombre
                   </label>
                   <input
                     type="text"
                     value={formData.nombre || ''}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 placeholder-gray-400 text-sm"
                     placeholder={`Nombre del ${activeSection === 'comida' ? 'platillo' : activeSection === 'bebidas' ? 'bebida' : activeSection === 'insumos' ? 'insumo' : 'taper'}`}
                   />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                     {activeSection === 'tapers' ? 'Tipo' : 'Categoría'}
                   </label>
                   <select
@@ -1017,7 +1017,7 @@ export default function InventarioPage() {
                       ...formData, 
                       ...(activeSection === 'tapers' ? { tipo: e.target.value } : { categoria: e.target.value })
                     })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 bg-white"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 bg-white text-sm"
                   >
                     <option value="">Seleccionar {activeSection === 'tapers' ? 'tipo' : 'categoría'}</option>
                     {activeSection === 'comida' && (
@@ -1064,11 +1064,11 @@ export default function InventarioPage() {
                 {/* Campo de unidad para insumos y tapers */}
                 {(activeSection === 'insumos' || activeSection === 'tapers') && (
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">Unidad</label>
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">Unidad</label>
                     <select
                       value={formData.unidad || 'unidad'}
                       onChange={(e) => setFormData({ ...formData, unidad: e.target.value })}
-                      className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 bg-white"
+                      className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 bg-white text-sm"
                     >
                       <option value="unidad">Unidad</option>
                       <option value="kg">Kilogramo (kg)</option>
@@ -1082,39 +1082,39 @@ export default function InventarioPage() {
                   </div>
                 )}
 
-                <div className="grid grid-cols-2 gap-4">
+                <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                       <DollarSign size={14} className="inline mr-1" />
                       Precio Venta
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
+                      <span className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium text-sm">S/</span>
                       <input
                         type="text"
                         inputMode="decimal"
                         pattern="[0-9.]*"
                         value={formData.precio || ''}
                         onChange={(e) => setFormData({ ...formData, precio: e.target.value === '' ? 0 : e.target.value })}
-                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
+                        className="w-full pl-7 sm:pl-8 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 text-sm"
                         placeholder="0.00"
                       />
                     </div>
                   </div>
                   <div>
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                       <TrendingUp size={14} className="inline mr-1" />
                       Precio Costo
                     </label>
                     <div className="relative">
-                      <span className="absolute left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium">S/</span>
+                      <span className="absolute left-3 sm:left-4 top-1/2 transform -translate-y-1/2 text-gray-500 font-medium text-sm">S/</span>
                       <input
                         type="text"
                         inputMode="decimal"
                         pattern="[0-9.]*"
                         value={formData.costo || ''}
                         onChange={(e) => setFormData({ ...formData, costo: e.target.value === '' ? 0 : e.target.value })}
-                        className="w-full pl-8 pr-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
+                        className="w-full pl-7 sm:pl-8 pr-3 sm:pr-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 text-sm"
                         placeholder="0.00"
                       />
                     </div>
@@ -1126,7 +1126,7 @@ export default function InventarioPage() {
                   </div>
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                     Cantidad
                   </label>
                   <input
@@ -1135,23 +1135,23 @@ export default function InventarioPage() {
                     pattern="[0-9]*"
                     value={formData.cantidad || ''}
                     onChange={(e) => setFormData({ ...formData, cantidad: e.target.value === '' ? 0 : parseInt(e.target.value) || 0 })}
-                    className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900"
+                    className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 text-sm"
                     placeholder="0"
                   />
                 </div>
 
                 {/* Editor de Tamaños (solo para bebidas) */}
                 {activeSection === 'bebidas' && (
-                  <div className="border-t border-gray-100 pt-6">
-                    <label className="block text-sm font-semibold text-gray-700 mb-3">
+                  <div className="border-t border-gray-100 pt-4 sm:pt-6">
+                    <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                       Tamaños / Presentaciones
                     </label>
-                    <p className="text-xs text-gray-400 mb-4">
-                      Define diferentes tamaños y precios para esta bebida (ej: Litro, 1/2 Litro, Vaso)
+                    <p className="text-xs text-gray-400 mb-3 sm:mb-4">
+                      Define diferentes tamaños y precios para esta bebida
                     </p>
-                    <div className="space-y-3">
+                    <div className="space-y-2 sm:space-y-3">
                       {(formData.tamanos || []).map((t: any, idx: number) => (
-                        <div key={idx} className="flex items-center gap-2 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                        <div key={idx} className="flex items-center gap-2 p-2 sm:p-3 bg-gray-50 rounded-lg border border-gray-200">
                           <input
                             type="text"
                             value={t.nombre}
@@ -1160,11 +1160,11 @@ export default function InventarioPage() {
                               nuevos[idx] = { ...nuevos[idx], nombre: e.target.value };
                               setFormData({ ...formData, tamanos: nuevos });
                             }}
-                            placeholder="Nombre (ej: Litro)"
-                            className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                            placeholder="Nombre"
+                            className="flex-1 min-w-0 px-2.5 sm:px-3 py-2 border border-gray-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                           />
-                          <div className="relative w-24">
-                            <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
+                          <div className="relative w-20 sm:w-24 shrink-0">
+                            <span className="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 text-xs">S/</span>
                             <input
                               type="text"
                               inputMode="decimal"
@@ -1175,7 +1175,7 @@ export default function InventarioPage() {
                                 setFormData({ ...formData, tamanos: nuevos });
                               }}
                               placeholder="Precio"
-                              className="w-full pl-7 pr-2 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                              className="w-full pl-6 pr-2 py-2 border border-gray-200 rounded-lg text-xs sm:text-sm focus:outline-none focus:border-blue-500"
                             />
                           </div>
                           <button
@@ -1183,9 +1183,9 @@ export default function InventarioPage() {
                               const nuevos = (formData.tamanos || []).filter((_: any, i: number) => i !== idx);
                               setFormData({ ...formData, tamanos: nuevos });
                             }}
-                            className="p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors"
+                            className="p-1.5 sm:p-2 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors shrink-0"
                           >
-                            <XIcon size={16} />
+                            <XIcon size={14} />
                           </button>
                         </div>
                       ))}
@@ -1194,7 +1194,7 @@ export default function InventarioPage() {
                           const nuevos = [...(formData.tamanos || []), { nombre: '', precio: 0, costo: 0 }];
                           setFormData({ ...formData, tamanos: nuevos });
                         }}
-                        className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors"
+                        className="flex items-center gap-2 px-3 sm:px-4 py-2 text-xs sm:text-sm font-medium text-blue-600 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 transition-colors w-full justify-center"
                       >
                         <Plus size={14} />
                         Agregar Tamaño
@@ -1205,18 +1205,18 @@ export default function InventarioPage() {
               </div>
             </div>
 
-            {/* Footer */}
-            <div className="px-8 py-6 bg-gray-50 rounded-b-2xl border-t border-gray-100">
+            {/* Footer — siempre visible al final del scroll */}
+            <div className="px-5 sm:px-8 py-4 sm:py-6 bg-gray-50 rounded-b-2xl border-t border-gray-100 shrink-0">
               <div className="flex gap-3">
                 <button
                   onClick={handleSave}
-                  className="flex-1 bg-blue-600 text-white px-6 py-3 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl transform hover:scale-[1.02]"
+                  className="flex-1 bg-blue-600 text-white px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 text-sm font-semibold shadow-lg hover:shadow-xl"
                 >
                   Guardar
                 </button>
                 <button
                   onClick={() => setShowModal(false)}
-                  className="flex-1 bg-white border border-gray-200 text-gray-700 px-6 py-3 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 text-sm font-semibold"
+                  className="flex-1 bg-white border border-gray-200 text-gray-700 px-5 sm:px-6 py-2.5 sm:py-3 rounded-xl hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 transition-all duration-200 text-sm font-semibold"
                 >
                   Cancelar
                 </button>
