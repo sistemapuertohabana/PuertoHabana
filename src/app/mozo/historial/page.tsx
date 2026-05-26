@@ -843,21 +843,38 @@ export default function MozoHistorialPage() {
                           if (!rucClean || rucClean.length < 11) return setToastHist('⚠️ Ingresa 11 dígitos del RUC');
                           setToastHist('🔍 Buscando RUC...');
                           try {
-                            const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
-                            if (!res.ok) return setToastHist('⚠️ Error al buscar RUC');
-                            const data = await res.json();
-                            if (data && data.length > 0) {
-                              const c = data[0];
-                              setNewClienteHistForm({
-                                nombre: c.nombre || '',
-                                dni: c.dni || '',
-                                ruc: c.ruc || '',
-                                telefono: c.telefono || '',
-                                email: c.email || '',
-                              });
-                              setToastHist('✅ Cliente encontrado: ' + c.nombre);
+                            // 1. Buscar en BD local primero
+                            const localRes = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
+                            if (localRes.ok) {
+                              const localData = await localRes.json();
+                              if (localData && localData.length > 0) {
+                                const c = localData[0];
+                                setNewClienteHistForm({
+                                  nombre: c.nombre || '',
+                                  dni: c.dni || '',
+                                  ruc: c.ruc || '',
+                                  telefono: c.telefono || '',
+                                  email: c.email || '',
+                                });
+                                return setToastHist('✅ Cliente encontrado en BD: ' + c.nombre);
+                              }
+                            }
+                            // 2. Si no existe en BD, consultar API SUNAT
+                            const sunatRes = await fetch(`/api/sunat/consulta?ruc=${encodeURIComponent(rucClean)}`);
+                            if (!sunatRes.ok) {
+                              const err = await sunatRes.json();
+                              return setToastHist(err.error || '⚠️ Error al consultar RUC en SUNAT');
+                            }
+                            const sunatData = await sunatRes.json();
+                            if (sunatData && sunatData.razonSocial) {
+                              setNewClienteHistForm(prev => ({
+                                ...prev,
+                                nombre: prev.nombre || sunatData.razonSocial,
+                                ruc: rucClean,
+                              }));
+                              setToastHist('✅ Datos obtenidos de SUNAT: ' + sunatData.razonSocial);
                             } else {
-                              setToastHist('⚠️ No hay cliente registrado con ese RUC');
+                              setToastHist('⚠️ No se encontraron datos para ese RUC');
                             }
                           } catch { setToastHist('⚠️ Error de conexión al buscar RUC'); }
                         }}

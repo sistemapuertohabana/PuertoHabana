@@ -311,24 +311,43 @@ export default function ClientesPage() {
                       if (!rucClean || rucClean.length < 11) return setToast('⚠️ Ingresa 11 dígitos del RUC');
                       setToast('🔍 Buscando RUC...');
                       try {
-                        const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
-                        if (!res.ok) return setToast('⚠️ Error al buscar RUC');
-                        const data = await res.json();
-                        if (data && data.length > 0) {
-                          const c = data[0];
-                          setForm({
-                            nombre: c.nombre || form.nombre,
-                            dni: c.dni || '',
-                            ruc: c.ruc || '',
-                            telefono: c.telefono || '',
-                            email: c.email || '',
-                            direccion: c.direccion || '',
-                            notas: c.notas || '',
-                          });
-                          setEditingId(c.id);
-                          setToast('✅ Cliente encontrado: ' + c.nombre);
+                        // 1. Buscar en BD local primero
+                        const localRes = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
+                        if (localRes.ok) {
+                          const localData = await localRes.json();
+                          if (localData && localData.length > 0) {
+                            const c = localData[0];
+                            setForm({
+                              nombre: c.nombre || form.nombre,
+                              dni: c.dni || '',
+                              ruc: c.ruc || '',
+                              telefono: c.telefono || '',
+                              email: c.email || '',
+                              direccion: c.direccion || '',
+                              notas: c.notas || '',
+                            });
+                            setEditingId(c.id);
+                            return setToast('✅ Cliente encontrado en BD: ' + c.nombre);
+                          }
+                        }
+                        // 2. Si no existe en BD, consultar API SUNAT
+                        const sunatRes = await fetch(`/api/sunat/consulta?ruc=${encodeURIComponent(rucClean)}`);
+                        if (!sunatRes.ok) {
+                          const err = await sunatRes.json();
+                          return setToast(err.error || '⚠️ Error al consultar RUC en SUNAT');
+                        }
+                        const sunatData = await sunatRes.json();
+                        if (sunatData && sunatData.razonSocial) {
+                          setForm(prev => ({
+                            ...prev,
+                            nombre: prev.nombre || sunatData.razonSocial,
+                            ruc: rucClean,
+                            direccion: prev.direccion || sunatData.direccion || '',
+                          }));
+                          setEditingId(null);
+                          setToast('✅ Datos obtenidos de SUNAT: ' + sunatData.razonSocial);
                         } else {
-                          setToast('⚠️ No hay cliente registrado con ese RUC');
+                          setToast('⚠️ No se encontraron datos para ese RUC');
                         }
                       } catch { setToast('⚠️ Error de conexión al buscar RUC'); }
                     }}
