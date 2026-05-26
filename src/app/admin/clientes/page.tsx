@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Users, Plus, Search, X, Phone, Mail, MapPin, User,
-  FileText, Download, Trash2, Edit, CheckCircle2, Scan,
+  FileText, Download, Trash2, Edit, CheckCircle2,
 } from 'lucide-react';
 
 interface Cliente {
@@ -244,32 +244,57 @@ export default function ClientesPage() {
                     onClick={async () => {
                       const dniClean = form.dni.trim();
                       if (!dniClean || dniClean.length < 8) return setToast('⚠️ Ingresa 8 dígitos del DNI');
+                      setToast('🔍 Buscando DNI...');
                       try {
-                        const res = await fetch(`/api/clientes?dni=${encodeURIComponent(dniClean)}`);
-                        if (!res.ok) return setToast('⚠️ Error al buscar DNI');
-                        const data = await res.json();
-                        if (data && data.length > 0) {
-                          const c = data[0];
-                          setForm({
-                            nombre: c.nombre || form.nombre,
-                            dni: c.dni || '',
-                            ruc: c.ruc || '',
-                            telefono: c.telefono || '',
-                            email: c.email || '',
-                            direccion: c.direccion || '',
-                            notas: c.notas || '',
-                          });
-                          setEditingId(c.id);
-                          setToast('✅ Cliente encontrado: ' + c.nombre);
+                        // 1. Buscar en BD local primero
+                        const localRes = await fetch(`/api/clientes?dni=${encodeURIComponent(dniClean)}`);
+                        if (localRes.ok) {
+                          const localData = await localRes.json();
+                          if (localData && localData.length > 0) {
+                            const c = localData[0];
+                            setForm({
+                              nombre: c.nombre || form.nombre,
+                              dni: c.dni || '',
+                              ruc: c.ruc || '',
+                              telefono: c.telefono || '',
+                              email: c.email || '',
+                              direccion: c.direccion || '',
+                              notas: c.notas || '',
+                            });
+                            setEditingId(c.id);
+                            return setToast('✅ Cliente encontrado en BD: ' + c.nombre);
+                          }
+                        }
+
+                        // 2. Si no existe en BD, consultar API RENIEC
+                        const reniecRes = await fetch(`/api/reniec/consulta?dni=${encodeURIComponent(dniClean)}`);
+                        if (!reniecRes.ok) {
+                          const err = await reniecRes.json();
+                          return setToast(err.error || '⚠️ Error al consultar DNI en RENIEC');
+                        }
+                        const reniecData = await reniecRes.json();
+                        if (reniecData && reniecData.nombres) {
+                          const nombreCompleto = [
+                            reniecData.nombres,
+                            reniecData.apellidoPaterno,
+                            reniecData.apellidoMaterno
+                          ].filter(Boolean).join(' ');
+                          setForm(prev => ({
+                            ...prev,
+                            nombre: prev.nombre || nombreCompleto,
+                            dni: dniClean,
+                          }));
+                          setEditingId(null);
+                          setToast('✅ Datos obtenidos de RENIEC: ' + nombreCompleto);
                         } else {
-                          setToast('⚠️ No hay cliente registrado con ese DNI');
+                          setToast('⚠️ No se encontraron datos para ese DNI');
                         }
                       } catch { setToast('⚠️ Error de conexión al buscar DNI'); }
                     }}
                     className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Buscar por DNI"
                   >
-                    <Scan size={14} />
+                    <Search size={14} />
                   </button>
                 </div>
               </div>
@@ -284,6 +309,7 @@ export default function ClientesPage() {
                     onClick={async () => {
                       const rucClean = form.ruc.trim();
                       if (!rucClean || rucClean.length < 11) return setToast('⚠️ Ingresa 11 dígitos del RUC');
+                      setToast('🔍 Buscando RUC...');
                       try {
                         const res = await fetch(`/api/clientes?ruc=${encodeURIComponent(rucClean)}`);
                         if (!res.ok) return setToast('⚠️ Error al buscar RUC');
@@ -309,7 +335,7 @@ export default function ClientesPage() {
                     className="px-3 py-2.5 bg-blue-600 text-white rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold flex items-center gap-1"
                     title="Buscar por RUC"
                   >
-                    <Scan size={14} />
+                    <Search size={14} />
                   </button>
                 </div>
               </div>

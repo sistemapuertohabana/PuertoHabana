@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut, Landmark, Megaphone,
+  Settings, User, LogOut, Landmark, Megaphone, X,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
@@ -56,15 +56,12 @@ const menuGroups: MenuGroup[] = [
 
 const flatMenuItems = menuGroups.flatMap(g => g.items);
 
-const ICON_SIZE_DESKTOP = 18;
-const ICON_SIZE_MOBILE = 20;
-
 function ProfileAvatar({ src, fallback }: { src: string; fallback: React.ReactNode }) {
   if (src) return <img src={src} alt="Perfil" className="w-full h-full object-cover" />;  // eslint-disable-line
   return <>{fallback}</>;
 }
 
-/* ─── desktop style helpers ──────────────────────────────── */
+/* ─── sidebar design helpers ──────────────────────────────── */
 
 function sidebarBg(d: SidebarDesign) {
   if (d === 'minimalista') return 'bg-white border-r border-gray-100';
@@ -74,16 +71,10 @@ function sidebarBg(d: SidebarDesign) {
 }
 
 function sidebarItem(d: SidebarDesign, active: boolean) {
-  if (d === 'minimalista') return active ? 'bg-black text-white' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100';
-  if (d === 'bonito') return active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 hover:bg-blue-50';
-  if (d === 'azul') return active ? 'bg-white text-blue-600' : 'text-blue-200 hover:text-white hover:bg-blue-700';
-  return active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-900 hover:bg-gray-100';
-}
-
-function groupLabelStyle(d: SidebarDesign) {
-  if (d === 'azul') return 'text-blue-300';
-  if (d === 'minimalista') return 'text-gray-300';
-  return 'text-gray-300';
+  if (d === 'minimalista') return active ? 'bg-black text-white' : 'text-gray-600 hover:bg-gray-50';
+  if (d === 'bonito') return active ? 'bg-blue-600 text-white' : 'text-gray-600 hover:bg-blue-50';
+  if (d === 'azul') return active ? 'bg-white text-blue-600' : 'text-white hover:bg-blue-700';
+  return active ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-600 hover:bg-gray-50';
 }
 
 /* ─── navbar helpers ─────────────────────────────────────── */
@@ -104,19 +95,6 @@ function navbarItem(s: NavbarStyle, active: boolean) {
   if (s === 'centrado') return active ? 'text-black font-semibold' : 'text-gray-400 hover:text-gray-600';
   if (s === 'grande') return active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600';
   return active ? 'text-blue-600' : 'text-gray-400 hover:text-gray-600';
-}
-
-/* ─── Tooltip wrapper ────────────────────────────────────── */
-
-function Tooltip({ children, label }: { children: React.ReactNode; label: string }) {
-  return (
-    <div className="relative group/tooltip">
-      {children}
-      <div className="absolute left-full ml-2 top-1/2 -translate-y-1/2 px-2 py-1 bg-gray-900 text-white text-[10px] font-medium rounded-md whitespace-nowrap opacity-0 invisible group-hover/tooltip:opacity-100 group-hover/tooltip:visible transition-all duration-200 z-50 pointer-events-none shadow-lg">
-        {label}
-      </div>
-    </div>
-  );
 }
 
 /* ─── Design popover ─────────────────────────────────────── */
@@ -147,13 +125,17 @@ function DesignPopover({
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(!open)}
-        className="w-9 h-9 flex items-center justify-center rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+        className="flex items-center gap-2 w-full py-2 px-3 rounded-lg transition-colors text-sm font-medium text-gray-500 hover:bg-gray-100"
         title="Personalizar"
       >
-        <Settings size={15} strokeWidth={2} />
+        <Settings size={15} strokeWidth={2} /> Personalizar
       </button>
       {open && (
-        <div className="absolute left-full ml-2 bottom-0 w-48 bg-white rounded-xl shadow-xl border border-gray-200 p-3.5 space-y-3 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+        <div className="absolute left-full ml-2 bottom-0 w-52 bg-white rounded-xl shadow-xl border border-gray-200 p-3.5 space-y-3 z-50 animate-in fade-in slide-in-from-left-2 duration-150">
+          <button onClick={() => setOpen(false)}
+            className="absolute top-2 right-2 p-0.5 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={14} className="text-gray-400" />
+          </button>
           <div>
             <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Sidebar</label>
             <select value={design} onChange={e => onDesignChange(e.target.value as SidebarDesign)}
@@ -165,7 +147,7 @@ function DesignPopover({
             </select>
           </div>
           <div>
-            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Navbar</label>
+            <label className="block text-[10px] font-semibold uppercase tracking-wider text-gray-400 mb-1.5">Navbar (móvil)</label>
             <select value={navbar} onChange={e => onNavbarChange(e.target.value as NavbarStyle)}
               className="w-full px-2 py-1.5 rounded-lg border border-gray-200 text-xs bg-white focus:outline-none focus:ring-1 focus:ring-blue-400">
               <option value="original">Original</option>
@@ -203,8 +185,6 @@ export default function Sidebar() {
       ? 'justify-between px-1'
       : 'justify-around';
 
-  const isFlotante = navbar === 'flotante' || navbar === 'flotante_blue_new';
-
   return (
     <>
       {/* ══ MOBILE TOP BAR ══════════════════════════════════ */}
@@ -232,11 +212,12 @@ export default function Sidebar() {
         </div>
       </nav>
 
-      {/* ══ MOBILE BOTTOM NAV — icon-only, bigger icons ════ */}
+      {/* ══ MOBILE BOTTOM NAV ════════════════════════════════ */}
       <nav className={`lg:hidden fixed bottom-0 inset-x-0 z-50 ${navbarBg(navbar)}`}>
         <div className={`flex ${layout} items-center py-2 px-1`}>
           {flatMenuItems.filter(i => i.href !== '/admin/sunat').map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
+            const isFlotante = navbar === 'flotante' || navbar === 'flotante_blue_new';
             return (
               <Link key={href} href={href}
                 className={`flex items-center justify-center transition-all ${
@@ -246,49 +227,58 @@ export default function Sidebar() {
                 } ${navbarItem(navbar, active)}`}
                 title={label}
               >
-                <Icon size={ICON_SIZE_MOBILE} strokeWidth={active ? 2.5 : 1.8} />
+                <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
               </Link>
             );
           })}
         </div>
       </nav>
 
-      {/* ══ DESKTOP SIDEBAR — icon-only w-16 ════════════════ */}
-      <aside className={`hidden lg:flex flex-col w-16 min-h-screen fixed left-0 top-0 items-center ${sidebarBg(design)}`}>
+      {/* ══ DESKTOP SIDEBAR — w-64 con labels ════════════════ */}
+      <aside className={`hidden lg:flex flex-col w-64 min-h-screen fixed left-0 top-0 ${sidebarBg(design)}`}>
 
         {/* Profile */}
-        <div className={`w-full flex justify-center py-4 border-b ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
-          <div className={`w-9 h-9 rounded-full overflow-hidden border-2 flex items-center justify-center ${design === 'azul' ? 'bg-blue-700 border-blue-600' : 'bg-gray-100 border-gray-200'}`}>
-            <ProfileAvatar src={foto} fallback={<User size={16} className={design === 'azul' ? 'text-white' : 'text-gray-400'} />} />
+        <div className={`p-5 border-b ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
+          <div className="flex items-center gap-3">
+            <div className={`w-10 h-10 rounded-full overflow-hidden border-2 flex items-center justify-center shrink-0 ${design === 'azul' ? 'bg-blue-700 border-blue-600' : 'bg-gray-100 border-gray-200'}`}>
+              <ProfileAvatar src={foto} fallback={<User size={20} className={design === 'azul' ? 'text-white' : 'text-gray-400'} />} />
+            </div>
+            <div className="min-w-0">
+              <p className={`text-sm font-semibold truncate ${design === 'azul' ? 'text-white' : 'text-gray-900'}`}>Puerto Habana</p>
+              <p className={`text-xs truncate ${design === 'azul' ? 'text-blue-200' : 'text-gray-400'}`}>{profile?.nombre ?? 'Admin'}</p>
+            </div>
           </div>
         </div>
 
         {/* Navigation groups */}
-        <nav className="flex-1 w-full flex flex-col items-center py-3 px-1.5 space-y-4 overflow-y-auto">
+        <nav className="flex-1 mt-3 px-3 space-y-1 overflow-y-auto">
           {menuGroups.map((group, gi) => (
-            <div key={group.label} className="w-full flex flex-col items-center">
+            <div key={group.label}>
               {gi > 0 && (
-                <div className={`w-6 h-px mb-3 ${design === 'azul' ? 'bg-blue-700' : 'bg-gray-100'}`} />
+                <div className={`h-px my-2 ${design === 'azul' ? 'bg-blue-700' : 'bg-gray-100'}`} />
               )}
-              <div className="flex flex-col items-center gap-1 w-full">
-                {group.items.map(({ href, icon: Icon, label }) => {
-                  const active = pathname === href;
-                  return (
-                    <Tooltip key={href} label={label}>
-                      <Link href={href}
-                        className={`flex items-center justify-center w-10 h-10 rounded-xl transition-all duration-150 ${sidebarItem(design, active)}`}>
-                        <Icon size={ICON_SIZE_DESKTOP} strokeWidth={active ? 2.5 : 2} />
-                      </Link>
-                    </Tooltip>
-                  );
-                })}
-              </div>
+              {/* Group label */}
+              <p className={`text-[10px] font-semibold uppercase tracking-wider px-3 pb-1 ${
+                design === 'azul' ? 'text-blue-300' : 'text-gray-400'
+              }`}>
+                {group.label}
+              </p>
+              {group.items.map(({ href, icon: Icon, label }) => {
+                const active = pathname === href;
+                return (
+                  <Link key={href} href={href}
+                    className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${sidebarItem(design, active)}`}>
+                    <Icon size={17} strokeWidth={active ? 2.5 : 2} />
+                    <span className="text-sm font-medium">{label}</span>
+                  </Link>
+                );
+              })}
             </div>
           ))}
         </nav>
 
         {/* Bottom — design & logout */}
-        <div className={`w-full flex flex-col items-center py-3 gap-1.5 border-t ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
+        <div className={`px-3 pb-4 pt-3 border-t mt-2 ${design === 'azul' ? 'border-blue-700' : 'border-gray-100'}`}>
           <DesignPopover
             design={design}
             navbar={navbar}
@@ -296,9 +286,10 @@ export default function Sidebar() {
             onNavbarChange={v => save('navbarStyle_admin', v)}
           />
           <button onClick={signOut}
-            className={`w-9 h-9 flex items-center justify-center rounded-lg transition-colors ${design === 'azul' ? 'text-red-300 hover:bg-blue-700' : 'text-red-400 hover:text-red-600 hover:bg-red-50'}`}
-            title="Cerrar Sesión">
-            <LogOut size={15} strokeWidth={2} />
+            className={`flex items-center justify-center gap-2 w-full py-2 rounded-lg transition-colors text-sm font-medium mt-1 ${
+              design === 'azul' ? 'text-red-300 hover:bg-blue-700' : 'text-red-500 hover:bg-red-50'
+            }`}>
+            <LogOut size={15} /> Cerrar Sesión
           </button>
         </div>
       </aside>
