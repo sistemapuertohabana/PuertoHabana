@@ -1,0 +1,49 @@
+CONTRATO DE DESARROLLO DE SOFTWARE Y PRESTACIÓN DE SERVICIOS
+
+Conste por el presente documento, el Contrato de Desarrollo de Software que celebran, de una parte:
+
+1. LA AGENCIA: CODEOL SOFTWARE PERU, en adelante "El Desarrollador".
+2. EL CLIENTE: MARCO ANTONIO PONCE BERNEDO, en adelante "El Cliente".
+
+Ambas partes acuerdan sujetarse a las siguientes cláusulas y especificaciones respecto al proyecto denominado "Sistema Puerto Habana":
+
+PRIMERA: OBJETO DEL CONTRATO
+El Desarrollador se compromete a diseñar, desarrollar y entregar a El Cliente el software denominado "Sistema Puerto Habana", un sistema de gestión integral.
+
+SEGUNDA: ESPECIFICACIONES DEL PROYECTO
+El sistema "Sistema Puerto Habana" incluye los módulos y características acordados previamente entre ambas partes (paneles de administración, mozo, cocina, etc.), garantizando su correcto funcionamiento y despliegue.
+
+TERCERA: PRECIO Y FORMA DE PAGO
+El costo total por el desarrollo y entrega del "Sistema Puerto Habana" es de S/ 1,500.00 (Mil Quinientos Soles).
+La naturaleza de este pago es de COMPRA ÚNICA (un solo pago por el sistema completo). No existirán cobros por mensualidades, licencias periódicas ni costos ocultos posteriores al pago total.
+
+La forma de pago se realizará en dos (2) partes de la siguiente manera:
+- Primer pago: 50% al inicio del proyecto (S/ 750.00).
+- Segundo pago: 50% a la entrega y puesta en marcha del sistema (S/ 750.00).
+*El pago se realiza de forma directa según los medios proporcionados por El Desarrollador.
+
+CUARTA: SOPORTE TÉCNICO Y GARANTÍA (GRATUITO)
+1. El Desarrollador (Codeol Software Peru) se compromete a brindar SOPORTE TÉCNICO GRATUITO sobre el sistema entregado.
+2. En caso de que el sistema sufra alguna caída, fallo técnico o interrupción del servicio (que dependa de la programación o estructura del sistema), El Desarrollador está OBLIGADO a acudir y solucionar el problema a la brevedad posible.
+3. Se garantiza la seguridad de dar soporte constante y brindar un buen servicio post-venta para el correcto funcionamiento ininterrumpido del sistema.
+
+QUINTA: PROPIEDAD DEL SOFTWARE
+Una vez cancelado el 100% del pago estipulado en la cláusula Tercera, el sistema y su uso quedan a completa disposición de El Cliente como compra única. 
+
+SEXTA: CONFIDENCIALIDAD Y SEGURIDAD
+El Desarrollador se compromete a mantener en estricta confidencialidad toda la información, base de datos y datos de clientes que se manejen dentro del Sistema Puerto Habana.
+
+SÉPTIMA: ACEPTACIÓN
+Ambas partes declaran su conformidad con las cláusulas establecidas en el presente contrato, comprometiéndose a su fiel cumplimiento.
+
+Fecha de emisión: 25 de mayo de 2026
+
+
+___________________________________
+CODEOL SOFTWARE PERU
+El Desarrollador
+
+
+___________________________________
+MARCO ANTONIO PONCE BERNEDO
+El Cliente

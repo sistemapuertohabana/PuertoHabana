@@ -7,6 +7,7 @@ import { subscribeInventario, type InventarioItem } from '@/lib/db';
 interface Comanda {
   id: number;
   mesa: string;
+  mozo_id?: string;
   mozo_nombre?: string;
   estado: string;
   hora: string;
@@ -41,6 +42,9 @@ export default function MozoHistorialPage() {
     return () => unsub();
   }, []);
 
+    // Modal detallado
+  const [detailModal, setDetailModal] = useState<Comanda | null>(null);
+  
   // Solo muestra las comandas del mozo logueado
   const mozoId = typeof window !== 'undefined'
     ? (() => { try { return JSON.parse(localStorage.getItem('ph_mozo_session') || '{}').id || ''; } catch { return ''; } })()
@@ -50,9 +54,26 @@ export default function MozoHistorialPage() {
     try {
       const res = await fetch(`/api/pedidos?fecha=${fecha}&_=${Date.now()}`, { cache: 'no-store' });
       if (!res.ok) throw new Error();
-      const data: Comanda[] = await res.json();
-      // Filtrar por mozo si hay sesión y excluir ya entregados del botón cobrar
-      setComandas(mozoId ? data.filter((c: any) => c.mozo_id === mozoId || !mozoId) : data);
+      const data: any[] = await res.json();
+      // Mapear mesa_nombre → mesa (la API devuelve mesa_nombre)
+      const mapped: Comanda[] = data.map((c: any) => ({
+        id: c.id,
+        mesa: c.mesa_nombre || c.mesa || '',
+        mozo_id: c.mozo_id,
+        mozo_nombre: c.mozo_nombre,
+        estado: c.estado,
+        hora: c.hora,
+        fecha: c.fecha,
+        total: Number(c.total) || 0,
+        items: (c.items || []).map((i: any) => ({
+          nombre: i.nombre,
+          cantidad: i.cantidad,
+          precio: Number(i.precio) || 0,
+          categoria: i.categoria,
+        })),
+      }));
+      // Filtrar por mozo si hay sesión
+      setComandas(mozoId ? mapped.filter(c => c.mozo_id === mozoId) : mapped);
     } catch {
       // Fallback localStorage
       try {
@@ -151,39 +172,42 @@ export default function MozoHistorialPage() {
         ) : (
           <div className="space-y-4">
             {comandas.map(c => (
-              <div key={c.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <div className="flex items-center gap-3">
-                      <span className="font-bold text-lg text-gray-900">{c.mesa}</span>
-                      <span className="flex items-center gap-1 text-xs text-gray-400">
-                        <Clock size={12} /> {c.hora}
-                      </span>
-                      <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                        c.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
-                        c.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
-                        c.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
-                        'bg-gray-100 text-gray-600'
-                      }`}>{c.estado}</span>
+              <div key={c.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
+                <div onClick={() => setDetailModal(c)} className="cursor-pointer">
+                  <div className="flex items-start justify-between mb-3">
+                    <div>
+                      <div className="flex items-center gap-3">
+                        <span className="font-bold text-lg text-gray-900">{c.mesa}</span>
+                        <span className="flex items-center gap-1 text-xs text-gray-400">
+                          <Clock size={12} /> {c.hora}
+                        </span>
+                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                          c.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
+                          c.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
+                          c.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
+                          'bg-gray-100 text-gray-600'
+                        }`}>{c.estado}</span>
+                      </div>
+                      {c.mozo_nombre && <p className="text-xs text-gray-400 mt-0.5">Mozo: {c.mozo_nombre}</p>}
+                      {c.items && <p className="text-xs text-gray-400 mt-0.5">{c.items.reduce((s, i) => s + i.cantidad, 0)} productos</p>}
                     </div>
-                    {c.mozo_nombre && <p className="text-xs text-gray-400 mt-0.5">Mozo: {c.mozo_nombre}</p>}
+                    <p className="text-base font-bold text-gray-900">S/ {Number(c.total).toFixed(2)}</p>
                   </div>
-                  <p className="text-base font-bold text-gray-900">S/ {Number(c.total).toFixed(2)}</p>
-                </div>
 
-                {c.items && c.items.length > 0 && (
-                  <ul className="space-y-1 mb-3">
-                    {c.items.map((item, i) => (
-                      <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
-                        <span className="font-bold text-gray-900">{item.cantidad}×</span>
-                        <span>{item.nombre}</span>
-                        <span className="text-gray-400 ml-auto">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+                  {c.items && c.items.length > 0 && (
+                    <ul className="space-y-1 mb-3">
+                      {c.items.map((item, i) => (
+                        <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
+                          <span className="font-bold text-gray-900">{item.cantidad}×</span>
+                          <span>{item.nombre}</span>
+                          <span className="text-gray-400 ml-auto">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 
-                <div className="flex gap-2">
+                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
                   <a href={`/print/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm">
                     🖨️ Imprimir
                   </a>
@@ -397,6 +421,95 @@ export default function MozoHistorialPage() {
           </div>
         )}
       </div>
+
+      {/* Modal detallado del pedido */}
+      {detailModal && (
+        <div 
+          className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setDetailModal(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl w-full max-w-lg max-h-[85vh] overflow-y-auto shadow-2xl animate-in zoom-in-95 duration-200"
+            onClick={e => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="px-6 pt-6 pb-4 border-b border-gray-100 sticky top-0 bg-white z-10">
+              <div className="flex justify-between items-start">
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">{detailModal.mesa}</h2>
+                  <p className="text-sm text-gray-500 mt-1">
+                    {detailModal.fecha} · {detailModal.hora}
+                  </p>
+                </div>
+                <button 
+                  onClick={() => setDetailModal(null)}
+                  className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors"
+                >
+                  <X size={18} className="text-gray-400" />
+                </button>
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-wider ${
+                  detailModal.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
+                  detailModal.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
+                  detailModal.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
+                  'bg-gray-100 text-gray-600'
+                }`}>{detailModal.estado}</span>
+                {detailModal.mozo_nombre && (
+                  <span className="text-xs text-gray-400">Mozo: {detailModal.mozo_nombre}</span>
+                )}
+              </div>
+            </div>
+
+            {/* Items */}
+            <div className="px-6 py-4 space-y-3">
+              {detailModal.items && detailModal.items.length > 0 ? (
+                <>
+                  <h3 className="text-xs font-semibold uppercase text-gray-500 tracking-wider">Productos</h3>
+                  {detailModal.items.map((item, i) => {
+                    const subtotal = Number(item.precio) * Number(item.cantidad);
+                    return (
+                      <div key={i} className="flex items-center justify-between py-2 border-b border-gray-50 last:border-0">
+                        <div className="flex-1">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-gray-900">{item.cantidad}×</span>
+                            <span className="text-gray-900">{item.nombre}</span>
+                          </div>
+                          {item.categoria && (
+                            <span className="text-[11px] text-gray-400 uppercase ml-7">{item.categoria}</span>
+                          )}
+                        </div>
+                        <div className="text-right">
+                          <p className="font-medium text-gray-900">S/ {subtotal.toFixed(2)}</p>
+                          <p className="text-[11px] text-gray-400">S/ {Number(item.precio).toFixed(2)} c/u</p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </>
+              ) : (
+                <p className="text-sm text-gray-400 text-center py-8">Sin productos registrados</p>
+              )}
+            </div>
+
+            {/* Footer con total */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50 rounded-b-3xl">
+              <div className="flex justify-between items-center">
+                <span className="text-sm text-gray-600">
+                  Total {detailModal.items?.reduce((s, i) => s + i.cantidad, 0) || 0} productos
+                </span>
+                <span className="text-2xl font-bold text-gray-900">S/ {Number(detailModal.total).toFixed(2)}</span>
+              </div>
+              <button
+                onClick={() => setDetailModal(null)}
+                className="w-full mt-4 py-3 bg-gray-900 text-white rounded-xl font-medium hover:bg-gray-800 transition-colors text-sm"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,7 @@ interface MesaConfig {
   unidaCon: string[];
 }
 
-const DEFAULT_MESAS: MesaConfig[] = Array.from({ length: 8 }).map((_, i) => ({
+const DEFAULT_MESAS: MesaConfig[] = Array.from({ length: 12 }).map((_, i) => ({
   id: `mesa-${i + 1}`,
   nombre: `Mesa ${i + 1}`,
   sillas: 4,
@@ -128,7 +128,7 @@ function getLocalDateString() {
 
 export default function MozoPage() {
   const [activeMesa, setActiveMesa] = useState<MesaConfig | null>(null);
-  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string }[]>([]);
+  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean }[]>([]);
   const [success, setSuccess] = useState(false);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
@@ -282,6 +282,10 @@ export default function MozoPage() {
 
   const allItems: MenuItem[] = [...MENU, ...tapers.map(t => ({ name: t.nombre, price: t.precio, category: 'tapers' }))];
 
+  const toggleCortesia = (itemName: string) => {
+    setCart(prev => prev.map(c => c.name === itemName ? { ...c, esCortesia: !c.esCortesia } : c));
+  };
+
   const updateCart = (item: MenuItem, delta: number) => {
     setCart(prev => {
       const existing = prev.find(c => c.name === item.name);
@@ -295,7 +299,7 @@ export default function MozoPage() {
     });
   };
 
-  const total = cart.reduce((s, c) => s + c.price * c.qty, 0);
+  const total = cart.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0);
 
   const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
@@ -321,7 +325,11 @@ export default function MozoPage() {
     } catch {}
 
     const items = cart.map(c => ({
-      nombre: c.name, cantidad: c.qty, precio: c.price, categoria: c.category,
+      nombre: c.esCortesia ? `🎁 ${c.name}` : c.name,
+      cantidad: c.qty,
+      precio: c.esCortesia ? 0 : c.price,
+      categoria: c.category,
+      notas: c.esCortesia ? '🎁 Cortesía de la Casa' : null,
     }));
 
     try {
@@ -347,9 +355,9 @@ export default function MozoPage() {
       });
       const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
       const nuevos = cart.map(c => ({
-        id: Date.now() + Math.random(), item: c.name, cantidad: c.qty,
-        mesa: mesaName, precio: c.price, estado: 'Pendiente', hora,
-        notas: '', category: c.category, fecha, mozoId, mozoNombre,
+        id: Date.now() + Math.random(), item: c.esCortesia ? `🎁 ${c.name}` : c.name, cantidad: c.qty,
+        mesa: mesaName, precio: c.esCortesia ? 0 : c.price, estado: 'Pendiente', hora,
+        notas: c.esCortesia ? '🎁 Cortesía de la Casa' : '', category: c.category, fecha, mozoId, mozoNombre,
       }));
       localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
     }
@@ -535,7 +543,7 @@ export default function MozoPage() {
             </div>
           )}
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2.5">
+          <div className="grid grid-cols-3 gap-2.5">
             {(isConfigMode ? mesas : displayMesas).map(mesa => {
               const dName = isConfigMode ? mesa.nombre : getDisplayName(mesa);
               const ocupada = !isConfigMode && mesasOcupadas.has(dName);
@@ -655,10 +663,28 @@ export default function MozoPage() {
                       return (
                         <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
                           <div>
-                            <p className="text-sm text-gray-900">{item.name}</p>
-                            <p className="text-[11px] text-gray-400">S/ {Number(item.price).toFixed(2)}</p>
+                            <p className="text-sm text-gray-900">
+                              {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia && <span className="mr-1">🎁</span>}
+                              {item.name}
+                            </p>
+                            <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                              {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(item.price).toFixed(2)}`}
+                            </p>
                           </div>
-                          <div className="flex items-center gap-2.5">
+                          <div className="flex items-center gap-1.5">
+                            {qty > 0 && (
+                              <button
+                                onClick={() => toggleCortesia(item.name)}
+                                className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                                  cart.find(c => c.name === item.name)?.esCortesia
+                                    ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                                    : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+                                }`}
+                                title="Marcar como Cortesía de la Casa"
+                              >
+                                🎁
+                              </button>
+                            )}
                             <button onClick={() => updateCart(item, -1)} disabled={qty === 0}
                               className="w-8 h-8 rounded-full bg-red-50 border border-red-100 flex items-center justify-center disabled:opacity-30 hover:bg-red-100 transition-colors">
                               <Minus size={12} className="text-red-500" />
@@ -681,7 +707,12 @@ export default function MozoPage() {
           {/* Footer */}
           <div className="px-5 py-4 border-t border-gray-100 bg-white">
             <div className="flex justify-between items-center mb-3">
-              <span className="text-xs text-gray-400">{cart.reduce((s, c) => s + c.qty, 0)} productos</span>
+              <span className="text-xs text-gray-400">
+                {cart.reduce((s, c) => s + c.qty, 0)} productos
+                {cart.some(c => c.esCortesia) && (
+                  <span className="ml-2 text-amber-600">(🎁 {cart.filter(c => c.esCortesia).reduce((s, c) => s + c.qty, 0)} cortesía)</span>
+                )}
+              </span>
               <span className="text-lg font-medium text-gray-900">S/ {Number(total).toFixed(2)}</span>
             </div>
             <button
