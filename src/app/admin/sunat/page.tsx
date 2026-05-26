@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import {
   Landmark, FileText, Download, TrendingUp, AlertTriangle,
-  Settings, RefreshCw, CheckCircle2, XCircle, Search, Calendar,
+  Settings, RefreshCw, CheckCircle2, XCircle, Search, Calendar, Trash2
 } from 'lucide-react';
 
 type SunatTab = 'emitir' | 'historial' | 'reportes' | 'limite' | 'config';
@@ -119,6 +119,26 @@ export default function SunatPage() {
     setAnio(nuevoAnio);
   };
 
+  const limpiarRechazados = async () => {
+    if (!confirm('¿Estás seguro de eliminar todas las boletas rechazadas del historial? Esta acción no se puede deshacer.')) return;
+    
+    setLoading(true);
+    try {
+      const res = await fetch('/api/sunat/limpiar-rechazados', { method: 'DELETE' });
+      if (res.ok) {
+        setResultado('✅ Historial de boletas rechazadas limpiado');
+        if (activeTab === 'historial') loadHistorial();
+        if (activeTab === 'reportes') loadReportes();
+      } else {
+        setResultado('❌ Error al limpiar historial');
+      }
+    } catch {
+      setResultado('❌ Error de red al limpiar historial');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-300">
       {/* Header */}
@@ -202,6 +222,15 @@ export default function SunatPage() {
                 <RefreshCw size={16} />
               </button>
             </div>
+            
+            <button 
+              onClick={limpiarRechazados}
+              disabled={loading}
+              className="flex items-center gap-2 px-3 py-1.5 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition-colors text-sm font-medium border border-red-200"
+            >
+              <Trash2 size={16} />
+              Limpiar Rechazados
+            </button>
           </div>
 
           {resumenMensual && (
