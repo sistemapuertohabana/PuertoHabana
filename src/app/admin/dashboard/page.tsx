@@ -43,7 +43,9 @@ import {
   Download,
   Trash2,
   Printer,
-  X
+  X,
+  MessageSquare,
+  Tag
 } from 'lucide-react';
 
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
@@ -154,6 +156,7 @@ export default function DashboardPage() {
   
   const [staffPayments, setStaffPayments] = useState<StaffPayment[]>([]);
   const [inventarioItems, setInventarioItems] = useState<InventoryItem[]>([]);
+  const [ultimasNotas, setUltimasNotas] = useState<{ id: number; contenido: string; tags: string[]; monto: number | null; created_at: string }[]>([]);
 
 
   // Forms state
@@ -314,6 +317,12 @@ export default function DashboardPage() {
           } catch {
             try { setInventarioItems(JSON.parse(localStorage.getItem('ph_inventario') || '[]')); } catch {}
           }
+        })(),
+        (async () => {
+          try {
+            const res = await fetch('/api/notas?limit=5');
+            if (res.ok) setUltimasNotas(await res.json());
+          } catch {}
         })(),
       ]);
     };
@@ -1186,6 +1195,71 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Últimas Notas Section */}
+      {ultimasNotas.length > 0 && (
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <MessageSquare size={18} className="text-violet-600" />
+            <h2 className="text-base font-semibold text-gray-900">Últimas Notas</h2>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-3">
+            {ultimasNotas.map((nota) => {
+              const tagColors: Record<string, string> = {
+                gasto: 'bg-red-100 text-red-700 border-red-200',
+                cocina: 'bg-orange-100 text-orange-700 border-orange-200',
+                bebidas: 'bg-cyan-100 text-cyan-700 border-cyan-200',
+                insumos: 'bg-emerald-100 text-emerald-700 border-emerald-200',
+                nota: 'bg-violet-100 text-violet-700 border-violet-200',
+              };
+              const tagLabels: Record<string, string> = {
+                gasto: 'Gasto',
+                cocina: 'Cocina',
+                bebidas: 'Bebidas',
+                insumos: 'Insumos',
+                nota: 'Nota',
+              };
+              return (
+                <div
+                  key={nota.id}
+                  className="p-3.5 rounded-xl border bg-white border-gray-200 shadow-sm hover:shadow-md hover:border-gray-300 transition-all duration-200 flex flex-col gap-2"
+                >
+                  {/* Tags */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {nota.tags.map((t) => (
+                      <span
+                        key={t}
+                        className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${tagColors[t] || 'bg-gray-100 text-gray-600 border-gray-200'}`}
+                      >
+                        <Tag size={10} />
+                        {tagLabels[t] || t}
+                      </span>
+                    ))}
+                    {nota.monto && (
+                      <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-green-100 text-green-700 border border-green-200">
+                        S/ {Number(nota.monto).toFixed(2)}
+                      </span>
+                    )}
+                  </div>
+                  {/* Contenido */}
+                  <p className="text-xs text-gray-700 leading-relaxed line-clamp-3">
+                    {nota.contenido.replace(/^\[\w+\]\s*/i, '')}
+                  </p>
+                  {/* Fecha */}
+                  <p className="text-[10px] text-gray-400 mt-auto">
+                    {new Date(nota.created_at).toLocaleString('es-ES', {
+                      day: 'numeric',
+                      month: 'short',
+                      hour: '2-digit',
+                      minute: '2-digit',
+                    })}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Tabs Navigation */}
       <div className={`flex border-b mb-8 overflow-x-auto gap-2 -mx-4 px-4 sm:mx-0 sm:px-0 ${

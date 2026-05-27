@@ -58,6 +58,16 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const tag = searchParams.get('tag');
   const limit = parseInt(searchParams.get('limit') || '100');
+  const countOnly = searchParams.get('count') === 'true';
+
+  // ── Solo devolver el conteo total ──────────────────────────────────────
+  if (countOnly) {
+    const { count, error } = await sb
+      .from('notas')
+      .select('*', { count: 'exact', head: true });
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ count: count ?? 0 });
+  }
 
   let query = sb
     .from('notas')
@@ -121,6 +131,15 @@ export async function POST(request: Request) {
         rol_destino: 'admin',
         titulo: '📦 Nota de Insumos',
         mensaje: contenido.replace(/^\[Insumos\]\s*/i, '').trim().substring(0, 200),
+      }]).maybeSingle();
+    })().catch(() => {});
+  }
+  if (tags.includes('bebidas')) {
+    (async () => {
+      await sb.from('notificaciones').insert([{
+        rol_destino: 'admin',
+        titulo: '🍺 Nota de Bebidas',
+        mensaje: contenido.replace(/^\[Bebidas\]\s*/i, '').trim().substring(0, 200),
       }]).maybeSingle();
     })().catch(() => {});
   }

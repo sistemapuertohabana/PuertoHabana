@@ -8,7 +8,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 
 type SidebarDesign = 'minimalista' | 'bonito' | 'normal' | 'azul';
 type NavbarStyle = 'original' | 'minimalista' | 'centrado' | 'grande' | 'flotante' | 'flotante_blue_new';
@@ -174,6 +174,40 @@ export default function Sidebar() {
   const fotoLocal = useLocalStorageValue('fotoPerfil', '');
   const foto = profile?.foto_url ?? fotoLocal;
 
+  // ── Badge de notas no leídas ──────────────────────────────────────────
+  const [notasTotal, setNotasTotal] = useState(0);
+  const [notasLeidas, setNotasLeidas] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return parseInt(localStorage.getItem('ph_notas_leidas') || '0');
+    }
+    return 0;
+  });
+  const unreadCount = Math.max(0, notasTotal - notasLeidas);
+
+  const fetchNotasCount = useCallback(async () => {
+    try {
+      const res = await fetch('/api/notas?count=true');
+      if (res.ok) {
+        const { count } = await res.json();
+        setNotasTotal(count);
+      }
+    } catch {}
+  }, []);
+
+  useEffect(() => {
+    fetchNotasCount();
+    const interval = setInterval(fetchNotasCount, 30_000);
+    return () => clearInterval(interval);
+  }, [fetchNotasCount]);
+
+  // Actualizar badge cuando se visita la pagina de notas
+  useEffect(() => {
+    if (pathname === '/admin/gastos') {
+      localStorage.setItem('ph_notas_leidas', String(notasTotal));
+      setNotasLeidas(notasTotal);
+    }
+  }, [pathname, notasTotal]);
+
   const save = (key: string, val: string) => {
     localStorage.setItem(key, val);
     window.dispatchEvent(new Event('ph_store_update'));
@@ -218,9 +252,10 @@ export default function Sidebar() {
           {flatMenuItems.filter(i => i.href !== '/admin/sunat').map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             const isFlotante = navbar === 'flotante' || navbar === 'flotante_blue_new';
+            const showBadge = label === 'Notas' && unreadCount > 0;
             return (
               <Link key={href} href={href}
-                className={`flex items-center justify-center transition-all ${
+                className={`relative flex items-center justify-center transition-all ${
                   isFlotante
                     ? 'rounded-full w-12 h-12'
                     : 'rounded-xl px-3 py-2'
@@ -228,6 +263,15 @@ export default function Sidebar() {
                 title={label}
               >
                 <Icon size={20} strokeWidth={active ? 2.5 : 1.8} />
+                {showBadge && (
+                  <span className={`absolute -top-0.5 -right-0.5 text-[9px] font-bold px-1 py-0.5 rounded-full min-w-[16px] text-center leading-none ${
+                    navbar === 'flotante_blue_new'
+                      ? 'bg-white text-blue-600'
+                      : 'bg-red-500 text-white'
+                  }`}>
+                    {unreadCount > 99 ? '99+' : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
@@ -265,11 +309,21 @@ export default function Sidebar() {
               </p>
               {group.items.map(({ href, icon: Icon, label }) => {
                 const active = pathname === href;
+                const showBadge = label === 'Notas' && unreadCount > 0;
                 return (
                   <Link key={href} href={href}
                     className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150 ${sidebarItem(design, active)}`}>
                     <Icon size={17} strokeWidth={active ? 2.5 : 2} />
                     <span className="text-sm font-medium">{label}</span>
+                    {showBadge && (
+                      <span className={`ml-auto text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-[18px] text-center ${
+                        design === 'azul'
+                          ? 'bg-white text-blue-600'
+                          : 'bg-red-500 text-white'
+                      }`}>
+                        {unreadCount > 99 ? '99+' : unreadCount}
+                      </span>
+                    )}
                   </Link>
                 );
               })}
