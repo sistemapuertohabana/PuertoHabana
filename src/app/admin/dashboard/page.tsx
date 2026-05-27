@@ -42,7 +42,8 @@ import {
   ClipboardList,
   Download,
   Trash2,
-  Printer
+  Printer,
+  X
 } from 'lucide-react';
 
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
