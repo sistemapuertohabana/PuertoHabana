@@ -1,9 +1,48 @@
 // Cocina — lee comandas desde MySQL API con polling cada 5s
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
-import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle, MessageSquareText, Timer, AlertCircle } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle, MessageSquareText, Timer, AlertCircle, Eye, ListOrdered, User, Hash, Tag } from 'lucide-react';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
+import Modal from '@/components/Modal';
+
+// ── Sonido de alerta para comandas con notas (Web Audio API) ──
+let audioCtx: AudioContext | null = null;
+function getAudioCtx(): AudioContext {
+  if (!audioCtx) audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  return audioCtx;
+}
+
+async function playComandaConNotasSound() {
+  try {
+    const ctx = getAudioCtx();
+    if (ctx.state === 'suspended') await ctx.resume();
+
+    // Tres tonos ascendentes: más notorio que el sonido normal
+    const notes = [523.25, 659.25, 783.99]; // C5, E5, G5 — acorde mayor ascendente
+    const startTime = ctx.currentTime + 0.05;
+
+    notes.forEach((freq, i) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(freq, startTime + i * 0.15);
+      gain.gain.setValueAtTime(0.4, startTime + i * 0.15);
+      gain.gain.exponentialRampToValueAtTime(0.001, startTime + i * 0.15 + 0.3);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(startTime + i * 0.15);
+      osc.stop(startTime + i * 0.15 + 0.3);
+    });
+
+    // También intentar el MP3 como refuerzo
+    try {
+      const audio = new Audio('/notification.mp3');
+      audio.volume = 0.5;
+      audio.play().catch(() => {});
+    } catch {}
+  } catch {}
+}
 
 interface Pedido {
   id: number;
@@ -31,6 +70,11 @@ export default function CocinaPage() {
   const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
+  const [selectedPedido, setSelectedPedido] = useState<Pedido | null>(null);
+  const [showDetailModal, setShowDetailModal] = useState(false);
+  const prevPedidoIdsRef = useRef<Set<number>>(new Set());
+  const [nuevaConNotas, setNuevaConNotas] = useState<{ mesa: string; mozo: string; itemsConNotas: number } | null>(null);
+  const nuevaConNotasTimeoutRef = useRef<ReturnType<typeof setTimeout>>(null);
   const [fecha] = useState(() =>
     typeof window !== 'undefined'
       ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
@@ -129,6 +173,59 @@ export default function CocinaPage() {
     window.addEventListener('storage', loadPedidos);
     return () => { clearInterval(interval); clearInterval(configInterval); window.removeEventListener('storage', loadPedidos); };
   }, [loadPedidos]);
+
+  // ── Detectar nuevas comandas con notas del mozo y reproducir sonido ──
+  useEffect(() => {
+    if (showHistory) return; // solo en vista activa
+
+    const currentIds = new Set(pedidos.map(p => p.id));
+    const prevIds = prevPedidoIdsRef.current;
+
+    // Si es la primera carga, solo guardar IDs sin sonido
+    if (prevIds.size === 0) {
+      prevPedidoIdsRef.current = currentIds;
+      return;
+    }
+
+    // Buscar pedidos nuevos que tengan notas del mozo
+    for (const pedido of pedidos) {
+      if (!prevIds.has(pedido.id) && pedido.estado === 'Pendiente') {
+        const itemsConNotas = pedido.items?.filter(i => i.notas && i.notas.trim()) || [];
+        if (itemsConNotas.length > 0) {
+          // 🔊 Reproducir sonido distintivo
+          playComandaConNotasSound();
+
+          // 📳 Vibración
+          if (typeof navigator !== 'undefined' && 'vibrate' in navigator) {
+            navigator.vibrate([300, 150, 300, 150, 300]);
+          }
+
+          // Mostrar indicador visual
+          setNuevaConNotas({
+            mesa: pedido.mesa,
+            mozo: pedido.mozo_nombre || 'Mozo',
+            itemsConNotas: itemsConNotas.length,
+          });
+
+          // Limpiar timeout anterior y agendar nuevo
+          if (nuevaConNotasTimeoutRef.current) clearTimeout(nuevaConNotasTimeoutRef.current);
+          nuevaConNotasTimeoutRef.current = setTimeout(() => {
+            setNuevaConNotas(null);
+            nuevaConNotasTimeoutRef.current = null;
+          }, 6000);
+
+          break; // un solo sonido por ciclo de polling
+        }
+      }
+    }
+
+    // Actualizar IDs conocidos
+    prevPedidoIdsRef.current = currentIds;
+
+    return () => {
+      if (nuevaConNotasTimeoutRef.current) clearTimeout(nuevaConNotasTimeoutRef.current);
+    };
+  }, [pedidos, showHistory]);
 
   const updateEstado = async (id: number, nuevoEstado: string) => {
     try {
@@ -315,6 +412,31 @@ export default function CocinaPage() {
         </button>
       </div>
 
+      {/* ─── Indicador de nueva comanda con notas ─── */}
+      {nuevaConNotas && (
+        <div className="mb-4 animate-in slide-in-from-top-3 fade-in duration-300">
+          <div className="flex items-center gap-3 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl shadow-md">
+            <div className="w-9 h-9 rounded-lg bg-amber-100 border border-amber-200 flex items-center justify-center shrink-0">
+              <MessageSquareText size={16} className="text-amber-600" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-amber-800">
+                🔔 ¡Nueva comanda con notas del mozo!
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                {nuevaConNotas.mesa} · {nuevaConNotas.mozo} · {nuevaConNotas.itemsConNotas} item{nuevaConNotas.itemsConNotas !== 1 ? 's' : ''} con nota{nuevaConNotas.itemsConNotas !== 1 ? 's' : ''}
+              </p>
+            </div>
+            <button
+              onClick={() => setNuevaConNotas(null)}
+              className="shrink-0 w-7 h-7 rounded-lg flex items-center justify-center text-amber-400 hover:text-amber-600 hover:bg-amber-100 transition-all"
+            >
+              <span className="text-lg leading-none">&times;</span>
+            </button>
+          </div>
+        </div>
+      )}
+
       {pedidos.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20">
           <div className="w-14 h-14 rounded-xl bg-gray-50 border border-gray-100 flex items-center justify-center mb-4">
@@ -375,12 +497,19 @@ export default function CocinaPage() {
                         )}
                       </div>
                     </div>
-                  </div>
-                  {/* Badge total platos */}
+                  </div>                    {/* Badge total platos */}
                   <div className={`shrink-0 ${cfg.bg} ${cfg.color} px-2.5 py-1 rounded-lg border ${cfg.border} text-center`}>
                     <span className="block text-sm font-black">{totalPlatos}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider">Platos</span>
                   </div>
+                  {/* Botón Ver detalle */}
+                  <button
+                    onClick={() => { setSelectedPedido(p); setShowDetailModal(true); }}
+                    className="shrink-0 p-2 rounded-xl hover:bg-gray-100 transition-colors text-gray-400 hover:text-gray-600"
+                    title="Ver detalle completo"
+                  >
+                    <Eye size={16} />
+                  </button>
                 </div>
 
                 {/* ─── Indicador de notas ─── */}
@@ -472,6 +601,231 @@ export default function CocinaPage() {
           })}
         </div>
       )}
+
+      {/* ─── Modal de detalle completo de comanda ─── */}
+      <Modal
+        isOpen={showDetailModal}
+        onClose={() => { setShowDetailModal(false); setSelectedPedido(null); }}
+        title={`Detalle de Comanda — ${selectedPedido?.mesa || ''}`}
+      >
+        {selectedPedido && (() => {
+          const p = selectedPedido;
+          const cfg = estadoConfig[p.estado] || estadoConfig.Pendiente;
+          const allItems = p.items || [];
+          const foodItems = allItems.filter(i => i.categoria !== 'bebidas');
+          const bebidasItems = allItems.filter(i => i.categoria === 'bebidas');
+          const itemsConNotas = allItems.filter(i => i.notas && i.notas.trim());
+          const tiempoTranscurrido = getTiempoTranscurrido(p.hora);
+
+          return (
+            <div className="space-y-6">
+              {/* ── Info General ── */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-400 text-[10px] uppercase tracking-wider font-semibold mb-2">
+                    <Hash size={12} />
+                    Comanda
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">#{p.id}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-400 text-[10px] uppercase tracking-wider font-semibold mb-2">
+                    <UtensilsCrossed size={12} />
+                    Mesa
+                  </div>
+                  <p className="text-lg font-bold text-gray-900">{p.mesa}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-400 text-[10px] uppercase tracking-wider font-semibold mb-2">
+                    <User size={12} />
+                    Mozo
+                  </div>
+                  <p className="text-sm font-semibold text-gray-900 truncate">{p.mozo_nombre || '—'}</p>
+                </div>
+                <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                  <div className="flex items-center gap-2 text-gray-400 text-[10px] uppercase tracking-wider font-semibold mb-2">
+                    <Tag size={12} />
+                    Estado
+                  </div>
+                  <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                    <span className={`w-2 h-2 rounded-full ${cfg.dot}`}></span>
+                    {cfg.label}
+                  </span>
+                </div>
+              </div>
+
+              {/* ── Tiempo ── */}
+              <div className="flex flex-wrap items-center gap-3 text-xs text-gray-500 bg-gray-50 rounded-xl px-4 py-3 border border-gray-100">
+                <span className="flex items-center gap-1.5">
+                  <Clock size={13} />
+                  Pedido: <strong className="text-gray-700">{p.hora}</strong>
+                </span>
+                <span className="text-gray-200">|</span>
+                <span className="flex items-center gap-1.5">
+                  <Timer size={13} />
+                  Tiempo transcurrido: <strong className={`${tiempoTranscurrido.includes('h') ? 'text-orange-600' : 'text-gray-700'}`}>{tiempoTranscurrido}</strong>
+                </span>
+                <span className="text-gray-200">|</span>
+                <span className="flex items-center gap-1.5">
+                  <ListOrdered size={13} />
+                  Total items: <strong className="text-gray-700">{allItems.reduce((s, i) => s + i.cantidad, 0)}</strong>
+                </span>
+              </div>
+
+              {/* ── Platos ── */}
+              <div>
+                <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <ChefHat size={13} />
+                  Platos ({foodItems.reduce((s, i) => s + i.cantidad, 0)} unidades)
+                </h3>
+                {foodItems.length === 0 ? (
+                  <p className="text-xs text-gray-400 italic">Sin platos en esta comanda</p>
+                ) : (
+                  <div className="space-y-2">
+                    {foodItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className={`rounded-xl border p-4 transition-colors ${
+                          item.notas && item.notas.trim()
+                            ? 'bg-amber-50/60 border-amber-200 border-l-4 border-l-amber-400'
+                            : 'bg-white border-gray-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="font-black text-gray-900 text-xl min-w-[2rem] text-center leading-none mt-0.5">
+                            {item.cantidad}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              {item.nombre.startsWith('🎁') ? (
+                                <>
+                                  <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider">
+                                    🎁 Cortesía
+                                  </span>
+                                  <span className="font-medium text-amber-900 text-sm">{item.nombre.replace(/^🎁\s*/, '')}</span>
+                                </>
+                              ) : (
+                                <span className="font-medium text-gray-900 text-sm">{item.nombre}</span>
+                              )}
+                              {item.categoria && (
+                                <span className="text-[9px] text-gray-400 uppercase tracking-wider bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                  {item.categoria}
+                                </span>
+                              )}
+                            </div>
+                            {item.notas && item.notas.trim() && (
+                              <div className="mt-2 flex items-start gap-1.5 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
+                                <MessageSquareText size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                                <span className="text-xs text-amber-800 font-medium leading-relaxed">
+                                  {item.notas}
+                                </span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {/* ── Bebidas ── */}
+              {bebidasItems.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-gray-400 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    🥤 Bebidas ({bebidasItems.reduce((s, i) => s + i.cantidad, 0)} unidades)
+                  </h3>
+                  <div className="space-y-2">
+                    {bebidasItems.map((item, i) => (
+                      <div
+                        key={i}
+                        className={`rounded-xl border p-4 transition-colors ${
+                          item.notas && item.notas.trim()
+                            ? 'bg-amber-50/60 border-amber-200 border-l-4 border-l-amber-400'
+                            : 'bg-white border-gray-100 hover:border-gray-200'
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <span className="font-black text-gray-900 text-xl min-w-[2rem] text-center leading-none mt-0.5">
+                            {item.cantidad}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-medium text-gray-900 text-sm">{item.nombre}</span>
+                            {item.notas && item.notas.trim() && (
+                              <div className="mt-2 flex items-start gap-1.5 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
+                                <MessageSquareText size={12} className="text-amber-500 mt-0.5 shrink-0" />
+                                <span className="text-xs text-amber-800 font-medium leading-relaxed">{item.notas}</span>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Resumen de notas del mozo ── */}
+              {itemsConNotas.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                  <h3 className="text-xs font-semibold text-amber-700 uppercase tracking-wider mb-3 flex items-center gap-2">
+                    <MessageSquareText size={13} />
+                    Notas del Mozo ({itemsConNotas.length} item{itemsConNotas.length !== 1 ? 's' : ''})
+                  </h3>
+                  <div className="space-y-2">
+                    {itemsConNotas.map((item, i) => (
+                      <div key={i} className="bg-white/70 rounded-lg px-3 py-2 border border-amber-100">
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-bold text-gray-700">
+                            {item.nombre} <span className="text-gray-400 font-normal">x{item.cantidad}</span>
+                          </span>
+                          {item.categoria === 'bebidas' && <span className="text-[10px] text-gray-400">🥤 Bebida</span>}
+                        </div>
+                        <p className="text-xs text-amber-800 font-medium">📝 {item.notas}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* ── Nota general ── */}
+              {p.notas && (
+                <div className="bg-yellow-50 border border-yellow-200 rounded-xl p-4">
+                  <h3 className="text-xs font-semibold text-yellow-700 uppercase tracking-wider mb-2 flex items-center gap-2">
+                    <AlertCircle size={13} />
+                    Nota general de la comanda
+                  </h3>
+                  <p className="text-sm text-yellow-800 font-medium leading-relaxed">{p.notas}</p>
+                </div>
+              )}
+
+              {/* ── Acciones ── */}
+              <div className="pt-2 border-t border-gray-100">
+                <div className="flex flex-wrap gap-2">
+                  {!showHistory && p.estado === 'Pendiente' && (
+                    <button
+                      onClick={() => { updateEstado(p.id, 'Preparando'); setShowDetailModal(false); }}
+                      className="flex items-center gap-2 bg-gray-900 text-white px-5 py-2.5 rounded-xl hover:bg-gray-800 active:scale-[0.99] transition-all text-sm font-bold"
+                    >
+                      <ChefHat size={16} />
+                      Empezar a Preparar
+                    </button>
+                  )}
+                  {!showHistory && p.estado === 'Preparando' && (
+                    <button
+                      onClick={() => { updateEstado(p.id, 'Listo'); setShowDetailModal(false); }}
+                      className="flex items-center gap-2 bg-green-600 text-white px-5 py-2.5 rounded-xl hover:bg-green-700 active:scale-[0.99] transition-all text-sm font-bold shadow-md"
+                    >
+                      <Check size={18} />
+                      Listo para Entregar
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+      </Modal>
 
     </div>
   );

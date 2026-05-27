@@ -81,7 +81,12 @@ export default function ComandaTicket({
           </style>
         </head>
         <body>
-          <div class="text-center" style="font-size: 13px; font-weight: bold; color: #d97706; margin-bottom: 4px;">🍽️ PLATOS VENDIDOS: ${totalItems}</div>
+          <div class="text-center" style="margin-bottom: 6px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 70px; height: 70px; border-radius: 12px; background: #f8f8f8; border: 1px solid #eee; padding: 4px;">
+              <img src="${window.location.origin}/logo/LogoPuertoHabana.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />
+            </div>
+          </div>
+          <div class="text-center" style="font-size: 13px; font-weight: bold; color: #d97706; margin-bottom: 2px;">🍽️ PLATOS VENDIDOS: ${totalItems}</div>
           <div class="text-center font-bold" style="font-size: 22px; margin-bottom: 2px;">🍳 COMANDA</div>
           <div class="text-center" style="font-size: 12px; margin-bottom: 6px;">${negocioNombre}</div>
           <div class="line"></div>
@@ -242,6 +247,11 @@ export default function ComandaTicket({
 
         <div className="px-5 py-3 max-h-[55vh] overflow-y-auto">
           <div ref={boletaRef} className="font-mono text-[14px] text-black leading-relaxed">
+            <div className="text-center mb-2">
+              <div className="inline-flex items-center justify-center w-[60px] h-[60px] rounded-xl bg-gray-50 border border-gray-100 p-1">
+                <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="w-[52px] h-[52px] object-contain" />
+              </div>
+            </div>
             <div className="text-center font-bold text-xl mb-1">🍳 COMANDA</div>
             <div className="text-center text-xs text-gray-500 mb-2">{negocioNombre}</div>
             <div className="border-t border-dashed border-gray-400 my-2" />

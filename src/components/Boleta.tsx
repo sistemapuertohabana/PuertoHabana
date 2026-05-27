@@ -106,11 +106,13 @@ export default function Boleta({
           </style>
         </head>
         <body>
-          <div class="text-center" style="margin-bottom: 4px;">
-            <img src="${origin}/logo/LogoPuertoHabana.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />
+          <div class="text-center" style="margin-bottom: 6px;">
+            <div style="display: inline-flex; align-items: center; justify-content: center; width: 80px; height: 80px; border-radius: 12px; background: #f8f8f8; border: 1px solid #eee; padding: 4px;">
+              <img src="${origin}/logo/LogoPuertoHabana.png" alt="Logo" style="width: 70px; height: 70px; object-fit: contain;" />
+            </div>
           </div>
-          <div class="text-center font-bold" style="font-size: 16px;">${negocioNombre}</div>
-          <div class="text-center">Cevicheria</div>
+          <div class="text-center font-bold" style="font-size: 16px; letter-spacing: 0.5px;">${negocioNombre}</div>
+          <div class="text-center" style="font-size: 11px; color: #666;">Cevicheria</div>
           <div class="text-center" style="margin-bottom: 8px;">RUC: ${ruc}</div>
           <div class="dashed-line"></div>
           <div>Mesa   : ${mesa}</div>
@@ -277,11 +279,13 @@ export default function Boleta({
 
         <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
           <div ref={boletaRef} className="font-mono text-[11px] text-black leading-relaxed">
-            <div className="text-center mb-1">
-              <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="inline-block w-12 h-12 object-contain" />
+            <div className="text-center mb-2">
+              <div className="inline-flex items-center justify-center w-[68px] h-[68px] rounded-xl bg-gray-50 border border-gray-100 p-1">
+                <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="w-[60px] h-[60px] object-contain" />
+              </div>
             </div>
-            <div className="text-center font-bold text-base">{negocioNombre}</div>
-            <div className="text-center text-xs">Cevicheria</div>
+            <div className="text-center font-bold text-base tracking-wide">{negocioNombre}</div>
+            <div className="text-center text-[11px] text-gray-500">Cevicheria</div>
             <div className="text-center text-xs mb-2">RUC: {ruc}</div>
             <div className="border-t border-dashed border-gray-400 my-2" />
             <div>Mesa   : {mesa}</div>

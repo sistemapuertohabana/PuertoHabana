@@ -15,7 +15,7 @@ interface Comanda {
   hora: string;
   fecha: string;
   total: number;
-  items?: { nombre: string; cantidad: number; precio: number; categoria?: string }[];
+  items?: { nombre: string; cantidad: number; precio: number; categoria?: string; notas?: string }[];
 }
 
 function getLocalDateString() {
@@ -155,12 +155,12 @@ export default function MozoHistorialPage() {
         estado: c.estado,
         hora: c.hora,
         fecha: c.fecha,
-        total: Number(c.total) || 0,
-        items: (c.items || []).map((i: any) => ({
+        total: Number(c.total) || 0,          items: (c.items || []).map((i: any) => ({
           nombre: i.nombre,
           cantidad: i.cantidad,
           precio: Number(i.precio) || 0,
           categoria: i.categoria,
+          notas: i.notas,
         })),
       }));
       // Filtrar por mozo solo si no está activo "Todas las comandas"
@@ -195,7 +195,7 @@ export default function MozoHistorialPage() {
             grouped[key] = { id: p.id, mesa: p.mesa, mozo_nombre: p.mozoNombre, mozo_id: p.mozoId, estado: p.estado, hora: p.hora, fecha: p.fecha, total: 0, items: [] };
           }
           grouped[key].total += p.precio * p.cantidad;
-          grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio });
+          grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio, notas: p.notas });
           if (p.hora > grouped[key].hora) grouped[key].hora = p.hora;
         });
         const mozoComandasFallback = Object.values(grouped).filter(c => !mozoId || showAllMozos || c.mozo_id === mozoId);
@@ -354,7 +354,7 @@ export default function MozoHistorialPage() {
                     mozoNombre: c.mozo_nombre || 'Mozo',
                     fecha: c.fecha,
                     hora: c.hora,
-                    items: (c.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: undefined, categoria: i.categoria }))
+                    items: (c.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, categoria: i.categoria }))
                   })} className="flex-shrink-0 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px]">
                     🍳 Comanda
                   </button>
@@ -371,7 +371,7 @@ export default function MozoHistorialPage() {
                             mozoNombre: c.mozo_nombre || 'Mozo',
                             fecha: c.fecha,
                             hora: c.hora,
-                            items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+                            items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio, notas: i.notas })),
                             clienteNombre: clienteGuardado?.nombre || '',
                             clienteDocumento: clienteGuardado?.documento || '',
                           });

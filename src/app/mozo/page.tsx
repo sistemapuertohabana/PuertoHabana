@@ -162,7 +162,7 @@ export default function MozoPage() {
     mozoNombre: string;
     fecha: string;
     hora: string;
-    items: { nombre: string; cantidad: number; categoria?: string }[];
+    items: { nombre: string; cantidad: number; categoria?: string; notas?: string }[];
   } | null>(null);
 
   useEffect(() => {

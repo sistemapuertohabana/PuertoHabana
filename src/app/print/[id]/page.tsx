@@ -135,9 +135,11 @@ export default function PrintTicket() {
       </div>
 
       <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto shadow-sm print:shadow-none print:m-0 print:p-0 print:w-[80mm]">
-        {/* Cabecera */}
-        <div className="text-center mb-2">
-          <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="inline-block w-16 h-16 object-contain" />
+        {/* Cabecera con logo */}
+        <div className="text-center mb-3">
+          <div className="inline-flex items-center justify-center w-[84px] h-[84px] rounded-xl bg-white border border-gray-200 p-1.5 shadow-sm">
+            <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="w-[72px] h-[72px] object-contain" />
+          </div>
         </div>
         <p className="text-xs text-center">{config.direccion || 'Av. Colonización 1115'}</p>
         <p className="text-xs text-center">RUC: {config.ruc || '10429025546'}</p>

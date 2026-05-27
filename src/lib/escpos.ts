@@ -27,7 +27,7 @@ export interface ComandaPayload {
 }
 
 export function buildEscPosComanda(payload: ComandaPayload): string {
-  const { mesa, mozoNombre, fecha, hora, items, negocioNombre = 'PUERTO HABANA' } = payload;
+  const { mesa, mozoNombre, fecha, hora, items } = payload;
 
   const formatFecha = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -35,16 +35,22 @@ export function buildEscPosComanda(payload: ComandaPayload): string {
     return dateStr;
   };
 
-  const LINE = '-----------------------------\n';
+  const LINE = '='.repeat(29) + '\n';
 
   let ticket = '';
   ticket += '\x1B\x40';                     // Reset
   ticket += '\x1B\x61\x01';                 // Center align
+  // ── Encabezado tipo logo (texto grande) ──
   ticket += '\x1B\x21\x30';                 // Double height + bold
-  ticket += '\xF0\x9F\x8D\xB3 COMANDA\n';  // 🍳 COMANDA
+  ticket += 'P U E R T O\n';
+  ticket += 'H A B A N A\n';
   ticket += '\x1B\x21\x00';                 // Normal
-  ticket += `${negocioNombre}\n`;
-  ticket += LINE;
+  ticket += '\x1B\x61\x01';                 // Center
+  ticket += '='.repeat(29) + '\n';
+  ticket += '\x1B\x21\x20';                 // Double width + bold
+  ticket += '\xF0\x9F\x8D\xB3 C O M A N D A\n';  // 🍳 C O M A N D A
+  ticket += '\x1B\x21\x00';                 // Normal
+  ticket += '='.repeat(29) + '\n';
   ticket += '\x1B\x61\x00';                 // Left align
   ticket += `\x1B\x21\x10`;                 // Bold
   ticket += `Mesa: ${mesa}\n`;
@@ -71,7 +77,7 @@ export function buildEscPosComanda(payload: ComandaPayload): string {
 }
 
 export function buildEscPosTicket(payload: BoletaPayload): string {
-  const { mesa, mozoNombre, fecha, hora, items, ruc = '20XXXXXXXXX', negocioNombre = 'PUERTO HABANA', clienteNombre, clienteDocumento } = payload;
+  const { mesa, mozoNombre, fecha, hora, items, ruc = '20XXXXXXXXX', clienteNombre, clienteDocumento } = payload;
 
   const formatFecha = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -91,9 +97,13 @@ export function buildEscPosTicket(payload: BoletaPayload): string {
   let ticket = '';
   ticket += '\x1B\x40';
   ticket += '\x1B\x61\x01';
-  ticket += '\x1B\x21\x30';
-  ticket += `${negocioNombre}\n`;
-  ticket += '\x1B\x21\x00';
+  // ── Encabezado estilizado tipo logo ──
+  ticket += '\x1B\x21\x30';                 // Double height + bold
+  ticket += 'P U E R T O\n';
+  ticket += 'H A B A N A\n';
+  ticket += '\x1B\x21\x00';                 // Normal
+  ticket += '\x1B\x61\x01';                 // Center
+  ticket += '='.repeat(48) + '\n';
   ticket += 'Cevicheria\n';
   ticket += `RUC: ${ruc}\n`;
   ticket += LINE;
