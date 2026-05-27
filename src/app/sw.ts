@@ -122,6 +122,17 @@ const serwist = new Serwist({
 
 serwist.addEventListeners();
 
+// ── Cache buster: fuerza limpieza de cachés viejos al activarse ────────
+(self as any).addEventListener('activate', (event: any) => {
+  event.waitUntil(
+    caches.keys().then((names) => {
+      return Promise.all(names.map((name) => caches.delete(name)));
+    }).then(() => {
+      return (self as any).clients.claim();
+    })
+  );
+});
+
 // ── Push notifications ───────────────────────────────────────────────────
 // Web Push (VAPID) se maneja aquí. El server-side envía el push desde los
 // endpoints de notificaciones. Ver public/sw.js original para referencia.
