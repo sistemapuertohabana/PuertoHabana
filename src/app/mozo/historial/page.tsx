@@ -43,7 +43,7 @@ export default function MozoHistorialPage() {
   const [sendingWhatsAppHist, setSendingWhatsAppHist] = useState(false);
   const [sendingSunatHist, setSendingSunatHist] = useState(false);
   const [toastHist, setToastHist] = useState<string | null>(null);
-
+  const [showAllMozos, setShowAllMozos] = useState(false);
 
 
   const [fecha] = useState(() =>
@@ -161,8 +161,8 @@ export default function MozoHistorialPage() {
           categoria: i.categoria,
         })),
       }));
-      // Filtrar por mozo si hay sesión
-      const mozoComandas = mozoId ? mapped.filter(c => c.mozo_id === mozoId) : mapped;
+      // Filtrar por mozo solo si no está activo "Todas las comandas"
+      const mozoComandas = (mozoId && !showAllMozos) ? mapped.filter(c => c.mozo_id === mozoId) : mapped;
       
       // Group by Mesa + Status (Entregado vs Activo)
       const groupedMap = new Map<string, Comanda>();
@@ -196,19 +196,19 @@ export default function MozoHistorialPage() {
           grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio });
           if (p.hora > grouped[key].hora) grouped[key].hora = p.hora;
         });
-        const mozoComandasFallback = Object.values(grouped).filter(c => !mozoId || c.mozo_id === mozoId);
+        const mozoComandasFallback = Object.values(grouped).filter(c => !mozoId || showAllMozos || c.mozo_id === mozoId);
         setComandas(mozoComandasFallback.sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
       } catch { setComandas([]); }
     }
     setLoading(false);
-  }, [fecha, mozoId]);
+  }, [fecha, mozoId, showAllMozos]);
 
   useEffect(() => {
     loadComandas();
     const interval = setInterval(loadComandas, 5000);
     window.addEventListener('storage', loadComandas);
     return () => { clearInterval(interval); window.removeEventListener('storage', loadComandas); };
-  }, [loadComandas]);
+  }, [loadComandas, showAllMozos]);
 
   const confirmarCobro = async (id: number, metodo: string) => {
     // Cierra el modal de inmediato (optimistic UI)
@@ -266,6 +266,26 @@ export default function MozoHistorialPage() {
           <p className="text-xs text-gray-400 uppercase font-semibold">Total del Día</p>
           <p className="text-2xl font-bold text-blue-600">S/ {Number(total).toFixed(2)}</p>
         </div>
+      </div>
+
+      {/* Toggle: Mis comandas / Todas */}
+      <div className="px-4 md:px-6 max-w-4xl mx-auto mt-4 mb-2">
+        <button
+          onClick={() => setShowAllMozos(!showAllMozos)}
+          className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-semibold transition-all ${
+            showAllMozos
+              ? 'bg-blue-100 text-blue-700 border border-blue-200'
+              : 'bg-gray-100 text-gray-600 border border-gray-200 hover:bg-gray-200'
+          }`}
+        >
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
+            <circle cx="9" cy="7" r="4"/>
+            <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
+            <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+          </svg>
+          {showAllMozos ? 'Ver solo mis comandas' : 'Ver todas las comandas'}
+        </button>
       </div>
 
       <div className="p-4 md:p-6 max-w-4xl mx-auto">
