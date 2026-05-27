@@ -354,12 +354,23 @@ export default function CocinaPage() {
                   {p.items
                     .filter(item => item.categoria === 'comida' || item.categoria === undefined)
                     .map((item, i) => (
-                    <li key={i} className="flex items-start gap-3 text-sm text-gray-800">
-                      <span className="font-black text-gray-900 text-base">{item.cantidad}×</span>
-                      <div>
-                        <span className="font-medium">{item.nombre}</span>
+                    <li key={i} className="flex items-start gap-3 text-sm text-gray-800 bg-gray-50/50 p-2 rounded-lg">
+                      <span className="font-black text-gray-900 text-base min-w-[1.5rem]">{item.cantidad}×</span>
+                      <div className="flex-1">
+                        <div className="font-medium text-gray-900 flex flex-wrap items-center gap-1.5">
+                          {item.nombre.startsWith('🎁') ? (
+                            <>
+                              <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm border border-amber-200">
+                                🎁 Cortesía
+                              </span>
+                              <span className="text-amber-900">{item.nombre.replace(/^🎁\s*/, '')}</span>
+                            </>
+                          ) : (
+                            <span>{item.nombre}</span>
+                          )}
+                        </div>
                         {item.notas && (
-                          <p className="text-xs text-gray-500 italic mt-0.5 opacity-80">
+                          <p className="text-xs text-gray-500 italic mt-1 opacity-90 border-l-2 border-gray-300 pl-2">
                             * {item.notas}
                           </p>
                         )}
