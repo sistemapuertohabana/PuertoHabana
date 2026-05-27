@@ -1,7 +1,8 @@
 'use client';
 
 import { useRef, useState } from 'react';
-import { Printer, X } from 'lucide-react';
+import { Printer, X, Bluetooth, Usb } from 'lucide-react';
+import { buildEscPosTicket } from '@/lib/escpos';
 
 interface ItemBoleta {
   item: string;
@@ -104,6 +105,89 @@ export default function Boleta({
     }
   };
 
+  const handlePrintSerial = async () => {
+    try {
+      setPrinting(true);
+      setPrintError('');
+
+      if (!('serial' in navigator)) {
+        throw new Error('Tu navegador no soporta conexión USB/COM (Usa Chrome en PC o Android).');
+      }
+
+      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre });
+      const buffer = new Uint8Array(ticketText.length);
+      for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
+
+      // @ts-ignore
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      const writer = port.writable.getWriter();
+      await writer.write(buffer);
+      await writer.close();
+      await port.close();
+
+      alert('¡Impresión enviada correctamente!');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al conectar.';
+      if (!msg.includes('No port selected')) setPrintError(msg);
+    } finally { setPrinting(false); }
+  };
+
+  const handlePrintWebBluetooth = async () => {
+    try {
+      setPrinting(true);
+      setPrintError('');
+      
+      if (!('bluetooth' in navigator)) {
+        throw new Error('Bluetooth directo no soportado en este navegador.');
+      }
+
+      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre });
+      const buffer = new Uint8Array(ticketText.length);
+      for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
+
+      // @ts-ignore
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+      });
+
+      const server = await device.gatt.connect();
+      const services = await server.getPrimaryServices();
+      let printCharacteristic;
+      
+      for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            printCharacteristic = char;
+            break;
+          }
+        }
+        if (printCharacteristic) break;
+      }
+
+      if (!printCharacteristic) throw new Error('No se encontró el servicio de impresión en este dispositivo.');
+
+      // Chunk size for BLE
+      const chunkSize = 100;
+      for (let i = 0; i < buffer.length; i += chunkSize) {
+        const chunk = buffer.slice(i, i + chunkSize);
+        if (printCharacteristic.properties.writeWithoutResponse) {
+          await printCharacteristic.writeValueWithoutResponse(chunk);
+        } else {
+          await printCharacteristic.writeValue(chunk);
+        }
+      }
+
+      device.gatt.disconnect();
+      alert('¡Impresión Bluetooth enviada!');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error Bluetooth.';
+      if (!msg.includes('cancelled')) setPrintError(msg);
+    } finally { setPrinting(false); }
+  };
+
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-sm rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
@@ -157,15 +241,35 @@ export default function Boleta({
         <div className="px-6 py-4 bg-gray-50 border-t border-gray-100 space-y-2">
           <button
             onClick={handlePrintBrowser}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
           >
             <Printer size={16} />
-            Imprimir (Navegador)
+            Imprimir (Navegador / RawBT)
           </button>
+          
+          <div className="flex gap-2">
+            <button
+              onClick={handlePrintWebBluetooth}
+              disabled={printing}
+              className="flex-1 flex items-center justify-center gap-2 bg-indigo-600 text-white px-3 py-2.5 rounded-xl hover:bg-indigo-700 transition-colors text-xs font-semibold disabled:opacity-50"
+            >
+              <Bluetooth size={14} />
+              Bluetooth Directo
+            </button>
+            <button
+              onClick={handlePrintSerial}
+              disabled={printing}
+              className="flex-1 flex items-center justify-center gap-2 bg-emerald-600 text-white px-3 py-2.5 rounded-xl hover:bg-emerald-700 transition-colors text-xs font-semibold disabled:opacity-50"
+            >
+              <Usb size={14} />
+              USB / COM (PC)
+            </button>
+          </div>
+
           <button
             onClick={handlePrintNetwork}
             disabled={printing}
-            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-gray-700 transition-colors text-sm font-semibold disabled:opacity-50"
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-xl hover:bg-gray-700 transition-colors text-sm font-semibold disabled:opacity-50"
           >
             <Printer size={16} />
             {printing ? 'Enviando...' : 'Enviar a Ticketera (Red)'}
