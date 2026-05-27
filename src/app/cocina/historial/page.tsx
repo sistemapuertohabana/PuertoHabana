@@ -143,7 +143,7 @@ export default function HistorialCocinaPage() {
                     <td className="px-5 py-4">
                       {c.items?.map((item, i) => (
                         <span key={i} className="block text-gray-700">
-                          <span className="font-semibold">{item.cantidad}×</span> {item.nombre}
+                          <span className="font-semibold">({item.cantidad})</span> {item.nombre}
                         </span>
                       ))}
                     </td>

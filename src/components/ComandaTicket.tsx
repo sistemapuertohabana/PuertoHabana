@@ -55,7 +55,7 @@ export default function ComandaTicket({
         <div style="margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 8px; font-size: 30px; font-weight: bold;">
             <span>${icono}</span>
-            <span>${item.cantidad}x</span>
+            <span>(${item.cantidad})</span>
             <span>${item.nombre}</span>
           </div>
           ${item.notas ? `<div style="padding-left: 36px; font-size: 15px; color: #666; margin-top: 2px;">📝 ${item.notas}</div>` : ''}
@@ -248,7 +248,7 @@ export default function ComandaTicket({
             {items.filter(item => item.categoria !== 'bebidas').map((item, idx) => (
               <div key={idx} className="mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-3xl">{item.cantidad}x</span>
+                  <span className="font-black text-3xl">({item.cantidad})</span>
                   <span className="text-2xl font-black">{item.nombre}</span>
                   {item.categoria === 'bebidas' && <span className="text-sm">🥤</span>}
                 </div>
