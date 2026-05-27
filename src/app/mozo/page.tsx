@@ -341,31 +341,47 @@ export default function MozoPage() {
     </div>
   );
 
-  const renderProductItem = (item: MenuItem, qty: number) => (
-    <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
-      <div className="min-w-0 flex-1">
-        <p className="text-sm text-gray-900 truncate">
-          {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia && <span className="mr-1">🎁</span>}
-          {item.name}
-        </p>
-        <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
-          {qty > 0 && cart.find(c => c.name === item.name)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(item.price).toFixed(2)}`}
-        </p>
+  const renderProductItem = (item: MenuItem, qty: number) => {
+    const cartItem = cart.find(c => c.name === item.name);
+    return (
+      <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+        <div className="min-w-0 flex-1">
+          <p className="text-sm text-gray-900 truncate">
+            {qty > 0 && cartItem?.esCortesia && <span className="mr-1">🎁</span>}
+            {item.name}
+          </p>
+          <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+            {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(item.price).toFixed(2)}`}
+          </p>
+        </div>
+        <div className="flex items-center gap-1.5 shrink-0 ml-2">
+          {qty > 0 && (
+            <button
+              onClick={() => { if (cartItem) toggleCortesia(cartItem.name); }}
+              className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                cartItem?.esCortesia
+                  ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                  : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+              }`}
+              title="Marcar como Cortesía"
+            >
+              🎁
+            </button>
+          )}
+          <RenderQtyControls
+            itemKey={item.name}
+            itemName={item.name}
+            itemPrice={item.price}
+            qty={qty}
+            category={item.category}
+            cart={cart}
+            updateCart={updateCart}
+            toggleCortesia={toggleCortesia}
+          />
+        </div>
       </div>
-      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-        <RenderQtyControls
-          itemKey={item.name}
-          itemName={item.name}
-          itemPrice={item.price}
-          qty={qty}
-          category={item.category}
-          cart={cart}
-          updateCart={updateCart}
-          toggleCortesia={toggleCortesia}
-        />
-      </div>
-    </div>
-  );
+    );
+  };
 
   const handleEnviar = async () => {
     if (!activeMesa || cart.length === 0) return;
