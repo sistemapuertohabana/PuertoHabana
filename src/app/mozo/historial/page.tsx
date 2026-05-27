@@ -361,7 +361,7 @@ export default function MozoHistorialPage() {
                   {(() => {
                     let clienteGuardado: any = null;
                     try { const raw = localStorage.getItem('ph_cliente_comanda_' + c.id); if (raw) clienteGuardado = JSON.parse(raw); } catch {}
-                    const enabled = c.estado === 'Entregado' && clienteGuardado?.nombre && clienteGuardado?.documento;
+                    const enabled = c.estado === 'Entregado';
                     return (
                       <button
                         onClick={() => {
@@ -372,8 +372,8 @@ export default function MozoHistorialPage() {
                             fecha: c.fecha,
                             hora: c.hora,
                             items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })),
-                            clienteNombre: clienteGuardado.nombre,
-                            clienteDocumento: clienteGuardado.documento,
+                            clienteNombre: clienteGuardado?.nombre || '',
+                            clienteDocumento: clienteGuardado?.documento || '',
                           });
                         }}
                         className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}

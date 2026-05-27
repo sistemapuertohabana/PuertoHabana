@@ -51,13 +51,13 @@ export default function ComandaTicket({
     items.forEach(item => {
       const icono = item.categoria === 'bebidas' ? '🥤' : '🍽️';
       itemsHtml += `
-        <div style="margin-bottom: 6px;">
-          <div style="display: flex; align-items: center; gap: 4px;">
+        <div style="margin-bottom: 10px;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: bold;">
             <span>${icono}</span>
-            <span style="font-weight: bold;">${item.cantidad}x</span>
+            <span>${item.cantidad}x</span>
             <span>${item.nombre}</span>
           </div>
-          ${item.notas ? `<div style="padding-left: 24px; font-size: 10px; color: #888;">* ${item.notas}</div>` : ''}
+          ${item.notas ? `<div style="padding-left: 36px; font-size: 15px; color: #666; margin-top: 2px;">📝 ${item.notas}</div>` : ''}
         </div>
       `;
     });
@@ -71,8 +71,8 @@ export default function ComandaTicket({
           <title>Comanda - ${mesa}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Courier New', monospace; font-size: 11px; width: 100%; max-width: 58mm; padding: 3mm; color: #000; margin: 0 auto; }
-            .line { border-top: 1px dashed #000; margin: 6px 0; }
+            body { font-family: 'Courier New', monospace; font-size: 14px; width: 100%; max-width: 58mm; padding: 3mm; color: #000; margin: 0 auto; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
             .text-center { text-align: center; }
             .font-bold { font-weight: bold; }
             @media print { 
@@ -82,16 +82,16 @@ export default function ComandaTicket({
           </style>
         </head>
         <body>
-          <div class="text-center font-bold" style="font-size: 18px; margin-bottom: 2px;">🍳 COMANDA</div>
-          <div class="text-center" style="font-size: 10px; margin-bottom: 6px;">${negocioNombre}</div>
+          <div class="text-center font-bold" style="font-size: 22px; margin-bottom: 4px;">🍳 COMANDA</div>
+          <div class="text-center" style="font-size: 12px; margin-bottom: 6px;">${negocioNombre}</div>
           <div class="line"></div>
-          <div style="font-size: 13px;"><span class="font-bold">Mesa:</span> ${mesa}</div>
-          <div><span class="font-bold">Mozo:</span> ${mozoNombre}</div>
-          <div><span class="font-bold">Hora:</span> ${formatFecha(fecha)} ${hora}</div>
+          <div style="font-size: 16px;"><span class="font-bold">Mesa:</span> ${mesa}</div>
+          <div style="font-size: 13px;"><span class="font-bold">Mozo:</span> ${mozoNombre}</div>
+          <div style="font-size: 13px;"><span class="font-bold">Hora:</span> ${formatFecha(fecha)} ${hora}</div>
           <div class="line"></div>
           ${itemsHtml}
           <div class="line"></div>
-          <div class="text-center" style="margin-top: 6px; font-size: 9px; color: #666;">¡Buen provecho!</div>
+          <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">¡Buen provecho!</div>
           <script>
             setTimeout(() => { window.print(); }, 500);
           </script>
@@ -226,8 +226,8 @@ export default function ComandaTicket({
       <div className="bg-white w-full max-w-xs rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
         <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
           <div>
-            <h2 className="text-base font-semibold text-gray-900">🍳 Comanda</h2>
-            <p className="text-[10px] text-gray-500 mt-0.5">{mesa} · {totalItems} productos</p>
+            <h2 className="text-lg font-bold text-gray-900">🍳 Comanda</h2>
+            <p className="text-xs text-gray-500 mt-0.5">{mesa} · {totalItems} productos</p>
           </div>
           <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
             <X size={16} className="text-gray-400" />
@@ -235,28 +235,28 @@ export default function ComandaTicket({
         </div>
 
         <div className="px-5 py-3 max-h-[55vh] overflow-y-auto">
-          <div ref={boletaRef} className="font-mono text-[13px] text-black leading-relaxed">
-            <div className="text-center font-bold text-lg mb-1">🍳 COMANDA</div>
+          <div ref={boletaRef} className="font-mono text-[14px] text-black leading-relaxed">
+            <div className="text-center font-bold text-xl mb-1">🍳 COMANDA</div>
             <div className="text-center text-xs text-gray-500 mb-2">{negocioNombre}</div>
-            <div className="border-t border-dashed border-gray-400 my-1.5" />
-            <div className="text-sm"><span className="font-bold">Mesa:</span> {mesa}</div>
+            <div className="border-t border-dashed border-gray-400 my-2" />
+            <div className="text-base"><span className="font-bold">Mesa:</span> {mesa}</div>
             <div className="text-xs"><span className="font-bold">Mozo:</span> {mozoNombre}</div>
             <div className="text-xs"><span className="font-bold">Hora:</span> {formatFecha(fecha)} {hora}</div>
-            <div className="border-t border-dashed border-gray-400 my-1.5" />
+            <div className="border-t border-dashed border-gray-400 my-2" />
             {items.map((item, idx) => (
-              <div key={idx} className="mb-1.5">
-                <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-sm">{item.cantidad}x</span>
-                  <span className="text-sm">{item.nombre}</span>
-                  {item.categoria === 'bebidas' && <span className="text-[10px]">🥤</span>}
+              <div key={idx} className="mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="font-black text-2xl">{item.cantidad}x</span>
+                  <span className="text-xl font-bold">{item.nombre}</span>
+                  {item.categoria === 'bebidas' && <span className="text-sm">🥤</span>}
                 </div>
                 {item.notas && (
-                  <div className="pl-5 text-[11px] text-gray-500 italic">* {item.notas}</div>
+                  <div className="pl-9 text-sm text-gray-500 italic">* {item.notas}</div>
                 )}
               </div>
             ))}
-            <div className="border-t border-dashed border-gray-400 my-1.5" />
-            <div className="text-center text-[11px] text-gray-400 mt-1">¡Buen provecho!</div>
+            <div className="border-t border-dashed border-gray-400 my-2" />
+            <div className="text-center text-xs text-gray-400 mt-1">¡Buen provecho!</div>
           </div>
         </div>
 
