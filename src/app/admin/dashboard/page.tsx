@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Boleta from '@/components/Boleta';
+import CobrarBoleta from '@/components/CobrarBoleta';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 
@@ -134,6 +134,7 @@ export default function DashboardPage() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [selectedWaiterId, setSelectedWaiterId] = useState<string>('');
   const [selectedMesaBoleta, setSelectedMesaBoleta] = useState<{ mesa: string; mozoNombre: string; items: Pedido[]; hora: string } | null>(null);
+  const [mozoHistoryModal, setMozoHistoryModal] = useState<{ id: string; nombre: string } | null>(null);
   
   // Date Simulation
   const [simulatedDate, setSimulatedDate] = useState('2026-05-19');
@@ -1345,18 +1346,25 @@ export default function DashboardPage() {
                 </div>
                 
                 {/* Footer: Total */}
-                {mozo.pedidosByMesa.length > 0 && (
-                  <div className={`mt-4 pt-3 border-t flex justify-between items-center ${
-                    'border-gray-100'
-                  }`}>
-                    <div>
-                      <span className="text-xs text-gray-500">Total Acumulado:</span>
-                      <span className="font-bold text-sm text-gray-900 ml-2">
-                        S/ {mozo.total.toFixed(2)}
-                      </span>
-                    </div>
+                <div className={`mt-4 pt-3 border-t flex flex-col gap-3 ${
+                  'border-gray-100'
+                }`}>
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs text-gray-500">Total Acumulado (Activos):</span>
+                    <span className="font-bold text-sm text-gray-900 ml-2">
+                      S/ {mozo.total.toFixed(2)}
+                    </span>
                   </div>
-                )}
+                  {mozo.mozoId !== 'unassigned' && (
+                    <button
+                      onClick={() => setMozoHistoryModal({ id: mozo.mozoId, nombre: mozo.mozoNombre })}
+                      className="w-full py-2 bg-gray-50 hover:bg-gray-100 text-gray-700 text-xs font-semibold rounded-lg border border-gray-200 transition-colors flex justify-center items-center gap-1.5"
+                    >
+                      <ClipboardList size={14} />
+                      Ver Historial y SUNAT
+                    </button>
+                  )}
+                </div>
               </div>
             ))}
           </div>
@@ -2315,6 +2323,90 @@ export default function DashboardPage() {
                   Cancelar
                 </button>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Mozo History & SUNAT */}
+      {mozoHistoryModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-2xl bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Historial: {mozoHistoryModal.nombre}</h2>
+                <p className="text-xs text-gray-500 mt-0.5">Comandas del día {formatDate(simulatedDate)}</p>
+              </div>
+              <button onClick={() => setMozoHistoryModal(null)} className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1 space-y-4">
+              {(() => {
+                const mozoOrders = pedidos.filter(p => p.mozoId === mozoHistoryModal.id && p.fecha === simulatedDate);
+                if (mozoOrders.length === 0) return <p className="text-center text-gray-400 py-8 text-sm">No hay comandas registradas hoy.</p>;
+
+                // Group by comandaId
+                const comandasMap = new Map<string, Pedido[]>();
+                mozoOrders.forEach(p => {
+                  const key = p.comandaId ? String(p.comandaId) : `${p.mesa}-${p.hora}`;
+                  if (!comandasMap.has(key)) comandasMap.set(key, []);
+                  comandasMap.get(key)!.push(p);
+                });
+
+                return Array.from(comandasMap.entries()).map(([key, items]) => {
+                  const mesa = items[0].mesa;
+                  const hora = items[0].hora;
+                  const estado = items[0].estado;
+                  const comandaId = items[0].comandaId;
+                  const cTotal = items.reduce((sum, i) => sum + (Number(i.precio) * i.cantidad), 0);
+
+                  return (
+                    <div key={key} className="border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                      <div className="bg-gray-50 px-4 py-3 border-b border-gray-200 flex justify-between items-center">
+                        <div>
+                          <span className="font-bold text-gray-900 text-sm">{mesa}</span>
+                          <span className="text-xs text-gray-500 ml-2">🕒 {hora}</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className={`text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider ${
+                            estado === 'Entregado' ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {estado}
+                          </span>
+                          <span className="font-bold text-green-600 text-sm">S/ {cTotal.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div className="p-4 bg-white">
+                        <ul className="space-y-1 mb-4">
+                          {items.map((i, idx) => (
+                            <li key={idx} className="flex justify-between text-xs text-gray-700 border-b border-gray-50 pb-1 last:border-0">
+                              <span>{i.cantidad}x {i.item}</span>
+                              <span className="font-medium">S/ {(Number(i.precio) * i.cantidad).toFixed(2)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                        {/* Reusing CobrarBoleta to provide SUNAT / WhatsApp features to Admin */}
+                        <div className="pt-3 border-t border-gray-100">
+                          <CobrarBoleta
+                            mesaLabel={mesa}
+                            mozoNombre={mozoHistoryModal.nombre}
+                            fecha={simulatedDate}
+                            hora={hora}
+                            comandaId={comandaId ? Number(comandaId) : undefined}
+                            pedidos={items.map(i => ({
+                              item: i.item,
+                              cantidad: i.cantidad,
+                              precio: Number(i.precio),
+                              notas: i.notas
+                            }))}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  );
+                });
+              })()}
             </div>
           </div>
         </div>
