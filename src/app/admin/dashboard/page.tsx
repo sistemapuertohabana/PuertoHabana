@@ -137,6 +137,11 @@ export default function DashboardPage() {
   const [selectedWaiterId, setSelectedWaiterId] = useState<string>('');
   const [selectedMesaBoleta, setSelectedMesaBoleta] = useState<{ mesa: string; mozoNombre: string; items: Pedido[]; hora: string } | null>(null);
   const [mozoHistoryModal, setMozoHistoryModal] = useState<{ id: string; nombre: string } | null>(null);
+  const [showClienteSearchForMesa, setShowClienteSearchForMesa] = useState<{ mesa: string; mozoNombre: string; items: Pedido[]; hora: string } | null>(null);
+  const [clienteInfoForMesa, setClienteInfoForMesa] = useState<{ nombre: string; documento?: string } | null>(null);
+  const [clienteSearchQuery, setClienteSearchQuery] = useState('');
+  const [clientesSearchResults, setClientesSearchResults] = useState<{ id: number; nombre: string; dni?: string; ruc?: string }[]>([]);
+  const [loadingClientes, setLoadingClientes] = useState(false);
   
   // Date Simulation
   const [simulatedDate, setSimulatedDate] = useState('2026-05-19');
@@ -349,6 +354,24 @@ export default function DashboardPage() {
     const interval = setInterval(updateTime, 1000);
     return () => clearInterval(interval);
   }, [mounted]);
+
+  // ── Búsqueda debounced de clientes ──
+  useEffect(() => {
+    if (!showClienteSearchForMesa) return;
+    const debounce = setTimeout(async () => {
+      if (clienteSearchQuery.length < 2) {
+        setClientesSearchResults([]);
+        setLoadingClientes(false);
+        return;
+      }
+      setLoadingClientes(true);
+      try {
+        const res = await fetch(`/api/clientes?search=${encodeURIComponent(clienteSearchQuery)}&limit=10`);
+        if (res.ok) setClientesSearchResults(await res.json());
+      } catch {} finally { setLoadingClientes(false); }
+    }, 300);
+    return () => clearTimeout(debounce);
+  }, [clienteSearchQuery, showClienteSearchForMesa]);
 
   if (!mounted) {
     return (
@@ -1325,12 +1348,17 @@ export default function DashboardPage() {
                           {/* Mesa Action */}
                           <div className="mt-2 pt-2 border-t border-gray-200 flex justify-end">
                             <button
-                              onClick={() => setSelectedMesaBoleta({
-                                mesa: mesaGroup.mesa,
-                                mozoNombre: mozo.mozoNombre,
-                                items: mesaGroup.pedidos,
-                                hora: mesaGroup.pedidos[0]?.hora || '',
-                              })}
+                              onClick={() => {
+                                setShowClienteSearchForMesa({
+                                  mesa: mesaGroup.mesa,
+                                  mozoNombre: mozo.mozoNombre,
+                                  items: mesaGroup.pedidos,
+                                  hora: mesaGroup.pedidos[0]?.hora || '',
+                                });
+                                setClienteInfoForMesa(null);
+                                setClienteSearchQuery('');
+                                setClientesSearchResults([]);
+                              }}
                               className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors text-xs font-semibold"
                             >
                               <Printer size={12} />
@@ -2182,6 +2210,118 @@ export default function DashboardPage() {
         </div>
       )}
 
+      {/* Modal: Búsqueda de Cliente antes de imprimir Boleta */}
+      {showClienteSearchForMesa && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-md rounded-2xl shadow-xl overflow-hidden border bg-white border-gray-200 text-gray-800">
+            <div className="p-6 border-b border-gray-150 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight">Seleccionar Cliente</h2>
+                <p className="text-xs text-gray-500 mt-1">Busca el cliente para {showClienteSearchForMesa.mesa}</p>
+              </div>
+              <button
+                onClick={() => setShowClienteSearchForMesa(null)}
+                className="text-xs p-1 rounded-md hover:bg-gray-100"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="relative">
+                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Buscar por nombre, DNI o RUC..."
+                  value={clienteSearchQuery}
+                  onChange={(e) => setClienteSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-4 py-2.5 text-sm border rounded-lg focus:outline-none focus:ring-1 focus:ring-black bg-white border-gray-200 text-gray-800 focus:border-black"
+                  autoFocus
+                />
+              </div>
+
+              {/* Resultados */}
+              <div className="max-h-60 overflow-y-auto space-y-2">
+                {loadingClientes && (
+                  <div className="text-center py-4">
+                    <div className="inline-block w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
+                    <p className="text-xs text-gray-400 mt-2">Buscando...</p>
+                  </div>
+                )}
+                {!loadingClientes && clientesSearchResults.length > 0 && (
+                  <>
+                    <button
+                      onClick={() => {
+                        setClienteInfoForMesa({ nombre: "", documento: "" });
+                        setSelectedMesaBoleta(showClienteSearchForMesa);
+                        setShowClienteSearchForMesa(null);
+                      }}
+                      className="w-full text-left p-3 rounded-lg border border-dashed border-gray-300 hover:border-blue-400 hover:bg-blue-50 transition-colors text-sm text-gray-500 flex items-center gap-2"
+                    >
+                      <span className="font-medium">Sin cliente (Consumo directo)</span>
+                    </button>
+                    <div className="border-t border-gray-100 pt-2">
+                      <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider mb-2 px-1">Clientes encontrados</p>
+                    </div>
+                    {clientesSearchResults.map((cli) => (
+                      <button
+                        key={cli.id}
+                        onClick={() => {
+                          setClienteInfoForMesa({ 
+                            nombre: cli.nombre, 
+                            documento: cli.ruc || cli.dni 
+                          });
+                          setSelectedMesaBoleta(showClienteSearchForMesa);
+                          setShowClienteSearchForMesa(null);
+                        }}
+                        className="w-full text-left p-3 rounded-lg border border-gray-200 hover:border-blue-400 hover:bg-blue-50 transition-colors"
+                      >
+                        <p className="font-medium text-sm text-gray-900">{cli.nombre}</p>
+                        <p className="text-xs text-gray-500 mt-0.5">
+                          {cli.ruc ? "RUC: " + cli.ruc : cli.dni ? "DNI: " + cli.dni : "Sin documento"}
+                        </p>
+                      </button>
+                    ))}
+                  </>
+                )}
+                {!loadingClientes && clienteSearchQuery.length >= 2 && clientesSearchResults.length === 0 && (
+                  <div className="text-center py-8">
+                    <p className="text-sm text-gray-400">No se encontraron clientes</p>
+                    <p className="text-xs text-gray-400 mt-1">Puedes continuar sin seleccionar cliente</p>
+                    <button
+                      onClick={() => {
+                        setClienteInfoForMesa({ nombre: "", documento: "" });
+                        setSelectedMesaBoleta(showClienteSearchForMesa);
+                        setShowClienteSearchForMesa(null);
+                      }}
+                      className="mt-3 px-4 py-2 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      Continuar sin cliente
+                    </button>
+                  </div>
+                )}
+                {clienteSearchQuery.length < 2 && (
+                  <div className="text-center py-8">
+                    <Search size={28} className="mx-auto text-gray-300 mb-2" />
+                    <p className="text-sm text-gray-400">Escribe al menos 2 caracteres</p>
+                    <p className="text-xs text-gray-400 mt-1">También puedes continuar sin seleccionar cliente</p>
+                    <button
+                      onClick={() => {
+                        setClienteInfoForMesa({ nombre: "", documento: "" });
+                        setSelectedMesaBoleta(showClienteSearchForMesa);
+                        setShowClienteSearchForMesa(null);
+                      }}
+                      className="mt-3 px-4 py-2 text-xs font-semibold text-blue-600 border border-blue-200 rounded-lg hover:bg-blue-50 transition-colors"
+                    >
+                      Continuar sin cliente
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Boleta de consumo por Mesa */}
       {selectedMesaBoleta && (
         <Boleta
@@ -2195,7 +2335,12 @@ export default function DashboardPage() {
             precio: p.precio,
             notas: p.notas,
           }))}
-          onClose={() => setSelectedMesaBoleta(null)}
+          clienteNombre={clienteInfoForMesa?.nombre || undefined}
+          clienteDocumento={clienteInfoForMesa?.documento || undefined}
+          onClose={() => {
+            setSelectedMesaBoleta(null);
+            setClienteInfoForMesa(null);
+          }}
         />
       )}
 
