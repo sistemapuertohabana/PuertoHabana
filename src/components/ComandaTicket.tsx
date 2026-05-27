@@ -235,28 +235,28 @@ export default function ComandaTicket({
         </div>
 
         <div className="px-5 py-3 max-h-[55vh] overflow-y-auto">
-          <div ref={boletaRef} className="font-mono text-[11px] text-black leading-relaxed">
-            <div className="text-center font-bold text-base mb-1">🍳 COMANDA</div>
-            <div className="text-center text-[10px] text-gray-500 mb-2">{negocioNombre}</div>
+          <div ref={boletaRef} className="font-mono text-[13px] text-black leading-relaxed">
+            <div className="text-center font-bold text-lg mb-1">🍳 COMANDA</div>
+            <div className="text-center text-xs text-gray-500 mb-2">{negocioNombre}</div>
             <div className="border-t border-dashed border-gray-400 my-1.5" />
-            <div className="text-xs"><span className="font-bold">Mesa:</span> {mesa}</div>
-            <div className="text-[10px]"><span className="font-bold">Mozo:</span> {mozoNombre}</div>
-            <div className="text-[10px]"><span className="font-bold">Hora:</span> {formatFecha(fecha)} {hora}</div>
+            <div className="text-sm"><span className="font-bold">Mesa:</span> {mesa}</div>
+            <div className="text-xs"><span className="font-bold">Mozo:</span> {mozoNombre}</div>
+            <div className="text-xs"><span className="font-bold">Hora:</span> {formatFecha(fecha)} {hora}</div>
             <div className="border-t border-dashed border-gray-400 my-1.5" />
             {items.map((item, idx) => (
               <div key={idx} className="mb-1.5">
                 <div className="flex items-center gap-1.5">
-                  <span className="font-bold text-xs">{item.cantidad}x</span>
-                  <span className="text-xs">{item.nombre}</span>
+                  <span className="font-bold text-sm">{item.cantidad}x</span>
+                  <span className="text-sm">{item.nombre}</span>
                   {item.categoria === 'bebidas' && <span className="text-[10px]">🥤</span>}
                 </div>
                 {item.notas && (
-                  <div className="pl-5 text-[9px] text-gray-500 italic">* {item.notas}</div>
+                  <div className="pl-5 text-[11px] text-gray-500 italic">* {item.notas}</div>
                 )}
               </div>
             ))}
             <div className="border-t border-dashed border-gray-400 my-1.5" />
-            <div className="text-center text-[9px] text-gray-400 mt-1">¡Buen provecho!</div>
+            <div className="text-center text-[11px] text-gray-400 mt-1">¡Buen provecho!</div>
           </div>
         </div>
 

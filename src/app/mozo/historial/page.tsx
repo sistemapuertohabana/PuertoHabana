@@ -213,6 +213,16 @@ export default function MozoHistorialPage() {
   }, [loadComandas, showAllMozos]);
 
   const confirmarCobro = async (id: number, metodo: string) => {
+    // Save client info before closing modal
+    if (clienteHist?.nombre && (clienteHist?.dni || clienteHist?.ruc)) {
+      try {
+        localStorage.setItem(`ph_cliente_comanda_${id}`, JSON.stringify({
+          nombre: clienteHist.nombre,
+          documento: (clienteHist.ruc || clienteHist.dni || '').trim(),
+        }));
+      } catch {}
+    }
+
     // Cierra el modal de inmediato (optimistic UI)
     setPagoModalData(null);
     setPagoInputs({ yape: '', efectivo: '' });
@@ -338,41 +348,56 @@ export default function MozoHistorialPage() {
                   )}
                 </div>
                 
-                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setComandaTicketData({
                     mesa: c.mesa,
                     mozoNombre: c.mozo_nombre || 'Mozo',
                     fecha: c.fecha,
                     hora: c.hora,
                     items: (c.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: undefined, categoria: i.categoria }))
-                  })} className="flex-shrink-0 bg-orange-50 text-orange-700 px-3 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 hover:bg-orange-100 transition-colors text-xs border border-orange-100">
+                  })} className="flex-shrink-0 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px]">
                     🍳 Comanda
                   </button>
-                  <button onClick={() => setBoletaData({
-                    mesa: c.mesa,
-                    mozoNombre: c.mozo_nombre || 'Mozo',
-                    fecha: c.fecha,
-                    hora: c.hora,
-                    items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio }))
-                  })} className="flex-1 bg-blue-600 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-blue-700 transition-colors text-sm shadow-sm">
-                    🧾 Boleta
-                  </button>
+                  {(() => {
+                    let clienteGuardado: any = null;
+                    try { const raw = localStorage.getItem('ph_cliente_comanda_' + c.id); if (raw) clienteGuardado = JSON.parse(raw); } catch {}
+                    const enabled = c.estado === 'Entregado' && clienteGuardado?.nombre && clienteGuardado?.documento;
+                    return (
+                      <button
+                        onClick={() => {
+                          if (!enabled) return;
+                          setBoletaData({
+                            mesa: c.mesa,
+                            mozoNombre: c.mozo_nombre || 'Mozo',
+                            fecha: c.fecha,
+                            hora: c.hora,
+                            items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+                            clienteNombre: clienteGuardado.nombre,
+                            clienteDocumento: clienteGuardado.documento,
+                          });
+                        }}
+                        className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}
+                      >
+                        🧾 Boleta
+                      </button>
+                    );
+                  })()}
                   {c.estado === 'Entregado' && tapers.length > 0 && (
                     <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
-                      className="flex-shrink-0 bg-emerald-100 text-emerald-700 px-3 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-200 transition-colors text-xs">
-                      <Package size={14} /> + Tapers
+                      className="flex-shrink-0 bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-emerald-200 transition-colors text-[11px]">
+                      <Package size={12} /> Tapers
                     </button>
                   )}
                   {c.estado === 'Listo' && Number(c.total) > 0 && (
                     <button onClick={() => handlePagoModalOpen(c)}
-                      className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
-                      <CheckCircle2 size={16} /> Cobrar
+                      className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px]">
+                      <CheckCircle2 size={12} /> Cobrar
                     </button>
                   )}
                   {c.estado === 'Listo' && Number(c.total) === 0 && (
                     <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
-                      className="flex-1 bg-amber-500 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors text-sm shadow-sm">
-                      🎁 Entregar (Cortesía)
+                      className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px]">
+                      🎁 Cortesía
                     </button>
                   )}
                 </div>
