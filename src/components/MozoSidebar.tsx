@@ -43,9 +43,9 @@ function navbarItem(s: NavbarStyle, active: boolean) {
 }
 
 function navbarIconSize(s: NavbarStyle) {
-  if (s === 'grande')   return 28;
-  if (s === 'centrado') return 26;
-  return 24;
+  if (s === 'grande')   return 22;
+  if (s === 'centrado') return 20;
+  return 18;
 }
 
 /* ─── sidebar design helpers ─────────────────────────────────────────────── */
@@ -72,7 +72,6 @@ export default function MozoSidebar() {
   const design     = useLocalStorageValue('sidebarDesign_mozo', 'normal') as SidebarDesign;
   const navbar     = useLocalStorageValue('navbarStyle_mozo', 'original') as NavbarStyle;
 
-  const layout    = navbar === 'centrado' ? 'justify-center gap-6' : (navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'justify-between px-2' : 'justify-around';
   const showLabel = navbar !== 'original' && navbar !== 'flotante' && navbar !== 'flotante_blue_new';
 
   return (
@@ -99,14 +98,14 @@ export default function MozoSidebar() {
 
       {/* MOBILE BOTTOM NAV */}
       <nav className={`lg:hidden fixed bottom-0 inset-x-0 z-50 ${navbarBg(navbar)}`}>
-        <div className={`flex ${layout} items-center py-2 px-1`}>
+        <div className="flex items-stretch">
           {menuItems.map(({ href, icon: Icon, label }) => {
             const active = pathname === href;
             return (
               <Link key={href} href={href}
-                className={`flex flex-col items-center justify-center gap-1 px-2 py-1.5 transition-all min-w-[52px] ${(navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'rounded-full w-14 h-14' : 'rounded-xl'} ${navbarItem(navbar, active)}`}>
+                className={`flex-1 flex flex-col items-center justify-center gap-0.5 py-2 transition-all ${(navbar === 'flotante' || navbar === 'flotante_blue_new') ? 'rounded-full w-12 h-12 mx-0.5 my-1' : 'rounded-lg'} ${navbarItem(navbar, active)}`}>
                 <Icon size={navbarIconSize(navbar)} strokeWidth={active ? 2.5 : 1.8} />
-                {showLabel && <span className={`text-[10px] leading-none ${active ? 'font-semibold' : 'font-normal'}`}>{label}</span>}
+                {showLabel && <span className={`text-[9px] leading-tight ${active ? 'font-semibold' : 'font-normal'}`}>{label}</span>}
               </Link>
             );
           })}
