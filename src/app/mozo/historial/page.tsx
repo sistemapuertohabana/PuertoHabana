@@ -363,10 +363,16 @@ export default function MozoHistorialPage() {
                       <Package size={14} /> + Tapers
                     </button>
                   )}
-                  {c.estado === 'Listo' && (
+                  {c.estado === 'Listo' && Number(c.total) > 0 && (
                     <button onClick={() => handlePagoModalOpen(c)}
                       className="flex-1 bg-gray-900 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-black transition-colors text-sm">
                       <CheckCircle2 size={16} /> Cobrar
+                    </button>
+                  )}
+                  {c.estado === 'Listo' && Number(c.total) === 0 && (
+                    <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
+                      className="flex-1 bg-amber-500 text-white px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-amber-600 transition-colors text-sm shadow-sm">
+                      🎁 Entregar (Cortesía)
                     </button>
                   )}
                 </div>
