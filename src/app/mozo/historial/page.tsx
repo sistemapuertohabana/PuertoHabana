@@ -536,6 +536,7 @@ export default function MozoHistorialPage() {
                             </button>
                             <button
                               onClick={() => {
+                                setPagoModalData(null);
                                 setBoletaData({
                                   mesa: c.mesa,
                                   mozoNombre: c.mozo_nombre || 'Mozo',
