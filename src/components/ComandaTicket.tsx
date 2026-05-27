@@ -50,11 +50,9 @@ export default function ComandaTicket({
     const foodItems = items.filter(item => item.categoria !== 'bebidas');
     let itemsHtml = '';
     foodItems.forEach(item => {
-      const icono = item.categoria === 'bebidas' ? '🥤' : '🍽️';
       itemsHtml += `
         <div style="margin-bottom: 10px;">
           <div style="display: flex; align-items: center; gap: 8px; font-size: 30px; font-weight: bold;">
-            <span>${icono}</span>
             <span>(${item.cantidad})</span>
             <span>${item.nombre}</span>
           </div>

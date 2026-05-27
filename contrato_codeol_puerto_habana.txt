@@ -1,49 +1,224 @@
 CONTRATO DE DESARROLLO DE SOFTWARE Y PRESTACIÓN DE SERVICIOS
 
+―o―
+
 Conste por el presente documento, el Contrato de Desarrollo de Software que celebran, de una parte:
 
-1. LA AGENCIA: CODEOL SOFTWARE PERU, en adelante "El Desarrollador".
-2. EL CLIENTE: MARCO ANTONIO PONCE BERNEDO, en adelante "El Cliente".
+1. **LA AGENCIA**: CODEOL SOFTWARE PERU, en adelante "El Desarrollador".
+2. **EL CLIENTE**: MARCO ANTONIO PONCE BERNEDO, en adelante "El Cliente".
 
-Ambas partes acuerdan sujetarse a las siguientes cláusulas y especificaciones respecto al proyecto denominado "Sistema Puerto Habana":
+Ambas partes acuerdan sujetarse a las siguientes cláusulas y especificaciones respecto al proyecto denominado **"Sistema Puerto Habana"** (en adelante, "el Sistema").
 
-PRIMERA: OBJETO DEL CONTRATO
-El Desarrollador se compromete a diseñar, desarrollar y entregar a El Cliente el software denominado "Sistema Puerto Habana", un sistema de gestión integral.
+---
 
-SEGUNDA: ESPECIFICACIONES DEL PROYECTO
-El sistema "Sistema Puerto Habana" incluye los módulos y características acordados previamente entre ambas partes (paneles de administración, mozo, cocina, etc.), garantizando su correcto funcionamiento y despliegue.
+### CLÁUSULA PRIMERA: OBJETO DEL CONTRATO
 
-TERCERA: PRECIO Y FORMA DE PAGO
-El costo total por el desarrollo y entrega del "Sistema Puerto Habana" es de S/ 1,500.00 (Mil Quinientos Soles).
-La naturaleza de este pago es de COMPRA ÚNICA (un solo pago por el sistema completo). No existirán cobros por mensualidades, licencias periódicas ni costos ocultos posteriores al pago total.
+El Desarrollador se compromete a diseñar, desarrollar, implementar y poner en marcha el Sistema denominado **"Sistema Puerto Habana"**, un sistema de gestión integral para restaurante/cevichería, entregándolo completamente funcional y operativo para su uso diario en el establecimiento de El Cliente.
 
-La forma de pago se realizará en dos (2) partes de la siguiente manera:
-- Primer pago: 50% al inicio del proyecto (S/ 750.00).
-- Segundo pago: 50% a la entrega y puesta en marcha del sistema (S/ 750.00).
-*El pago se realiza de forma directa según los medios proporcionados por El Desarrollador.
+---
 
-CUARTA: SOPORTE TÉCNICO Y GARANTÍA (GRATUITO)
-1. El Desarrollador (Codeol Software Peru) se compromete a brindar SOPORTE TÉCNICO GRATUITO sobre el sistema entregado.
-2. En caso de que el sistema sufra alguna caída, fallo técnico o interrupción del servicio (que dependa de la programación o estructura del sistema), El Desarrollador está OBLIGADO a acudir y solucionar el problema a la brevedad posible.
-3. Se garantiza la seguridad de dar soporte constante y brindar un buen servicio post-venta para el correcto funcionamiento ininterrumpido del sistema.
+### CLÁUSULA SEGUNDA: ALCANCE DEL SISTEMA (SISTEMA INTEGRAL)
 
-QUINTA: PROPIEDAD DEL SOFTWARE
-Una vez cancelado el 100% del pago estipulado en la cláusula Tercera, el sistema y su uso quedan a completa disposición de El Cliente como compra única. 
+El Sistema comprende los siguientes módulos y funcionalidades, todos interconectados y operativos:
 
-SEXTA: CONFIDENCIALIDAD Y SEGURIDAD
-El Desarrollador se compromete a mantener en estricta confidencialidad toda la información, base de datos y datos de clientes que se manejen dentro del Sistema Puerto Habana.
+| Módulo | Descripción |
+|--------|-------------|
+| **Portal Administrador** (`/admin/*`) | Dashboard con ventas del día, histórico por fechas, márgenes por producto, control de inventario, gastos, personal, clientes, promociones, tareas, reportes SUNAT, gestión de mozos, cocina y lavaplatos. |
+| **Portal Mozo** (`/mozo/*`) | Toma de pedidos por mesa, envío a cocina, cobro con división de cuenta, soporte Yape/Efectivo/Transferencia, impresión de boleta térmica, historial de comandas cobradas, inventario de bebidas, perfil y configuración. |
+| **Portal Cocina** (`/cocina/*`) | Visualización en tiempo real de comandas entrantes, cambio de estados (Pendiente → Preparando → Listo), notificaciones push al mozo cuando la orden está lista, historial de entregas del día. |
+| **Portal Lavaplatos** (`/lavaplato/*`) | Visualización de mesas que requieren servicio, confirmación de limpieza, control de cronograma. |
+| **Portal Desarrollador** (`/desarrollador/*`) | Herramientas de administración técnica: reset de ventas, reset de personal, creación de admin, gestión de admins. |
+| **Impresión Ticketera** | Impresión directa a ticketera térmica por: red (TCP/IP), Bluetooth y USB/Serial. Generación de ticket ESC/POS y comanda para cocina. |
+| **Notificaciones Push** | Alertas en tiempo real a cocina y mozos mediante Service Worker + Supabase Realtime. |
+| **SUNAT** | Envío de boletas electrónicas a SUNAT, consulta de RUC/DNI (RENIEC), reportes de ventas electrónicas. |
+| **WhatsApp** | Envío de resúmenes de pedidos y boletas por WhatsApp. |
+| **Autenticación y Roles** | Sistema de login por rol (admin, mozo, cocina, lavaplato), control de sesión con timeout automático, registro de asistencia con validación de turnos y días laborales. |
+| **Base de Datos** | PostgreSQL en Supabase con Realtime habilitado (usuarios, mesas, comandas, items, inventario, reservas, notificaciones, gastos, personal, asistencias). |
+| **Despliegue** | Hosting en Vercel, dominio propio, SSL, PWA (Progressive Web App) para instalación en dispositivos móviles. |
 
-SÉPTIMA: ACEPTACIÓN
-Ambas partes declaran su conformidad con las cláusulas establecidas en el presente contrato, comprometiéndose a su fiel cumplimiento.
+El Sistema será entregado **completamente funcional**, instalado en su entorno de producción, con la base de datos configurada y accesible desde cualquier dispositivo con conexión a internet mediante los accesos proporcionados.
 
-Fecha de emisión: 25 de mayo de 2026
+---
 
+### CLÁUSULA TERCERA: PRECIO Y FORMA DE PAGO
 
-___________________________________
-CODEOL SOFTWARE PERU
-El Desarrollador
+**3.1. Precio Total**
 
+El costo total por el desarrollo, implementación y puesta en marcha del Sistema es de **S/ 1,500.00 (Mil Quinientos Soles)**.
 
-___________________________________
-MARCO ANTONIO PONCE BERNEDO
-El Cliente
+La naturaleza de este pago es de **COMPRA ÚNICA** (un solo pago por el sistema completo). No existirán cobros por mensualidades, licencias periódicas, hosting (salvo el costo del plan Vercel/Hosting que El Cliente asume directamente), ni costos ocultos posteriores al pago total.
+
+**3.2. Estructura de Pagos**
+
+El pago se realizará en dos (2) armadas, de la siguiente manera:
+
+| Armada | Monto | Condición |
+|--------|-------|-----------|
+| **Primer pago** | **S/ 750.00** | Contra entrega del Sistema completo y funcional, verificado por El Cliente, y puesto en marcha en su entorno de producción. |
+| **Segundo pago** | **S/ 750.00** | A los 30 (treinta) días calendario posteriores a la entrega y puesta en marcha del Sistema, siempre que el mismo haya funcionado sin interrupciones atribuibles a errores de desarrollo. |
+
+**3.3. Plazo de Pago**
+
+- El primer pago se realizará dentro de los 3 (tres) días hábiles posteriores a la verificación de entrega conforme.
+- El segundo pago se realizará dentro de los 3 (tres) días hábiles posteriores al cumplimiento del plazo de 30 días.
+
+**3.4. Medio de Pago**
+
+El pago se realiza de forma directa según los medios proporcionados por El Desarrollador (transferencia bancaria, Yape, depósito en cuenta, efectivo).
+
+---
+
+### CLÁUSULA CUARTA: ENTREGA, PUESTA EN MARCHA Y VERIFICACIÓN
+
+**4.1.** El Desarrollador entregará el Sistema completamente funcional, incluyendo:
+- Código fuente desplegado en el entorno de producción (Vercel).
+- Base de datos configurada y operativa en Supabase.
+- Accesos (URL, credenciales de administrador) para que El Cliente pueda verificar el funcionamiento.
+- Módulos mencionados en la Cláusula Segunda operativos y accesibles según el rol correspondiente.
+
+**4.2.** El Cliente dispondrá de un plazo de 3 (tres) días hábiles desde la notificación de entrega para realizar las pruebas de verificación. Si no se reportan observaciones dentro de dicho plazo, se considerará el Sistema como entregado conforme.
+
+**4.3.** Cualquier observación deberá ser notificada por escrito (correo electrónico o mensaje de texto con acuse de recibo) y será corregida por El Desarrollador en un plazo no mayor a 5 (cinco) días hábiles.
+
+---
+
+### CLÁUSULA QUINTA: SOPORTE TÉCNICO, GARANTÍA Y PERIODO DE OBSERVACIÓN
+
+**5.1. Periodo de Garantía (Gratuito)**
+
+El Desarrollador se compromete a brindar **SOPORTE TÉCNICO GRATUITO** por un periodo de **60 (sesenta) días calendario** contados a partir de la fecha de entrega conforme del Sistema.
+
+**5.2. Alcance del Soporte**
+
+Durante el periodo de garantía, El Desarrollador se obliga a:
+
+a) Corregir cualquier error, bug o fallo técnico del Sistema que impida su funcionamiento normal (caídas del sistema, errores de programación, errores en la base de datos, problemas de autenticación, fallos en módulos críticos como pedidos, cobros, impresión o cocina).
+
+b) Atender incidencias menores (problemas de visualización, errores en reportes, ajustes de configuración) en un plazo no mayor a 48 horas.
+
+c) Resolver incidencias críticas (sistema caído, imposibilidad de cobrar o tomar pedidos) en un plazo no mayor a 12 horas.
+
+**5.3. Periodo de Observación (Segundo Pago)**
+
+El periodo de 30 (treinta) días entre el primer y segundo pago constituye un **periodo de observación** durante el cual El Cliente podrá verificar la estabilidad y correcto funcionamiento del Sistema en condiciones reales de operación.
+
+Si durante este periodo se presentan fallos recurrentes atribuibles a errores de desarrollo que impidan el uso normal del Sistema, El Cliente podrá solicitar la corrección antes de proceder con el segundo pago.
+
+**5.4. Excepciones**
+
+El soporte gratuito NO cubre:
+- Mantenimiento o reparaciones por daños causados por terceros.
+- Modificaciones, personalizaciones o nuevas funcionalidades no contempladas en la Cláusula Segunda.
+- Problemas derivados de la infraestructura de hosting (Vercel, Supabase) o del dominio.
+- Caídas por superación de límites del plan gratuito de los servicios externos utilizados.
+- Pérdida de datos por mal uso del Sistema por parte del personal de El Cliente.
+
+---
+
+### CLÁUSULA SEXTA: PROPIEDAD INTELECTUAL Y LICENCIA DE USO
+
+**6.1.** Una vez cancelado el 100% del pago estipulado en la Cláusula Tercera, El Cliente adquiere una **licencia de uso perpetua, intransferible y no exclusiva** del Sistema para su operación en el establecimiento "Puerto Habana Cevichería".
+
+**6.2.** El código fuente del Sistema es propiedad de El Desarrollador. El Cliente no tiene derecho a:
+- Vender, redistribuir, alquilar o ceder el Sistema a terceros.
+- Modificar el código fuente sin autorización expresa de El Desarrollador.
+- Utilizar el Sistema en establecimientos distintos al acordado.
+
+**6.3.** El Desarrollador se reserva el derecho de reutilizar componentes, librerías, módulos y patrones de diseño del Sistema para otros proyectos, sin que ello afecte la operación del Sistema de El Cliente.
+
+---
+
+### CLÁUSULA SÉPTIMA: CONFIDENCIALIDAD Y PROTECCIÓN DE DATOS
+
+**7.1.** El Desarrollador se compromete a mantener en estricta confidencialidad toda la información, base de datos, datos de clientes, registros de ventas y cualquier otra información sensible que se maneje dentro del Sistema.
+
+**7.2.** El Desarrollador no compartirá, venderá ni divulgará los datos de El Cliente ni de sus comensales a terceros.
+
+**7.3.** El Desarrollador implementará medidas de seguridad razonables para proteger la información contra accesos no autorizados, incluyendo:
+- Autenticación por roles.
+- Timeout de sesión automático.
+- Conexiones cifradas (HTTPS).
+- Uso de variables de entorno para claves y credenciales.
+
+**7.4.** El Cliente es responsable de la gestión de sus propias credenciales de acceso y de la capacitación de su personal en el uso del Sistema.
+
+---
+
+### CLÁUSULA OCTAVA: PLAZO DE ENTREGA
+
+**8.1.** El Desarrollador se compromete a entregar el Sistema completo y funcional en un plazo máximo de **15 (quince) días calendario** contados desde la firma del presente contrato.
+
+**8.2.** Si por causas imputables a El Desarrollador el Sistema no es entregado en el plazo acordado, El Cliente tendrá derecho a:
+- Una penalidad del 1% del valor total del contrato por cada día de retraso, hasta un máximo del 10%.
+- Si el retraso supera los 15 (quince) días adicionales, El Cliente podrá resolver el contrato sin penalidad.
+
+**8.3.** No se considerará retraso cuando la demora sea causada por:
+- Falta de información, requisitos o decisiones por parte de El Cliente.
+- Problemas con los servicios de terceros (Vercel, Supabase, proveedores de dominio).
+- Casos fortuitos o de fuerza mayor debidamente acreditados.
+
+---
+
+### CLÁUSULA NOVENA: OBLIGACIONES DE LAS PARTES
+
+**9.1. Obligaciones de El Desarrollador:**
+- Desarrollar el Sistema conforme a las especificaciones acordadas.
+- Entregar el Sistema en el plazo establecido.
+- Brindar soporte técnico durante el periodo de garantía.
+- Mantener la confidencialidad de la información.
+- Capacitar a El Cliente en el uso básico del Sistema.
+
+**9.2. Obligaciones de El Cliente:**
+- Pagar puntualmente las armadas acordadas.
+- Proporcionar la información necesaria para la implementación (datos del negocio, productos, precios, etc.).
+- Designar a una persona responsable para la coordinación y pruebas.
+- Contar con conexión a internet estable para la operación del Sistema.
+- Realizar las pruebas de verificación en el plazo establecido.
+
+---
+
+### CLÁUSULA DÉCIMA: RESOLUCIÓN DEL CONTRATO
+
+**10.1.** Cualquiera de las partes podrá resolver el presente contrato en caso de incumplimiento grave de las obligaciones establecidas, previa notificación por escrito con 5 (cinco) días de anticipación.
+
+**10.2.** En caso de resolución por incumplimiento de El Cliente (falta de pago, falta de colaboración), El Desarrollador podrá suspender el acceso al Sistema hasta que se regularice la situación.
+
+**10.3.** En caso de resolución por incumplimiento de El Desarrollador (no entrega del Sistema, abandono del proyecto), El Desarrollador deberá devolver cualquier pago recibido en un plazo de 5 (cinco) días hábiles.
+
+---
+
+### CLÁUSULA UNDÉCIMA: SERVICIOS POSTERIORES (FUERA DEL CONTRATO)
+
+Una vez concluido el periodo de garantía de 60 días, los siguientes servicios tendrán un costo adicional a acordar entre las partes:
+
+- Adición de nuevas funcionalidades o módulos no contemplados.
+- Modificaciones sustanciales al Sistema existente.
+- Soporte técnico extendido mensual o por evento.
+- Migración a otro hosting o infraestructura.
+- Integración con nuevos servicios externos.
+
+---
+
+### CLÁUSULA DUODÉCIMA: ACEPTACIÓN
+
+Ambas partes declaran su conformidad con todas las cláusulas establecidas en el presente contrato, comprometiéndose a su fiel cumplimiento.
+
+Para constancia, firman el presente documento en dos (2) ejemplares de igual tenor y valor, en la ciudad de Lima, a los _____ días del mes de ______________ del año 2026.
+
+---
+
+**Fecha de emisión:** 25 de mayo de 2026
+
+<br/><br/>
+
+___________________________________<br/>
+**CODEOL SOFTWARE PERU**<br/>
+El Desarrollador<br/>
+DNI: ______________________________
+
+<br/><br/>
+
+___________________________________<br/>
+**MARCO ANTONIO PONCE BERNEDO**<br/>
+El Cliente<br/>
+DNI: ______________________________
