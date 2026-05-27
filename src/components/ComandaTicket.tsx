@@ -83,7 +83,8 @@ export default function ComandaTicket({
           </style>
         </head>
         <body>
-          <div class="text-center font-bold" style="font-size: 22px; margin-bottom: 4px;">🍳 COMANDA</div>
+          <div class="text-center" style="font-size: 13px; font-weight: bold; color: #d97706; margin-bottom: 4px;">🍽️ PLATOS VENDIDOS: ${totalItems}</div>
+          <div class="text-center font-bold" style="font-size: 22px; margin-bottom: 2px;">🍳 COMANDA</div>
           <div class="text-center" style="font-size: 12px; margin-bottom: 6px;">${negocioNombre}</div>
           <div class="line"></div>
           <div style="font-size: 16px;"><span class="font-bold">Mesa:</span> ${mesa}</div>
@@ -226,8 +227,13 @@ export default function ComandaTicket({
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
       <div className="bg-white w-full max-w-xs rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
-        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-start">
           <div>
+            <div className="mb-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg inline-block">
+              <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
+                🍽️ Platos Vendidos: <span className="text-base">{totalItems}</span>
+              </span>
+            </div>
             <h2 className="text-lg font-bold text-gray-900">🍳 Comanda</h2>
             <p className="text-xs text-gray-500 mt-0.5">{mesa} · {totalItems} productos</p>
           </div>
