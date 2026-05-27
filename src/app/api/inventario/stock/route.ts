@@ -98,3 +98,17 @@ export async function GET(request: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }
+
+// DELETE /api/inventario/stock
+// Elimina todo el historial de movimientos de inventario
+export async function DELETE() {
+  const sb = getServiceSupabase();
+
+  const { error } = await sb
+    .from('inventario_movimientos')
+    .delete()
+    .neq('id', 0); // Delete all rows
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true, message: 'Historial de movimientos eliminado correctamente' });
+}

@@ -680,7 +680,32 @@ export default function InventarioPage() {
         ) : activeSection === 'historial' ? (
           /* Vista de historial de movimientos */
           <div>
-            <h4 className="text-base font-medium text-gray-900 mb-4">Historial de Movimientos de Inventario</h4>
+            <div className="flex items-center justify-between mb-4">
+              <h4 className="text-base font-medium text-gray-900">Historial de Movimientos de Inventario</h4>
+              {movimientos.length > 0 && (
+                <button
+                  onClick={async () => {
+                    if (!confirm('¿Estás seguro de eliminar todo el historial de movimientos? Esta acción no se puede deshacer.')) return;
+                    try {
+                      const res = await fetch('/api/inventario/stock', { method: 'DELETE' });
+                      if (res.ok) {
+                        setMovimientos([]);
+                        alert('Historial de movimientos eliminado correctamente.');
+                      } else {
+                        const err = await res.json();
+                        alert('Error: ' + (err.error || 'No se pudo eliminar el historial'));
+                      }
+                    } catch {
+                      alert('Error de conexión al intentar eliminar el historial.');
+                    }
+                  }}
+                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
+                >
+                  <Trash2 size={14} />
+                  Limpiar Historial
+                </button>
+              )}
+            </div>
             {movimientos.length === 0 ? (
               <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
                 <History size={32} className="mx-auto text-gray-300 mb-2" />
