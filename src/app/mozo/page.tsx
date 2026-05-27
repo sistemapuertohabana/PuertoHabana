@@ -148,6 +148,7 @@ export default function MozoPage() {
   const [historialAsistencia, setHistorialAsistencia] = useState<{ fecha: string; hora_llegada: string }[]>([]);
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
+  const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
 
   useEffect(() => {
     const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
@@ -714,13 +715,31 @@ export default function MozoPage() {
           <div className="flex-1 overflow-y-auto px-5 py-4 space-y-5">
             {['comida', 'bebidas', 'tapers'].map(cat => {
               if (cat === 'comida') {
-                const items = comidaDinamica.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }));
-                if (items.length === 0) return null;
+                if (comidaDinamica.length === 0) return null;
+                const categories = ['Todos', ...Array.from(new Set(comidaDinamica.map(c => c.categoria || 'Otros').filter(Boolean)))];
+                const filtered = activeComidaCat === 'Todos' ? comidaDinamica : comidaDinamica.filter(c => (c.categoria || 'Otros') === activeComidaCat);
+                const items = filtered.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }));
+                
                 return (
-                  <div key={cat}>
+                  <div key={cat} className="mb-2">
                     <div className="flex items-center gap-2 mb-3">
-                      <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">{cat}</h3>
-                      <span className="text-[10px] text-gray-300">({items.length})</span>
+                      <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">Carta de Platos</h3>
+                    </div>
+                    {/* Filtros por botones */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      {categories.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setActiveComidaCat(c)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0 ${
+                            activeComidaCat === c
+                              ? 'bg-amber-500 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
                     </div>
                     <div className="space-y-1.5">
                       {items.map(item => {
