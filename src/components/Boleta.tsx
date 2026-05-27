@@ -50,6 +50,7 @@ export default function Boleta({
   };
 
   const handlePrintBrowser = () => {
+    const origin = window.location.origin;
     const ventana = window.open('', '_blank', 'width=320,height=600');
     if (!ventana) {
       alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir.');
@@ -105,7 +106,10 @@ export default function Boleta({
           </style>
         </head>
         <body>
-          <div class="text-center font-bold" style="font-size: 16px; margin-bottom: 4px;">${negocioNombre}</div>
+          <div class="text-center" style="margin-bottom: 4px;">
+            <img src="${origin}/logo/LogoPuertoHabana.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />
+          </div>
+          <div class="text-center font-bold" style="font-size: 16px;">${negocioNombre}</div>
           <div class="text-center">Cevicheria</div>
           <div class="text-center" style="margin-bottom: 8px;">RUC: ${ruc}</div>
           <div class="dashed-line"></div>
@@ -273,7 +277,10 @@ export default function Boleta({
 
         <div className="px-6 py-4 max-h-[60vh] overflow-y-auto">
           <div ref={boletaRef} className="font-mono text-[11px] text-black leading-relaxed">
-            <div className="text-center font-bold text-base mb-1">{negocioNombre}</div>
+            <div className="text-center mb-1">
+              <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="inline-block w-12 h-12 object-contain" />
+            </div>
+            <div className="text-center font-bold text-base">{negocioNombre}</div>
             <div className="text-center text-xs">Cevicheria</div>
             <div className="text-center text-xs mb-2">RUC: {ruc}</div>
             <div className="border-t border-dashed border-gray-400 my-2" />

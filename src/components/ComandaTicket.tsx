@@ -52,7 +52,7 @@ export default function ComandaTicket({
       const icono = item.categoria === 'bebidas' ? '🥤' : '🍽️';
       itemsHtml += `
         <div style="margin-bottom: 10px;">
-          <div style="display: flex; align-items: center; gap: 8px; font-size: 24px; font-weight: bold;">
+          <div style="display: flex; align-items: center; gap: 8px; font-size: 30px; font-weight: bold;">
             <span>${icono}</span>
             <span>${item.cantidad}x</span>
             <span>${item.nombre}</span>
@@ -246,8 +246,8 @@ export default function ComandaTicket({
             {items.map((item, idx) => (
               <div key={idx} className="mb-3">
                 <div className="flex items-center gap-2">
-                  <span className="font-black text-2xl">{item.cantidad}x</span>
-                  <span className="text-xl font-bold">{item.nombre}</span>
+                  <span className="font-black text-3xl">{item.cantidad}x</span>
+                  <span className="text-2xl font-black">{item.nombre}</span>
                   {item.categoria === 'bebidas' && <span className="text-sm">🥤</span>}
                 </div>
                 {item.notas && (

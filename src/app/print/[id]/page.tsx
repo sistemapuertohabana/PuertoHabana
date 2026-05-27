@@ -136,11 +136,14 @@ export default function PrintTicket() {
 
       <div className="bg-white text-black p-4 text-sm font-mono w-[80mm] mx-auto shadow-sm print:shadow-none print:m-0 print:p-0 print:w-[80mm]">
         {/* Cabecera */}
-          <p className="text-xs">{config.direccion || 'Av. Colonización 1115'}</p>
-        <p className="text-xs">RUC: {config.ruc || '10429025546'}</p>
-        <p className="text-xs">TELF: {config.telefono || '+51 123 456 789'}</p>
+        <div className="text-center mb-2">
+          <img src="/logo/LogoPuertoHabana.png" alt="Logo" className="inline-block w-16 h-16 object-contain" />
+        </div>
+        <p className="text-xs text-center">{config.direccion || 'Av. Colonización 1115'}</p>
+        <p className="text-xs text-center">RUC: {config.ruc || '10429025546'}</p>
+        <p className="text-xs text-center">TELF: {config.telefono || '+51 123 456 789'}</p>
         <div className="border-b border-black border-dashed my-2" />
-        <p className="font-bold text-lg">TICKET DE VENTA</p>
+        <p className="font-bold text-lg text-center">TICKET DE VENTA</p>
         <p>Mesa: {comanda.mesa_nombre}</p>
         <p>Mozo: {comanda.mozo_nombre}</p>
         <p>
