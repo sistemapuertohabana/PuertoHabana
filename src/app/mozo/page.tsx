@@ -271,7 +271,7 @@ export default function MozoPage() {
         if (!res.ok) throw new Error();
         const data = await res.json();
         const activas = data.filter((c: any) => c.estado !== 'Entregado');
-        setMesasOcupadas(new Set(activas.map((c: any) => c.mesa_nombre)));
+        setMesasOcupadas(new Set(activas.map((c: any) => c.mesa || c.mesa_nombre)));
       } catch {
         try {
           const pedidos = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');

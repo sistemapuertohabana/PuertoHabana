@@ -1,5 +1,5 @@
 'use client';
-import { useState, useCallback, useEffect } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { X } from 'lucide-react';
 import { useNotificacionesRealtime, type Notificacion } from '@/hooks/usePedidosRealtime';
@@ -29,11 +29,16 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
   const router = useRouter();
   const [notificacion, setNotificacion] = useState<Notificacion | null>(null);
   const [saliendo, setSaliendo] = useState(false);
-  const [activado] = useState(() =>
-    typeof window !== 'undefined'
-      ? localStorage.getItem('notificaciones_activas') === 'true'
-      : false
-  );
+  const [activado] = useState(() => {
+    if (typeof window === 'undefined') return false;
+    const val = localStorage.getItem('notificaciones_activas');
+    // Por defecto activado, igual que antes — solo desactivado si el usuario fue a
+    // configuración y lo apagó explícitamente (val === 'false')
+    if (val === 'false') return false;
+    // Persistir el valor por defecto para que futuras lecturas sean consistentes
+    if (val === null) localStorage.setItem('notificaciones_activas', 'true');
+    return true;
+  });
 
   const cerrar = useCallback(() => {
     setSaliendo(true);
@@ -43,25 +48,60 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     }, 250);
   }, []);
 
-  // Suscripción Realtime — llegan notificaciones al instante
-  // (el sonido de notificaciones push nativas se maneja en sw.ts con sound: '/notification.mp3')
-  const onNuevaNotificacion = useCallback((notif: Notificacion) => {
-    setNotificacion(notif);
-    
-    // Reproducir sonido!
+  // ── Reproducir sonido de notificación ──────────────────────────────────
+  const playNotifSound = useCallback(() => {
     try {
       const audio = new Audio('/notification.mp3');
-      audio.volume = 0.5;
+      audio.volume = 1.0;
       audio.play().catch(() => {});
     } catch {}
+  }, []);
+
+  // ── Manejar nueva notificación (Realtime o polling) ────────────────────
+  const onNuevaNotificacion = useCallback((notif: Notificacion) => {
+    // Evitar duplicados cuando Realtime y polling detectan la misma notificación
+    if (notifiedIds.current.has(notif.id)) return;
+    notifiedIds.current.add(notif.id);
+    setNotificacion(notif);
+    playNotifSound();
 
     // Auto-dismiss después de 6 segundos
     setTimeout(() => {
       cerrar();
     }, 6000);
-  }, [cerrar]);
+  }, [cerrar, playNotifSound]);
 
+  // ── Suscripción Realtime (en vivo) ─────────────────────────────────────
   useNotificacionesRealtime(rol, usuarioId, onNuevaNotificacion);
+
+  // ── Polling fallback cada 10s (por si Realtime no está disponible) ─────
+  const notifiedIds = useRef<Set<number>>(new Set());
+  useEffect(() => {
+    if (!activado) return;
+
+    const pollNotifs = async () => {
+      try {
+        const params = new URLSearchParams({ leida: 'false' });
+        if (rol) params.append('rol_destino', rol);
+        if (usuarioId) params.append('usuario_id', usuarioId);
+
+        const res = await fetch(`/api/notificaciones?${params.toString()}`);
+        if (!res.ok) return;
+        const data: Notificacion[] = await res.json();
+
+        // Tomar la más reciente no mostrada aún
+        const nueva = data.find(n => !notifiedIds.current.has(n.id));
+        if (nueva) {
+          notifiedIds.current.add(nueva.id);
+          onNuevaNotificacion(nueva);
+        }
+      } catch {}
+    };
+
+    pollNotifs();
+    const interval = setInterval(pollNotifs, 10000);
+    return () => clearInterval(interval);
+  }, [rol, usuarioId, activado, onNuevaNotificacion]);
 
   const irAPagina = () => {
     const destino = rutasPorRol[rol] || '/';
@@ -69,7 +109,7 @@ export default function NotificacionesToast({ usuarioId, rol }: { usuarioId?: st
     router.push(destino);
   };
 
-  // Marcar como leída en la BD cuando se ve
+  // Marcar como leída en la BD cuando se ve (solo si llega por polling, Realtime ya la filtró)
   useEffect(() => {
     if (notificacion && !notificacion.leida) {
       fetch(`/api/notificaciones/${notificacion.id}/leida`, { method: 'POST' }).catch(() => {});

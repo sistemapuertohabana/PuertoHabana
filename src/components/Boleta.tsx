@@ -113,7 +113,7 @@ export default function Boleta({
           <div>Mozo   : ${mozoNombre}</div>
           <div>Fecha  : ${formatFecha(fecha)} ${hora}</div>
           ${clienteNombre ? `<div>Cliente: ${clienteNombre}</div>` : ''}
-          ${clienteDocumento ? `<div>Doc    : ${clienteDocumento}</div>` : ''}
+          ${clienteDocumento ? `<div>${clienteDocumento.length === 11 ? 'RUC' : 'DNI'}    : ${clienteDocumento}</div>` : ''}
           <div class="dashed-line"></div>
           <div class="flex-between font-bold">
             <span>PRODUCTO</span>
@@ -281,7 +281,7 @@ export default function Boleta({
             <div>Mozo   : {mozoNombre}</div>
             <div>Fecha  : {formatFecha(fecha)} {hora}</div>
             {clienteNombre && <div>Cliente: {clienteNombre}</div>}
-            {clienteDocumento && <div>Doc    : {clienteDocumento}</div>}
+            {clienteDocumento && <div>{clienteDocumento.length === 11 ? 'RUC' : 'DNI'}    : {clienteDocumento}</div>}
             <div className="border-t border-dashed border-gray-400 my-2" />
             <div className="flex justify-between font-bold">
               <span>PRODUCTO</span>

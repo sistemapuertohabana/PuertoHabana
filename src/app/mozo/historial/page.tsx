@@ -147,7 +147,7 @@ export default function MozoHistorialPage() {
       // Mapear mesa_nombre → mesa (la API devuelve mesa_nombre)
       const mapped: Comanda[] = data.map((c: any) => ({
         id: c.id,
-        mesa: c.mesa_nombre || c.mesa || '',
+        mesa: c.mesa || c.mesa_nombre || '',
         mozo_id: c.mozo_id,
         mozo_nombre: c.mozo_nombre,
         estado: c.estado,

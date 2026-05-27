@@ -22,8 +22,8 @@ export async function GET(request: Request) {
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
-  // Rename comanda_items → items to match frontend expectations
-  const rows = (data || []).map((c: any) => ({ ...c, items: c.comanda_items, comanda_items: undefined }));
+  // Rename comanda_items → items and mesa_nombre → mesa to match frontend expectations
+  const rows = (data || []).map((c: any) => ({ ...c, mesa: c.mesa_nombre, mesa_nombre: undefined, items: c.comanda_items, comanda_items: undefined }));
   return NextResponse.json(rows);
 }
 
