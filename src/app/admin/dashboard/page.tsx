@@ -477,6 +477,19 @@ export default function DashboardPage() {
   const handleAddPayment = async () => {
     if (!paymentForm.concepto || !paymentForm.monto) return;
     
+    // Validar saldo disponible antes de permitir el pago
+    const montoPago = parseFloat(paymentForm.monto) || 0;
+    if (netProfit <= 0) {
+      setToastMessage(`⚠️ Saldo insuficiente para realizar este pago. Ganancia neta actual: S/ 0.00`);
+      setTimeout(() => setToastMessage(null), 5000);
+      return;
+    }
+    if (montoPago > netProfit) {
+      setToastMessage(`⚠️ Saldo insuficiente. El pago de S/ ${montoPago.toFixed(2)} excede la ganancia neta disponible (S/ ${netProfit.toFixed(2)}).`);
+      setTimeout(() => setToastMessage(null), 5000);
+      return;
+    }
+    
     // Find the staff member to get their ID
     const staff = allStaffList.find(s => s.nombre === paymentForm.mozoNombre);
     

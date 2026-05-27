@@ -146,3 +146,16 @@ export async function POST(request: Request) {
 
   return NextResponse.json({ success: true, data }, { status: 201 });
 }
+
+// DELETE /api/notas — Eliminar todas las notas
+export async function DELETE() {
+  const sb = getServiceSupabase();
+
+  const { error } = await sb
+    .from('notas')
+    .delete()
+    .neq('id', 0);
+
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ success: true });
+}

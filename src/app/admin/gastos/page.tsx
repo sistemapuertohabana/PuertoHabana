@@ -131,6 +131,21 @@ export default function NotasPage() {
     }
   };
 
+  const handleDeleteAll = async () => {
+    if (!confirm('¿Eliminar TODAS las notas? Esta acción no se puede deshacer.')) return;
+    try {
+      const res = await fetch('/api/notas', { method: 'DELETE' });
+      if (res.ok) {
+        setNotas([]);
+        localStorage.removeItem('ph_notas');
+      }
+    } catch {
+      // Fallback: limpiar localStorage
+      localStorage.removeItem('ph_notas');
+      setNotas([]);
+    }
+  };
+
   const handleEdit = (nota: Nota) => {
     setContenido(nota.contenido);
     setEditandoId(nota.id);
@@ -244,9 +259,17 @@ export default function NotasPage() {
         </div>
       </form>
 
-      {/* Filtros por tag */}
+      {/* Filtros por tag + limpiar todo */}
       {allTags.length > 0 && (
-        <div className="flex flex-wrap gap-2 mb-4">
+        <div className="flex flex-wrap items-center gap-2 mb-4">
+          <button
+            onClick={handleDeleteAll}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border border-red-200 text-red-600 hover:bg-red-50 ml-auto"
+            title="Eliminar todas las notas"
+          >
+            <Trash2 size={12} />
+            Limpiar todo
+          </button>
           <button
             onClick={() => setFiltroTag(null)}
             className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
