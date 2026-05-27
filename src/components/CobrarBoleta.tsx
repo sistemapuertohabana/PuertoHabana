@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Boleta from '@/components/Boleta';
-import { QrCode, X, Search, CreditCard } from 'lucide-react';
+import { QrCode, X, Search, CreditCard, CheckCircle2 } from 'lucide-react';
 
 interface ItemBoleta {
   item: string;
@@ -85,7 +85,10 @@ export default function CobrarBoleta({
   const [sendingSunat, setSendingSunat] = useState(false);
   const [sunatResult, setSunatResult] = useState<string | null>(null);
 
-
+  // Estado para confirmar cobro
+  const [confirmingPayment, setConfirmingPayment] = useState(false);
+  const [selectedMetodo, setSelectedMetodo] = useState<'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro'>('Efectivo');
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
 
   // Generar QR al abrir el modal
   useEffect(() => {
@@ -236,6 +239,29 @@ export default function CobrarBoleta({
 
   useEffect(() => { if (!toast) return; const t = setTimeout(() => setToast(null), 3000); return () => clearTimeout(t); }, [toast]);
 
+  const handleConfirmarCobro = async () => {
+    if (!comandaId) {
+      setToast('⚠️ No hay comanda asociada para cobrar');
+      return;
+    }
+    setConfirmingPayment(true);
+    try {
+      const res = await fetch(`/api/pedidos/${comandaId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ estado: 'Entregado', metodo_pago: selectedMetodo }),
+      });
+      if (!res.ok) throw new Error('Error al confirmar cobro');
+      setPaymentConfirmed(true);
+      setToast(`✅ Cobro confirmado — ${selectedMetodo}`);
+      setTimeout(() => onSuccess?.(), 800);
+    } catch {
+      setToast('❌ Error al confirmar cobro');
+    } finally {
+      setConfirmingPayment(false);
+    }
+  };
+
   if (!pedidos.length) return null;
 
   return (
@@ -313,6 +339,62 @@ export default function CobrarBoleta({
           </div>
         )}
       </div>
+
+      {/* Confirmar Cobro */}
+      {comandaId && !paymentConfirmed && (
+        <div className="mt-4 pt-4 border-t border-gray-200">
+          <div className="flex items-center gap-2 mb-3">
+            <CreditCard size={16} className="text-green-600" />
+            <span className="text-sm font-bold text-gray-900">Confirmar Cobro</span>
+          </div>
+          <div className="flex gap-2 mb-3">
+            {(['Efectivo', 'Yape', 'Tarjeta', 'Otro'] as const).map(m => (
+              <button
+                key={m}
+                onClick={() => setSelectedMetodo(m)}
+                className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all ${
+                  selectedMetodo === m
+                    ? 'bg-green-600 text-white shadow-sm'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {m === 'Efectivo' ? '💵' : m === 'Yape' ? '📱' : m === 'Tarjeta' ? '💳' : '🔄'} {m}
+              </button>
+            ))}
+          </div>
+          <div className="flex items-center justify-between bg-gray-50 rounded-xl px-4 py-3 border border-gray-200">
+            <div>
+              <p className="text-xs text-gray-500">Total a cobrar</p>
+              <p className="text-lg font-bold text-gray-900">S/ {total.toFixed(2)}</p>
+            </div>
+            <button
+              onClick={handleConfirmarCobro}
+              disabled={confirmingPayment}
+              className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-bold transition-all hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            >
+              {confirmingPayment ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  Procesando...
+                </>
+              ) : (
+                <>
+                  <CheckCircle2 size={18} />
+                  Confirmar Cobro
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {paymentConfirmed && (
+        <div className="mt-4 p-4 bg-green-50 border border-green-200 rounded-xl text-center">
+          <CheckCircle2 size={24} className="mx-auto text-green-600 mb-1" />
+          <p className="text-sm font-bold text-green-700">✅ Cobro Confirmado</p>
+          <p className="text-xs text-green-600 mt-1">Comanda marcada como Entregado — {selectedMetodo}</p>
+        </div>
+      )}
 
       {/* Modal QR Yape */}
       {showYapeQR && (

@@ -280,32 +280,8 @@ export default function DashboardPage() {
         })(),
         (async () => {
           try {
-            const res = await fetch('/api/pedidos');
-            if (res.ok) {
-              const data = await res.json();
-              const normalized = data.flatMap((c: Comanda) =>
-                (c.items || []).map((item: ComandaItem) => ({
-                  id: `${c.id}-${item.id}`,
-                  item: item.nombre,
-                  cantidad: item.cantidad,
-                  mesa: c.mesa_nombre || c.mesa,
-                  precio: item.precio,
-                  estado: c.estado,
-                  hora: c.hora,
-                  notas: item.notas,
-                  mozoId: c.mozo_id || '',
-                  mozoNombre: c.mozo_nombre || '',
-                  fecha: c.fecha,
-                  category: item.categoria || 'comida',
-                  comandaId: String(c.id),
-                  metodo_pago: c.metodo_pago || 'Efectivo',
-                }))
-              );
-              setPedidos(normalized);
-            }
-          } catch {
-            try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
-          }
+            await loadPedidos();
+          } catch {}
         })(),
         (async () => {
           try {
@@ -330,6 +306,44 @@ export default function DashboardPage() {
     loadAll();
 
   }, []);
+
+  // ── Cargar pedidos desde API (usado para polling) ──
+  const loadPedidos = async () => {
+    try {
+      const res = await fetch('/api/pedidos');
+      if (res.ok) {
+        const data = await res.json();
+        const normalized = data.flatMap((c: Comanda) =>
+          (c.items || []).map((item: ComandaItem) => ({
+            id: `${c.id}-${item.id}`,
+            item: item.nombre,
+            cantidad: item.cantidad,
+            mesa: c.mesa_nombre || c.mesa,
+            precio: item.precio,
+            estado: c.estado,
+            hora: c.hora,
+            notas: item.notas,
+            mozoId: c.mozo_id || '',
+            mozoNombre: c.mozo_nombre || '',
+            fecha: c.fecha,
+            category: item.categoria || 'comida',
+            comandaId: String(c.id),
+            metodo_pago: c.metodo_pago || 'Efectivo',
+          }))
+        );
+        setPedidos(normalized);
+      }
+    } catch {
+      try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
+    }
+  };
+
+  // Polling de pedidos cada 5 segundos para sincronizar con mozo
+  useEffect(() => {
+    if (!mounted) return;
+    const interval = setInterval(loadPedidos, 5000);
+    return () => clearInterval(interval);
+  }, [mounted]);
 
   // Real-time automatic midnight clock checker
   useEffect(() => {
@@ -2409,24 +2423,27 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Boleta de consumo por Mesa */}
+      {/* Cobro por Mesa */}
       {selectedMesaBoleta && (
-        <Boleta
-          mesa={selectedMesaBoleta.mesa}
+        <CobrarBoleta
+          mesaLabel={selectedMesaBoleta.mesa}
           mozoNombre={selectedMesaBoleta.mozoNombre}
           fecha={simulatedDate}
           hora={selectedMesaBoleta.hora}
-          items={selectedMesaBoleta.items.map(p => ({
+          comandaId={(function(){
+            const cid = selectedMesaBoleta.items[0]?.comandaId;
+            return cid ? Number(cid) : undefined;
+          })()}
+          pedidos={selectedMesaBoleta.items.map(p => ({
             item: p.item,
             cantidad: p.cantidad,
             precio: p.precio,
             notas: p.notas,
           }))}
-          clienteNombre={clienteInfoForMesa?.nombre || undefined}
-          clienteDocumento={clienteInfoForMesa?.documento || undefined}
-          onClose={() => {
+          onSuccess={() => {
             setSelectedMesaBoleta(null);
             setClienteInfoForMesa(null);
+            loadPedidos();
           }}
         />
       )}
