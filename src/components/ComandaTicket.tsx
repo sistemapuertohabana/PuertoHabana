@@ -47,8 +47,9 @@ export default function ComandaTicket({
       return;
     }
 
+    const foodItems = items.filter(item => item.categoria !== 'bebidas');
     let itemsHtml = '';
-    items.forEach(item => {
+    foodItems.forEach(item => {
       const icono = item.categoria === 'bebidas' ? '🥤' : '🍽️';
       itemsHtml += `
         <div style="margin-bottom: 10px;">
@@ -116,7 +117,7 @@ export default function ComandaTicket({
           mozoNombre,
           fecha,
           hora,
-          items: items.map(i => ({
+          items: foodItems.map(i => ({
             item: i.nombre,
             cantidad: i.cantidad,
             precio: 0,
@@ -146,7 +147,7 @@ export default function ComandaTicket({
         throw new Error('Tu navegador no soporta conexión USB/COM (Usa Chrome en PC o Android).');
       }
 
-      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items, negocioNombre });
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -174,7 +175,7 @@ export default function ComandaTicket({
         throw new Error('Bluetooth directo no soportado en este navegador.');
       }
 
-      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items, negocioNombre });
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -219,7 +220,8 @@ export default function ComandaTicket({
     } finally { setPrinting(false); }
   };
 
-  const totalItems = items.reduce((s, i) => s + i.cantidad, 0);
+  const foodItems = items.filter(item => item.categoria !== 'bebidas');
+  const totalItems = foodItems.reduce((s, i) => s + i.cantidad, 0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
@@ -243,7 +245,7 @@ export default function ComandaTicket({
             <div className="text-xs"><span className="font-bold">Mozo:</span> {mozoNombre}</div>
             <div className="text-xs"><span className="font-bold">Hora:</span> {formatFecha(fecha)} {hora}</div>
             <div className="border-t border-dashed border-gray-400 my-2" />
-            {items.map((item, idx) => (
+            {items.filter(item => item.categoria !== 'bebidas').map((item, idx) => (
               <div key={idx} className="mb-3">
                 <div className="flex items-center gap-2">
                   <span className="font-black text-3xl">{item.cantidad}x</span>

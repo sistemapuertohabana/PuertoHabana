@@ -349,7 +349,7 @@ export default function CocinaPage() {
               {p.items && p.items.length > 0 && (
                 <ul className="space-y-2 mb-4">
                   {p.items
-                    .filter(item => item.categoria === 'comida' || item.categoria === undefined)
+                    .filter(item => item.categoria !== 'bebidas')
                     .map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-gray-800 bg-gray-50/50 p-2 rounded-lg">
                       <span className="font-black text-gray-900 text-base min-w-[1.5rem]">{item.cantidad}×</span>

@@ -34,7 +34,7 @@ export default function HistorialCocinaPage() {
       const res = await fetch(`/api/pedidos?fecha=${fechaFiltro}&estado=Entregado`);
       if (!res.ok) throw new Error();
       const data = await res.json();
-      // Mapear mesa_nombre → mesa y filtrar items solo de comida
+      // Mapear mesa_nombre → mesa (se muestran todos los items, incluyendo bebidas)
       const mapped: Comanda[] = data.map((c: any) => ({
         id: c.id,
         mesa_nombre: c.mesa_nombre || c.mesa || '',
@@ -44,14 +44,12 @@ export default function HistorialCocinaPage() {
         hora: c.hora,
         fecha: c.fecha,
         total: Number(c.total) || 0,
-        items: (c.items || [])
-          .filter((i: any) => i.categoria === 'comida' || i.categoria === undefined)
-          .map((i: any) => ({
-            nombre: i.nombre,
-            cantidad: i.cantidad,
-            precio: Number(i.precio) || 0,
-            categoria: i.categoria,
-          })),
+        items: (c.items || []).map((i: any) => ({
+          nombre: i.nombre,
+          cantidad: i.cantidad,
+          precio: Number(i.precio) || 0,
+          categoria: i.categoria,
+        })),
       }));
       setComandas(mapped);
     } catch {
