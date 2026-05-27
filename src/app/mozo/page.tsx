@@ -5,6 +5,7 @@ import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus,
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 import NotificacionesToast from '@/components/NotificacionesToast';
+import ComandaTicket from '@/components/ComandaTicket';
 
 interface MesaConfig {
   id: string;
@@ -130,6 +131,7 @@ export default function MozoPage() {
   const [activeMesa, setActiveMesa] = useState<MesaConfig | null>(null);
   const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean }[]>([]);
   const [success, setSuccess] = useState(false);
+  const [lastOrder, setLastOrder] = useState<{ mesa: string; items: { nombre: string; cantidad: number; categoria?: string }[]; fecha: string; hora: string; mozoNombre: string } | null>(null);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
   const [comidaDinamica, setComidaDinamica] = useState<InventarioItem[]>([]);
@@ -149,6 +151,13 @@ export default function MozoPage() {
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
   const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
+  const [comandaPrintData, setComandaPrintData] = useState<{
+    mesa: string;
+    mozoNombre: string;
+    fecha: string;
+    hora: string;
+    items: { nombre: string; cantidad: number; categoria?: string }[];
+  } | null>(null);
 
   useEffect(() => {
     const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
@@ -437,6 +446,7 @@ export default function MozoPage() {
     setCart([]);
     setActiveMesa(null);
     setSuccess(true);
+    setLastOrder({ mesa: mesaName, items, fecha, hora, mozoNombre });
     setMesasOcupadas(prev => { const next = new Set(prev); next.add(mesaName); return next; });
     window.dispatchEvent(new Event('storage'));
     setTimeout(() => setSuccess(false), 3000);
@@ -580,9 +590,24 @@ export default function MozoPage() {
           </button>
         </div>
 
-      {success && (
-        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg">
-          <p className="text-xs font-medium text-green-700">✅ Pedido enviado correctamente</p>
+      {success && lastOrder && (
+        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between">
+          <p className="text-xs font-medium text-green-700">✅ Pedido enviado correctamente a {lastOrder.mesa}</p>
+          <button
+            onClick={() => {
+              setComandaPrintData({
+                mesa: lastOrder.mesa,
+                mozoNombre: lastOrder.mozoNombre,
+                fecha: lastOrder.fecha,
+                hora: lastOrder.hora,
+                items: lastOrder.items,
+              });
+              setSuccess(false);
+            }}
+            className="text-xs font-bold bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-1"
+          >
+            🍳 Imprimir Comanda
+          </button>
         </div>
       )}
 
@@ -958,6 +983,18 @@ export default function MozoPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Comanda para cocina */}
+      {comandaPrintData && (
+        <ComandaTicket
+          mesa={comandaPrintData.mesa}
+          mozoNombre={comandaPrintData.mozoNombre}
+          fecha={comandaPrintData.fecha}
+          hora={comandaPrintData.hora}
+          items={comandaPrintData.items}
+          onClose={() => setComandaPrintData(null)}
+        />
       )}
 
       <NotificacionesToast rol="mozo" usuarioId={typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('ph_mozo_session') || '{}')?.id) : undefined} />

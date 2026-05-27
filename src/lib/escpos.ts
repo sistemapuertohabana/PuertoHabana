@@ -17,6 +17,59 @@ export interface BoletaPayload {
   clienteDocumento?: string;
 }
 
+export interface ComandaPayload {
+  mesa: string;
+  mozoNombre: string;
+  fecha: string;
+  hora: string;
+  items: { nombre: string; cantidad: number; notas?: string; categoria?: string }[];
+  negocioNombre?: string;
+}
+
+export function buildEscPosComanda(payload: ComandaPayload): string {
+  const { mesa, mozoNombre, fecha, hora, items, negocioNombre = 'PUERTO HABANA' } = payload;
+
+  const formatFecha = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  };
+
+  const LINE = '-----------------------------\n';
+
+  let ticket = '';
+  ticket += '\x1B\x40';                     // Reset
+  ticket += '\x1B\x61\x01';                 // Center align
+  ticket += '\x1B\x21\x30';                 // Double height + bold
+  ticket += '\xF0\x9F\x8D\xB3 COMANDA\n';  // 🍳 COMANDA
+  ticket += '\x1B\x21\x00';                 // Normal
+  ticket += `${negocioNombre}\n`;
+  ticket += LINE;
+  ticket += '\x1B\x61\x00';                 // Left align
+  ticket += `\x1B\x21\x10`;                 // Bold
+  ticket += `Mesa: ${mesa}\n`;
+  ticket += '\x1B\x21\x00';                 // Normal
+  ticket += `Mozo: ${mozoNombre}\n`;
+  ticket += `Hora: ${formatFecha(fecha)} ${hora}\n`;
+  ticket += LINE;
+
+  items.forEach((i) => {
+    const icono = i.categoria === 'bebidas' ? '🥤 ' : '';
+    ticket += `${i.cantidad}x ${icono}${i.nombre}\n`;
+    if (i.notas) {
+      ticket += `   * ${i.notas}\n`;
+    }
+  });
+
+  ticket += LINE;
+  ticket += '\x1B\x61\x01';                 // Center
+  ticket += '¡Buen provecho!\n';
+  ticket += '\n\n\n';
+  ticket += '\x1D\x56\x41\x10';             // Cut paper
+
+  return ticket;
+}
+
 export function buildEscPosTicket(payload: BoletaPayload): string {
   const { mesa, mozoNombre, fecha, hora, items, ruc = '20XXXXXXXXX', negocioNombre = 'PUERTO HABANA', clienteNombre, clienteDocumento } = payload;
 

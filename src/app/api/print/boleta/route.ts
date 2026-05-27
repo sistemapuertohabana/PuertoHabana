@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import net from 'net';
-import { buildEscPosTicket, type BoletaPayload } from '@/lib/escpos';
+import { buildEscPosTicket, buildEscPosComanda, type BoletaPayload } from '@/lib/escpos';
 
 function sendToPrinter(host: string, port: number, data: string): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     // Auth mocked for now (Supabase removed)
     // In production, add your custom auth logic here
 
-    const body = (await request.json()) as BoletaPayload;
+    const body = (await request.json()) as BoletaPayload & { esComanda?: boolean };
     if (!body?.mesa || !body?.items?.length) {
       return NextResponse.json({ error: 'Datos de boleta incompletos' }, { status: 400 });
     }
@@ -50,11 +50,28 @@ export async function POST(request: Request) {
       );
     }
 
-    const ticket = buildEscPosTicket({
-      ...body,
-      ruc: body.ruc ?? process.env.NEXT_PUBLIC_NEGOCIO_RUC,
-      negocioNombre: body.negocioNombre ?? process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'PUERTO HABANA',
-    });
+    let ticket: string;
+    if (body.esComanda) {
+      // Formato compacto para cocina
+      ticket = buildEscPosComanda({
+        mesa: body.mesa,
+        mozoNombre: body.mozoNombre,
+        fecha: body.fecha,
+        hora: body.hora,
+        items: body.items.map(i => ({
+          nombre: i.item,
+          cantidad: i.cantidad,
+          notas: i.notas,
+        })),
+        negocioNombre: body.negocioNombre ?? process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'PUERTO HABANA',
+      });
+    } else {
+      ticket = buildEscPosTicket({
+        ...body,
+        ruc: body.ruc ?? process.env.NEXT_PUBLIC_NEGOCIO_RUC,
+        negocioNombre: body.negocioNombre ?? process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'PUERTO HABANA',
+      });
+    }
 
     await sendToPrinter(host, port, ticket);
 

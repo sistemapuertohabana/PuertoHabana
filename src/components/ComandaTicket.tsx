@@ -1,0 +1,307 @@
+'use client';
+
+import { useRef, useState } from 'react';
+import { Printer, X, Bluetooth, Usb } from 'lucide-react';
+import { buildEscPosComanda } from '@/lib/escpos';
+
+interface ItemComanda {
+  nombre: string;
+  cantidad: number;
+  notas?: string;
+  categoria?: string;
+}
+
+interface ComandaTicketProps {
+  mesa: string;
+  mozoNombre: string;
+  fecha: string;
+  hora: string;
+  items: ItemComanda[];
+  onClose: () => void;
+  negocioNombre?: string;
+}
+
+export default function ComandaTicket({
+  mesa,
+  mozoNombre,
+  fecha,
+  hora,
+  items,
+  onClose,
+  negocioNombre = process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'CEVICHERIA PUERTO HABANA',
+}: ComandaTicketProps) {
+  const boletaRef = useRef<HTMLDivElement>(null);
+  const [printing, setPrinting] = useState(false);
+  const [printError, setPrintError] = useState('');
+
+  const formatFecha = (dateStr: string) => {
+    const parts = dateStr.split('-');
+    if (parts.length === 3) return `${parts[2]}/${parts[1]}/${parts[0]}`;
+    return dateStr;
+  };
+
+  const handlePrintBrowser = () => {
+    const ventana = window.open('', '_blank', 'width=280,height=500');
+    if (!ventana) {
+      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir.');
+      return;
+    }
+
+    let itemsHtml = '';
+    items.forEach(item => {
+      const icono = item.categoria === 'bebidas' ? '🥤' : '🍽️';
+      itemsHtml += `
+        <div style="margin-bottom: 6px;">
+          <div style="display: flex; align-items: center; gap: 4px;">
+            <span>${icono}</span>
+            <span style="font-weight: bold;">${item.cantidad}x</span>
+            <span>${item.nombre}</span>
+          </div>
+          ${item.notas ? `<div style="padding-left: 24px; font-size: 10px; color: #888;">* ${item.notas}</div>` : ''}
+        </div>
+      `;
+    });
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Comanda - ${mesa}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Courier New', monospace; font-size: 11px; width: 100%; max-width: 58mm; padding: 3mm; color: #000; margin: 0 auto; }
+            .line { border-top: 1px dashed #000; margin: 6px 0; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            @media print { 
+              body { width: 58mm; padding: 0; margin: 0; } 
+              @page { margin: 0; size: 58mm auto; } 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center font-bold" style="font-size: 18px; margin-bottom: 2px;">🍳 COMANDA</div>
+          <div class="text-center" style="font-size: 10px; margin-bottom: 6px;">${negocioNombre}</div>
+          <div class="line"></div>
+          <div style="font-size: 13px;"><span class="font-bold">Mesa:</span> ${mesa}</div>
+          <div><span class="font-bold">Mozo:</span> ${mozoNombre}</div>
+          <div><span class="font-bold">Hora:</span> ${formatFecha(fecha)} ${hora}</div>
+          <div class="line"></div>
+          ${itemsHtml}
+          <div class="line"></div>
+          <div class="text-center" style="margin-top: 6px; font-size: 9px; color: #666;">¡Buen provecho!</div>
+          <script>
+            setTimeout(() => { window.print(); }, 500);
+          </script>
+        </body>
+      </html>
+    `;
+
+    ventana.document.open();
+    ventana.document.write(html);
+    ventana.document.close();
+  };
+
+  const handlePrintNetwork = async () => {
+    setPrinting(true);
+    setPrintError('');
+    try {
+      const res = await fetch('/api/print/boleta', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mesa,
+          mozoNombre,
+          fecha,
+          hora,
+          items: items.map(i => ({
+            item: i.nombre,
+            cantidad: i.cantidad,
+            precio: 0,
+            notas: i.notas,
+          })),
+          esComanda: true,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Error de impresión');
+      alert('Comanda enviada a la ticketera en red');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al imprimir';
+      setPrintError(msg);
+      alert(msg);
+    } finally {
+      setPrinting(false);
+    }
+  };
+
+  const handlePrintSerial = async () => {
+    try {
+      setPrinting(true);
+      setPrintError('');
+
+      if (!('serial' in navigator)) {
+        throw new Error('Tu navegador no soporta conexión USB/COM (Usa Chrome en PC o Android).');
+      }
+
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items, negocioNombre });
+      const buffer = new Uint8Array(ticketText.length);
+      for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
+
+      // @ts-ignore
+      const port = await navigator.serial.requestPort();
+      await port.open({ baudRate: 9600 });
+      const writer = port.writable.getWriter();
+      await writer.write(buffer);
+      await writer.close();
+      await port.close();
+
+      alert('¡Comanda enviada correctamente!');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error al conectar.';
+      if (!msg.includes('No port selected')) setPrintError(msg);
+    } finally { setPrinting(false); }
+  };
+
+  const handlePrintWebBluetooth = async () => {
+    try {
+      setPrinting(true);
+      setPrintError('');
+      
+      if (!('bluetooth' in navigator)) {
+        throw new Error('Bluetooth directo no soportado en este navegador.');
+      }
+
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items, negocioNombre });
+      const buffer = new Uint8Array(ticketText.length);
+      for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
+
+      // @ts-ignore
+      const device = await navigator.bluetooth.requestDevice({
+        acceptAllDevices: true,
+        optionalServices: ['000018f0-0000-1000-8000-00805f9b34fb', '49535343-fe7d-4ae5-8fa9-9fafd205e455']
+      });
+
+      const server = await device.gatt.connect();
+      const services = await server.getPrimaryServices();
+      let printCharacteristic;
+      
+      for (const service of services) {
+        const characteristics = await service.getCharacteristics();
+        for (const char of characteristics) {
+          if (char.properties.write || char.properties.writeWithoutResponse) {
+            printCharacteristic = char;
+            break;
+          }
+        }
+        if (printCharacteristic) break;
+      }
+
+      if (!printCharacteristic) throw new Error('No se encontró el servicio de impresión en este dispositivo.');
+
+      const chunkSize = 100;
+      for (let i = 0; i < buffer.length; i += chunkSize) {
+        const chunk = buffer.slice(i, i + chunkSize);
+        if (printCharacteristic.properties.writeWithoutResponse) {
+          await printCharacteristic.writeValueWithoutResponse(chunk);
+        } else {
+          await printCharacteristic.writeValue(chunk);
+        }
+      }
+
+      device.gatt.disconnect();
+      alert('¡Comanda Bluetooth enviada!');
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error Bluetooth.';
+      if (!msg.includes('cancelled')) setPrintError(msg);
+    } finally { setPrinting(false); }
+  };
+
+  const totalItems = items.reduce((s, i) => s + i.cantidad, 0);
+
+  return (
+    <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
+      <div className="bg-white w-full max-w-xs rounded-2xl shadow-2xl animate-in zoom-in-95 duration-300 overflow-hidden">
+        <div className="px-5 py-3 border-b border-gray-100 flex justify-between items-center">
+          <div>
+            <h2 className="text-base font-semibold text-gray-900">🍳 Comanda</h2>
+            <p className="text-[10px] text-gray-500 mt-0.5">{mesa} · {totalItems} productos</p>
+          </div>
+          <button onClick={onClose} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={16} className="text-gray-400" />
+          </button>
+        </div>
+
+        <div className="px-5 py-3 max-h-[55vh] overflow-y-auto">
+          <div ref={boletaRef} className="font-mono text-[11px] text-black leading-relaxed">
+            <div className="text-center font-bold text-base mb-1">🍳 COMANDA</div>
+            <div className="text-center text-[10px] text-gray-500 mb-2">{negocioNombre}</div>
+            <div className="border-t border-dashed border-gray-400 my-1.5" />
+            <div className="text-xs"><span className="font-bold">Mesa:</span> {mesa}</div>
+            <div className="text-[10px]"><span className="font-bold">Mozo:</span> {mozoNombre}</div>
+            <div className="text-[10px]"><span className="font-bold">Hora:</span> {formatFecha(fecha)} {hora}</div>
+            <div className="border-t border-dashed border-gray-400 my-1.5" />
+            {items.map((item, idx) => (
+              <div key={idx} className="mb-1.5">
+                <div className="flex items-center gap-1.5">
+                  <span className="font-bold text-xs">{item.cantidad}x</span>
+                  <span className="text-xs">{item.nombre}</span>
+                  {item.categoria === 'bebidas' && <span className="text-[10px]">🥤</span>}
+                </div>
+                {item.notas && (
+                  <div className="pl-5 text-[9px] text-gray-500 italic">* {item.notas}</div>
+                )}
+              </div>
+            ))}
+            <div className="border-t border-dashed border-gray-400 my-1.5" />
+            <div className="text-center text-[9px] text-gray-400 mt-1">¡Buen provecho!</div>
+          </div>
+        </div>
+
+        <div className="px-5 py-3 bg-gray-50 border-t border-gray-100 space-y-1.5">
+          <button
+            onClick={handlePrintBrowser}
+            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-2.5 rounded-xl hover:bg-blue-700 transition-colors text-xs font-semibold"
+          >
+            <Printer size={14} />
+            Imprimir Comanda (Navegador / RawBT)
+          </button>
+          
+          <div className="flex gap-1.5">
+            <button
+              onClick={handlePrintWebBluetooth}
+              disabled={printing}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-indigo-600 text-white px-2 py-2 rounded-xl hover:bg-indigo-700 transition-colors text-[10px] font-semibold disabled:opacity-50"
+            >
+              <Bluetooth size={12} />
+              Bluetooth
+            </button>
+            <button
+              onClick={handlePrintSerial}
+              disabled={printing}
+              className="flex-1 flex items-center justify-center gap-1.5 bg-emerald-600 text-white px-2 py-2 rounded-xl hover:bg-emerald-700 transition-colors text-[10px] font-semibold disabled:opacity-50"
+            >
+              <Usb size={12} />
+              USB / COM
+            </button>
+          </div>
+
+          <button
+            onClick={handlePrintNetwork}
+            disabled={printing}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-2.5 rounded-xl hover:bg-gray-700 transition-colors text-xs font-semibold disabled:opacity-50"
+          >
+            <Printer size={14} />
+            {printing ? 'Enviando...' : 'Enviar a Ticketera (Red)'}
+          </button>
+          {printError && <p className="text-[10px] text-red-500 text-center">{printError}</p>}
+          <p className="text-[9px] text-gray-400 text-center">
+            Ticket compacto para cocina
+          </p>
+        </div>
+      </div>
+    </div>
+  );
+}
