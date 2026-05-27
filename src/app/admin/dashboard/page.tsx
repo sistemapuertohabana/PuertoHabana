@@ -918,17 +918,30 @@ export default function DashboardPage() {
     }
   };
 
-  // Group active orders by mesa (for Active Tab)
+  // Group active orders by mozo (for Active Tab)
   const activeOrdersForSimDate = pedidos.filter(p => p.fecha === simulatedDate);
-  const mesasPedidos = Array.from(new Set(activeOrdersForSimDate.map(p => p.mesa)))
-    .sort((a, b) => a.localeCompare(b, 'es', { numeric: true }))
-    .map(mesa => {
-      const mesaOrders = activeOrdersForSimDate.filter(p => p.mesa === mesa);
-      const mozoNombre = mesaOrders[0]?.mozoNombre || '';
-      const hora = mesaOrders[0]?.hora || '';
-      const total = mesaOrders.reduce((sum, p) => sum + (Number(p.precio) * p.cantidad), 0);
-      return { mesa, mozoNombre, hora, total, pedidos: mesaOrders };
-    });
+  const mozosPedidos = mozosList.map(mozo => {
+    const mOrders = activeOrdersForSimDate.filter(p => p.mozoId === mozo.id);
+    const total = mOrders.reduce((sum, p) => sum + (Number(p.precio) * p.cantidad), 0);
+    const mesasOfMozo = Array.from(new Set(mOrders.map(p => p.mesa))).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    const pedidosByMesa = mesasOfMozo.map(m => ({
+      mesa: m,
+      pedidos: mOrders.filter(p => p.mesa === m)
+    }));
+    return { mozoId: mozo.id, mozoNombre: mozo.nombre, total, pedidosByMesa };
+  });
+
+  // Check for orders not assigned to any current mozo
+  const unassignedOrders = activeOrdersForSimDate.filter(p => !mozosList.some(m => m.id === p.mozoId));
+  if (unassignedOrders.length > 0) {
+    const total = unassignedOrders.reduce((sum, p) => sum + (Number(p.precio) * p.cantidad), 0);
+    const mesasOfUnassigned = Array.from(new Set(unassignedOrders.map(p => p.mesa))).sort((a, b) => a.localeCompare(b, 'es', { numeric: true }));
+    const pedidosByMesa = mesasOfUnassigned.map(m => ({
+      mesa: m,
+      pedidos: unassignedOrders.filter(p => p.mesa === m)
+    }));
+    mozosPedidos.push({ mozoId: 'unassigned', mozoNombre: 'Otros / Sin asignar', total, pedidosByMesa });
+  }
 
   // Waiter statistics calculations (for Waiter Sales Tab)
   const rangeOrdersForWaiter = pedidos.filter(p => isDateInRange(p.fecha));
@@ -1228,9 +1241,9 @@ export default function DashboardPage() {
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
             <div>
               <h2 className={`text-xl md:text-2xl font-medium text-gray-900`}>
-                Pedidos por Mesa
+                Pedidos por Mozo
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitoreo de comandas activas agrupadas por mesa.</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Monitoreo de comandas activas agrupadas por mozo.</p>
             </div>
             <button
               onClick={() => setShowAddModal(true)}
@@ -1242,100 +1255,106 @@ export default function DashboardPage() {
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6 pb-4 w-full">
-            {mesasPedidos.map((mesa) => (
+            {mozosPedidos.map((mozo) => (
               <div 
-                key={mesa.mesa} 
+                key={mozo.mozoId} 
                 className={`border rounded-xl p-4 md:p-6 transition-all duration-200 flex flex-col justify-between ${
                   'bg-white border-gray-200 hover:border-gray-300 shadow-sm'
                 }`}
               >
                 <div>
-                  {/* Header: Mesa + mozo + total badge */}
+                  {/* Header: Mozo + total mesas badge */}
                   <div className="flex justify-between items-center mb-4">
                     <div>
-                      <h3 className={`text-base md:text-lg font-bold text-gray-900`}>{mesa.mesa}</h3>
-                      <p className={`text-xs text-gray-500 mt-0.5`}>Mozo: {mesa.mozoNombre}</p>
+                      <h3 className={`text-base md:text-lg font-bold text-gray-900 flex items-center gap-2`}>
+                        <Users size={18} className="text-blue-600" />
+                        {mozo.mozoNombre}
+                      </h3>
+                      <p className={`text-xs text-gray-500 mt-0.5`}>Mesas activas: {mozo.pedidosByMesa.length}</p>
                     </div>
                     <div className="text-right">
                       <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
-                        mesa.pedidos.length > 0
+                        mozo.pedidosByMesa.length > 0
                           ? 'bg-blue-50 text-blue-600 border border-blue-100'
                           : 'bg-gray-50 text-gray-400 border border-gray-100'
                       }`}>
-                        {mesa.pedidos.length} {mesa.pedidos.length === 1 ? 'item' : 'items'}
+                        {mozo.pedidosByMesa.reduce((acc, m) => acc + m.pedidos.length, 0)} items
                       </span>
                     </div>
                   </div>
                   
-                  {/* Items detallados — TODOS, sin límite */}
-                  {mesa.pedidos.length > 0 ? (
-                    <div className="space-y-2">
-                      {mesa.pedidos.map((pedido, idx) => (
-                        <div key={idx} className={`flex justify-between items-center py-2.5 border-b last:border-0 ${
-                          'border-gray-100'
-                        }`}>
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <p className={`text-sm font-medium text-gray-900 truncate`}>{pedido.item}</p>
-                              <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
-                                pedido.estado === 'Listo' ? 'bg-green-500' : pedido.estado === 'En preparación' ? 'bg-yellow-500' : 'bg-gray-400'
-                              }`}></span>
-                            </div>
-                            <div className="flex items-center gap-2 mt-1">
-                              <p className={`text-xs text-gray-500`}>{pedido.hora}</p>
-                              <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${
-                                pedido.category === 'comida' ? 'bg-orange-50 text-orange-700' : 'bg-blue-50 text-blue-700'
-                              }`}>
-                                {pedido.category}
-                              </span>
-                              {pedido.notas && (
-                                <span className="text-[10px] text-gray-400 italic truncate max-w-[100px]" title={pedido.notas}>
-                                  📝 {pedido.notas}
-                                </span>
-                              )}
-                            </div>
+                  {/* Items detallados agrupados por mesa */}
+                  {mozo.pedidosByMesa.length > 0 ? (
+                    <div className="space-y-4">
+                      {mozo.pedidosByMesa.map((mesaGroup, mIdx) => (
+                        <div key={mIdx} className="bg-gray-50/50 rounded-lg p-3 border border-gray-100">
+                          <h4 className="text-sm font-semibold text-gray-800 mb-2 pb-1 border-b border-gray-200">{mesaGroup.mesa}</h4>
+                          <div className="space-y-2">
+                            {mesaGroup.pedidos.map((pedido, idx) => (
+                              <div key={idx} className={`flex justify-between items-center py-1.5`}>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center gap-1.5">
+                                    <p className={`text-sm font-medium text-gray-900 truncate`}>{pedido.item}</p>
+                                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${
+                                      pedido.estado === 'Listo' ? 'bg-green-500' : pedido.estado === 'En preparación' ? 'bg-yellow-500' : 'bg-gray-400'
+                                    }`}></span>
+                                  </div>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <p className={`text-[10px] text-gray-500`}>{pedido.hora}</p>
+                                    {pedido.notas && (
+                                      <span className="text-[10px] text-gray-400 italic truncate max-w-[100px]" title={pedido.notas}>
+                                        📝 {pedido.notas}
+                                      </span>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="text-right shrink-0 ml-2">
+                                  <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-md ${
+                                    'text-gray-800 bg-gray-200'
+                                  }`}>x{pedido.cantidad}</span>
+                                  <p className="text-[10px] font-semibold text-green-600 mt-0.5">
+                                    S/ {(Number(pedido.precio) * pedido.cantidad).toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
-                          <div className="text-right shrink-0 ml-2">
-                            <span className={`text-xs font-semibold px-2 py-1 rounded-md ${
-                              'text-gray-800 bg-gray-100'
-                            }`}>x{pedido.cantidad}</span>
-                            <p className="text-[11px] font-semibold text-green-600 mt-0.5">
-                              S/ {(Number(pedido.precio) * pedido.cantidad).toFixed(2)}
-                            </p>
+                          {/* Mesa Action */}
+                          <div className="mt-2 pt-2 border-t border-gray-200 flex justify-end">
+                            <button
+                              onClick={() => setSelectedMesaBoleta({
+                                mesa: mesaGroup.mesa,
+                                mozoNombre: mozo.mozoNombre,
+                                items: mesaGroup.pedidos,
+                                hora: mesaGroup.pedidos[0]?.hora || '',
+                              })}
+                              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors text-xs font-semibold"
+                            >
+                              <Printer size={12} />
+                              Imprimir Mesa
+                            </button>
                           </div>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="py-8 text-center">
-                      <p className={`text-sm text-gray-400`}>Sin pedidos para esta mesa</p>
+                    <div className="py-8 text-center bg-gray-50/50 rounded-xl border border-dashed border-gray-200">
+                      <p className={`text-sm text-gray-400`}>Sin pedidos activos</p>
                     </div>
                   )}
                 </div>
                 
-                {/* Footer: Total + Print button */}
-                {mesa.pedidos.length > 0 && (
+                {/* Footer: Total */}
+                {mozo.pedidosByMesa.length > 0 && (
                   <div className={`mt-4 pt-3 border-t flex justify-between items-center ${
                     'border-gray-100'
                   }`}>
                     <div>
-                      <span className="text-xs text-gray-500">Total:</span>
+                      <span className="text-xs text-gray-500">Total Acumulado:</span>
                       <span className="font-bold text-sm text-gray-900 ml-2">
-                        S/ {mesa.total.toFixed(2)}
+                        S/ {mozo.total.toFixed(2)}
                       </span>
                     </div>
-                    <button
-                      onClick={() => setSelectedMesaBoleta({
-                        mesa: mesa.mesa,
-                        mozoNombre: mesa.mozoNombre,
-                        items: mesa.pedidos,
-                        hora: mesa.hora,
-                      })}
-                      className="flex items-center gap-1.5 bg-blue-600 text-white px-3 py-2 rounded-lg hover:bg-blue-700 transition-colors text-xs font-semibold shadow-sm"
-                    >
-                      <Printer size={14} />
-                      Imprimir Boleta
-                    </button>
                   </div>
                 )}
               </div>
