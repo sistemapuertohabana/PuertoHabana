@@ -46,33 +46,81 @@ export default function Boleta({
   };
 
   const handlePrintBrowser = () => {
-    const contenido = boletaRef.current?.innerHTML;
-    if (!contenido) return;
-
     const ventana = window.open('', '_blank', 'width=320,height=600');
-    if (!ventana) return;
+    if (!ventana) {
+      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir.');
+      return;
+    }
 
-    ventana.document.write(`
+    let itemsHtml = '';
+    items.forEach(item => {
+      itemsHtml += `
+        <div style="margin-bottom: 8px;">
+          <div>${item.cantidad}x ${item.item}</div>
+          <div style="display: flex; justify-content: space-between; padding-left: 12px;">
+            <span>S/ ${item.precio.toFixed(2)} c/u</span>
+            <span>S/ ${(item.precio * item.cantidad).toFixed(2)}</span>
+          </div>
+          ${item.notas ? `<div style="padding-left: 12px; color: #555;">* ${item.notas}</div>` : ''}
+        </div>
+      `;
+    });
+
+    const html = `
       <!DOCTYPE html>
       <html>
         <head>
           <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
           <title>Boleta - ${mesa}</title>
           <style>
             * { margin: 0; padding: 0; box-sizing: border-box; }
-            body { font-family: 'Courier New', monospace; font-size: 12px; width: 80mm; padding: 4mm; color: #000; }
-            .center { text-align: center; }
-            .line { border-top: 1px dashed #000; margin: 4px 0; }
-            .row { display: flex; justify-content: space-between; margin: 2px 0; }
-            .logo { font-size: 16px; font-weight: bold; text-align: center; margin-bottom: 4px; }
-            @media print { body { width: 80mm; } @page { margin: 0; size: 80mm auto; } }
+            body { font-family: 'Courier New', monospace; font-size: 12px; width: 100%; max-width: 80mm; padding: 4mm; color: #000; margin: 0 auto; }
+            .dashed-line { border-top: 1px dashed #000; margin: 8px 0; }
+            .text-center { text-align: center; }
+            .flex-between { display: flex; justify-content: space-between; }
+            .font-bold { font-weight: bold; }
+            @media print { 
+              body { width: 80mm; padding: 0; margin: 0; } 
+              @page { margin: 0; size: 80mm auto; } 
+            }
           </style>
         </head>
-        <body>${contenido}
-          <script>window.onload = function() { window.print(); window.close(); }</script>
+        <body>
+          <div class="text-center font-bold" style="font-size: 16px; margin-bottom: 4px;">${negocioNombre}</div>
+          <div class="text-center">Cevicheria</div>
+          <div class="text-center" style="margin-bottom: 8px;">RUC: ${ruc}</div>
+          <div class="dashed-line"></div>
+          <div>Mesa   : ${mesa}</div>
+          <div>Mozo   : ${mozoNombre}</div>
+          <div>Fecha  : ${formatFecha(fecha)} ${hora}</div>
+          <div class="dashed-line"></div>
+          <div class="flex-between font-bold">
+            <span>PRODUCTO</span>
+            <span>TOTAL</span>
+          </div>
+          <div class="dashed-line"></div>
+          ${itemsHtml}
+          <div class="dashed-line"></div>
+          <div class="flex-between"><span>Subtotal:</span><span>S/ ${subtotal.toFixed(2)}</span></div>
+          <div class="dashed-line"></div>
+          <div class="flex-between font-bold" style="font-size: 14px;">
+            <span>TOTAL:</span>
+            <span>S/ ${total.toFixed(2)}</span>
+          </div>
+          <div class="dashed-line"></div>
+          <div class="text-center" style="margin-top: 8px;">¡Gracias por su visita!</div>
+          <script>
+            setTimeout(() => {
+              window.print();
+            }, 500);
+          </script>
         </body>
       </html>
-    `);
+    `;
+
+    ventana.document.open();
+    ventana.document.write(html);
     ventana.document.close();
   };
 
