@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
-import { checkAndNotifyLowStock } from '@/lib/push';
+import { checkAndNotifyLowStock, sendPushNotification } from '@/lib/push';
 
 export const dynamic = 'force-dynamic';
 
@@ -123,6 +123,50 @@ export async function POST(request: Request) {
         }).catch(() => {});
       }
     }
+  }
+
+  // ── Crear notificaciones server-side ────────────────────────────────
+  // Siempre notificar al admin sobre el nuevo pedido
+  const mozoDisplay = mozo_nombre || 'Mozo';
+  const totalStr = `S/ ${Number(total).toFixed(2)}`;
+  const itemsResumen = items.slice(0, 3).map((i: any) => `${i.cantidad}x ${i.nombre.replace(/^🎁\s*/, '')}`).join(', ');
+  const itemsExtra = items.length > 3 ? ` y ${items.length - 3} más` : '';
+
+  // Notificación para ADMIN
+  await sb
+    .from('notificaciones')
+    .insert([{
+      rol_destino: 'admin',
+      titulo: '🆕 Nuevo Pedido',
+      mensaje: `${mozoDisplay} envió pedido para ${mesa_nombre} — ${totalStr} (${itemsResumen}${itemsExtra})`,
+    }])
+    .maybeSingle();
+
+  sendPushNotification({
+    rol_destino: 'admin',
+    titulo: '🆕 Nuevo Pedido',
+    mensaje: `${mozoDisplay} · ${mesa_nombre} · ${totalStr}`,
+    url: '/admin/dashboard',
+  }).catch(() => {});
+
+  // Notificación para COCINA (solo si hay items de comida)
+  const tieneComida = items.some((i: any) => i.categoria === 'comida');
+  if (tieneComida) {
+    await sb
+      .from('notificaciones')
+      .insert([{
+        rol_destino: 'cocina',
+        titulo: '🍽️ Nueva Comanda',
+        mensaje: `${mozoDisplay} ha enviado un pedido para ${mesa_nombre}`,
+      }])
+      .maybeSingle();
+
+    sendPushNotification({
+      rol_destino: 'cocina',
+      titulo: '🍽️ Nueva Comanda',
+      mensaje: `${mozoDisplay} · ${mesa_nombre}`,
+      url: '/cocina',
+    }).catch(() => {});
   }
 
   return NextResponse.json({ success: true, id: comanda.id }, { status: 201 });

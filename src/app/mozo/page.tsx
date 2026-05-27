@@ -421,20 +421,6 @@ export default function MozoPage() {
         body: JSON.stringify({ mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
       });
       
-      // Solo notificar a cocina si hay items de comida
-      const tieneComida = items.some(i => i.categoria === 'comida');
-      if (tieneComida) {
-        fetch('/api/notificaciones', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            rol_destino: 'cocina',
-            titulo: 'Nueva Comanda',
-            mensaje: `El ${mozoNombre} ha enviado un pedido para ${mesaName}`
-          })
-        }).catch(() => {});
-      }
-
     } catch {
       addToSyncQueue('POST', '/api/pedidos', {
         mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
