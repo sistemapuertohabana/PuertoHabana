@@ -1,248 +1,368 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Edit, Trash2, Plus, Loader2 } from 'lucide-react';
+import { Plus, Trash2, Edit3, MessageSquare, ChefHat, Beer, Package, DollarSign, StickyNote, X, Clock, Loader2, Send } from 'lucide-react';
 
-interface Gasto {
+interface Nota {
   id: string;
-  descripcion: string;
-  categoria: string;
-  monto: number;
-  fecha: string;
+  contenido: string;
+  tags: string[];
+  monto: number | null;
+  created_at: string;
 }
 
-const categorias = ['Insumos', 'Servicios', 'Mantenimiento', 'Personal', 'Equipos', 'Otros'];
-
-const emptyForm = {
-  descripcion: '',
-  categoria: 'Insumos',
-  monto: 0,
-  fecha: new Date().toISOString().split('T')[0],
+const TAG_INFO: Record<string, { label: string; color: string; icon: React.ComponentType<any> }> = {
+  gasto:   { label: 'Gasto',   color: 'bg-red-100 text-red-700 border-red-200',    icon: DollarSign },
+  cocina:  { label: 'Cocina',  color: 'bg-orange-100 text-orange-700 border-orange-200', icon: ChefHat },
+  bebidas: { label: 'Bebidas', color: 'bg-blue-100 text-blue-700 border-blue-200',   icon: Beer },
+  insumos: { label: 'Insumos', color: 'bg-teal-100 text-teal-700 border-teal-200',   icon: Package },
+  nota:    { label: 'Nota',    color: 'bg-gray-100 text-gray-700 border-gray-200',   icon: StickyNote },
 };
 
-export default function GastosPage() {
-  const [gastos,      setGastos]      = useState<Gasto[]>([]);
-  const [loading,     setLoading]     = useState(true);
-  const [showModal,   setShowModal]   = useState(false);
-  const [editingGasto,setEditingGasto]= useState<Gasto | null>(null);
-  const [isSaving,    setIsSaving]    = useState(false);
-  const [formData,    setFormData]    = useState(emptyForm);
+function detectarTags(contenido: string): string[] {
+  const tags: string[] = [];
+  const upper = contenido.toUpperCase().trim();
+  const match = upper.match(/^\[(\w+)\]/) || upper.match(/^(\w+)[:\s]/);
+  if (match) {
+    const tag = match[1].toLowerCase();
+    if (['gasto', 'cocina', 'bebidas', 'insumos', 'nota'].includes(tag)) {
+      tags.push(tag);
+    }
+  }
+  if (tags.length === 0) {
+    tags.push('nota');
+  }
+  if (!tags.includes('gasto') && /\bgasto\b/i.test(contenido)) {
+    tags.push('gasto');
+  }
+  return tags;
+}
 
-  const loadGastos = useCallback(async () => {
+function formatearFecha(iso: string) {
+  const d = new Date(iso);
+  return d.toLocaleDateString('es-PE', {
+    day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit',
+  });
+}
+
+export default function NotasPage() {
+  const [notas, setNotas] = useState<Nota[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [contenido, setContenido] = useState('');
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [filtroTag, setFiltroTag] = useState<string | null>(null);
+  const [showHint, setShowHint] = useState(true);
+
+  const loadNotas = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch('/api/gastos');
-      if (res.ok) {
-        setGastos(await res.json());
-      } else throw new Error();
+      const params = new URLSearchParams();
+      if (filtroTag) params.append('tag', filtroTag);
+      const res = await fetch(`/api/notas?${params.toString()}`);
+      if (res.ok) setNotas(await res.json());
+      else throw new Error();
     } catch {
-      try {
-        setGastos(JSON.parse(localStorage.getItem('ph_gastos') || '[]'));
-      } catch { setGastos([]); }
+      setNotas([]);
     }
     setLoading(false);
-  }, []);
+  }, [filtroTag]);
 
-  useEffect(() => { loadGastos(); }, [loadGastos]);
+  useEffect(() => { loadNotas(); }, [loadNotas]);
 
-  const handleAdd = () => {
-    setEditingGasto(null);
-    setFormData({ ...emptyForm, fecha: new Date().toISOString().split('T')[0] });
-    setShowModal(true);
-  };
-
-  const handleEdit = (g: Gasto) => {
-    setEditingGasto(g);
-    setFormData({ descripcion: g.descripcion, categoria: g.categoria, monto: g.monto, fecha: g.fecha });
-    setShowModal(true);
-  };
-
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.descripcion || !formData.monto) return;
+    if (!contenido.trim()) return;
     setIsSaving(true);
 
     try {
-      if (editingGasto) {
-        const res = await fetch(`/api/gastos/${editingGasto.id}`, {
+      if (editandoId) {
+        await fetch(`/api/notas/${editandoId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ contenido: contenido.trim() }),
         });
-        if (!res.ok) throw new Error();
       } else {
-        const res = await fetch('/api/gastos', {
+        await fetch('/api/notas', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData),
+          body: JSON.stringify({ contenido: contenido.trim() }),
         });
-        if (!res.ok) throw new Error();
       }
-      await loadGastos();
+      setContenido('');
+      setEditandoId(null);
+      await loadNotas();
     } catch {
       // Fallback localStorage
-      const current: Gasto[] = JSON.parse(localStorage.getItem('ph_gastos') || '[]');
-      if (editingGasto) {
-        const updated = current.map(g => g.id === editingGasto.id ? { ...g, ...formData } : g);
-        localStorage.setItem('ph_gastos', JSON.stringify(updated));
-        setGastos(updated);
+      const current: Nota[] = JSON.parse(localStorage.getItem('ph_notas') || '[]');
+      const tags = detectarTags(contenido);
+      if (editandoId) {
+        const updated = current.map(n => n.id === editandoId ? { ...n, contenido: contenido.trim(), tags } : n);
+        localStorage.setItem('ph_notas', JSON.stringify(updated));
+        setNotas(updated);
       } else {
-        const newG = { ...formData, id: String(Date.now()) };
-        const updated = [newG, ...current];
-        localStorage.setItem('ph_gastos', JSON.stringify(updated));
-        setGastos(updated);
+        const nueva: Nota = {
+          id: String(Date.now()),
+          contenido: contenido.trim(),
+          tags,
+          monto: null,
+          created_at: new Date().toISOString(),
+        };
+        const updated = [nueva, ...current];
+        localStorage.setItem('ph_notas', JSON.stringify(updated));
+        setNotas(updated);
       }
+      setContenido('');
+      setEditandoId(null);
     }
-
     setIsSaving(false);
-    setShowModal(false);
   };
 
   const handleDelete = async (id: string) => {
-    if (!confirm('¿Eliminar este gasto?')) return;
+    if (!confirm('¿Eliminar esta nota?')) return;
     try {
-      const res = await fetch(`/api/gastos/${id}`, { method: 'DELETE' });
-      if (res.ok) { await loadGastos(); return; }
-      throw new Error();
+      await fetch(`/api/notas/${id}`, { method: 'DELETE' });
+      await loadNotas();
     } catch {
-      const current: Gasto[] = JSON.parse(localStorage.getItem('ph_gastos') || '[]');
-      const updated = current.filter(g => g.id !== id);
-      localStorage.setItem('ph_gastos', JSON.stringify(updated));
-      setGastos(updated);
+      const current: Nota[] = JSON.parse(localStorage.getItem('ph_notas') || '[]');
+      const updated = current.filter(n => n.id !== id);
+      localStorage.setItem('ph_notas', JSON.stringify(updated));
+      setNotas(updated);
     }
   };
 
-  const total = gastos.reduce((s, g) => s + Number(g.monto), 0);
+  const handleEdit = (nota: Nota) => {
+    setContenido(nota.contenido);
+    setEditandoId(nota.id);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCancelEdit = () => {
+    setContenido('');
+    setEditandoId(null);
+  };
+
+  // Tags disponibles para el filtro
+  const allTags = Array.from(new Set(notas.flatMap(n => n.tags)));
+
+  // Nota seleccionada para el preview
+  const tagsPreview = contenido ? detectarTags(contenido) : [];
 
   return (
     <div className="animate-in fade-in duration-300">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Gastos</h1>
-          <p className="text-sm text-gray-500 mt-1">Registro de gastos del negocio.</p>
+          <h1 className="text-3xl md:text-4xl font-medium text-gray-900">Bloc de Notas</h1>
+          <p className="text-sm text-gray-500 mt-1">
+            Escribe con <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono">[Tag]</code> para clasificar automáticamente.
+          </p>
         </div>
-        <button onClick={handleAdd}
-          className="bg-blue-600 text-white font-semibold py-2.5 px-5 rounded-xl hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 w-full md:w-auto">
-          <Plus size={18} /> Agregar Gasto
+        <button
+          onClick={() => setShowHint(!showHint)}
+          className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+        >
+          <MessageSquare size={14} />
+          {showHint ? 'Ocultar' : 'Mostrar'} ayudas
         </button>
       </div>
 
-      {/* Resumen */}
-      <div className="bg-white border border-gray-200 rounded-xl p-5 mb-6 flex items-center justify-between">
-        <p className="text-sm text-gray-500 font-medium">Total Gastos</p>
-        <p className="text-2xl font-bold text-gray-900">S/ {Number(total).toFixed(2)}</p>
-      </div>
+      {/* Hint panel */}
+      {showHint && (
+        <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-xl p-4 mb-6">
+          <h3 className="text-sm font-semibold text-blue-800 mb-2 flex items-center gap-2">
+            <MessageSquare size={15} />
+            Escribe con tags para clasificar automáticamente
+          </h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2 text-xs">
+            {Object.entries(TAG_INFO).map(([key, info]) => {
+              const Icon = info.icon;
+              return (
+                <div key={key} className="flex items-center gap-2 bg-white/70 rounded-lg px-3 py-2 border border-blue-100">
+                  <Icon size={14} className="text-gray-500" />
+                  <code className="font-mono font-semibold text-blue-700">[{info.label}]</code>
+                  <span className="text-gray-500">— mensaje para {info.label.toLowerCase()}</span>
+                </div>
+              );
+            })}
+          </div>
+          <p className="text-[11px] text-blue-600 mt-2">
+            💡 Ej: <code className="font-mono bg-blue-100 px-1 rounded">[Gasto] Compre 50kg de arroz S/120</code> → se registra en gastos automáticamente
+          </p>
+        </div>
+      )}
 
-      {loading && <div className="flex justify-center py-20"><Loader2 size={32} className="animate-spin text-gray-300" /></div>}
+      {/* Formulario */}
+      <form onSubmit={handleSubmit} className="bg-white border border-gray-200 rounded-xl p-4 mb-6 shadow-sm">
+        <div className="flex items-start gap-3">
+          <div className="flex-1">
+            <textarea
+              value={contenido}
+              onChange={(e) => setContenido(e.target.value)}
+              placeholder="Escribe tu nota aquí... Ej: [Cocina] Preparar 30 ceviches para el evento"
+              rows={3}
+              className="w-full px-4 py-3 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 resize-none placeholder-gray-400"
+            />
+            {/* Tag preview */}
+            {contenido && tagsPreview.length > 0 && (
+              <div className="flex items-center gap-2 mt-2 flex-wrap">
+                <span className="text-[10px] text-gray-400 font-medium">Se detectará como:</span>
+                {tagsPreview.map(tag => {
+                  const info = TAG_INFO[tag];
+                  if (!info) return null;
+                  const Icon = info.icon;
+                  return (
+                    <span key={tag} className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${info.color}`}>
+                      <Icon size={10} />
+                      {info.label}
+                    </span>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+          <div className="flex flex-col gap-2">
+            <button
+              type="submit"
+              disabled={isSaving || !contenido.trim()}
+              className="bg-blue-600 text-white p-3 rounded-xl hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+              title={editandoId ? 'Actualizar nota' : 'Guardar nota'}
+            >
+              {isSaving ? <Loader2 size={18} className="animate-spin" /> : <Send size={18} />}
+            </button>
+            {editandoId && (
+              <button
+                type="button"
+                onClick={handleCancelEdit}
+                className="bg-gray-100 text-gray-600 p-3 rounded-xl hover:bg-gray-200 transition-colors flex items-center justify-center"
+                title="Cancelar edición"
+              >
+                <X size={18} />
+              </button>
+            )}
+          </div>
+        </div>
+      </form>
+
+      {/* Filtros por tag */}
+      {allTags.length > 0 && (
+        <div className="flex flex-wrap gap-2 mb-4">
+          <button
+            onClick={() => setFiltroTag(null)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+              filtroTag === null
+                ? 'bg-gray-900 text-white border-gray-900'
+                : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+            }`}
+          >
+            Todas
+          </button>
+          {allTags.map(tag => {
+            const info = TAG_INFO[tag];
+            if (!info) return null;
+            const Icon = info.icon;
+            const count = notas.filter(n => n.tags.includes(tag)).length;
+            return (
+              <button
+                key={tag}
+                onClick={() => setFiltroTag(filtroTag === tag ? null : tag)}
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors border ${
+                  filtroTag === tag
+                    ? info.color + ' ring-2 ring-offset-1'
+                    : 'bg-white text-gray-500 border-gray-200 hover:bg-gray-50'
+                }`}
+              >
+                <Icon size={12} />
+                {info.label}
+                <span className="opacity-60">({count})</span>
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Lista de notas */}
+      {loading && (
+        <div className="flex justify-center py-20">
+          <Loader2 size={32} className="animate-spin text-gray-300" />
+        </div>
+      )}
 
       {!loading && (
         <>
-          <div className="hidden md:block bg-white border border-gray-200 rounded-xl overflow-hidden">
-            <table className="w-full">
-              <thead className="bg-gray-50 border-b border-gray-200">
-                <tr>
-                  {['Descripción', 'Categoría', 'Monto', 'Fecha', 'Acciones'].map(h => (
-                    <th key={h} className="px-5 py-3 text-left text-xs text-gray-500 uppercase tracking-wider font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-100">
-                {gastos.map(g => (
-                  <tr key={g.id} className="hover:bg-gray-50 transition-colors">
-                    <td className="px-5 py-4 text-sm text-gray-900">{g.descripcion}</td>
-                    <td className="px-5 py-4">
-                      <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-gray-100 text-gray-700">{g.categoria}</span>
-                    </td>
-                    <td className="px-5 py-4 text-sm font-semibold text-red-600">S/ {Number(g.monto).toFixed(2)}</td>
-                    <td className="px-5 py-4 text-sm text-gray-500">{g.fecha}</td>
-                    <td className="px-5 py-4">
-                      <div className="flex gap-2">
-                        <button onClick={() => handleEdit(g)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={15} /></button>
-                        <button onClick={() => handleDelete(g.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={15} /></button>
+          {notas.length === 0 ? (
+            <div className="text-center py-20 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
+              <StickyNote size={40} className="mx-auto text-gray-300 mb-3" />
+              <p className="font-medium text-gray-500">No hay notas todavía</p>
+              <p className="text-xs text-gray-400 mt-1">Escribe tu primera nota arriba 👆</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {notas.map(nota => (
+                <div
+                  key={nota.id}
+                  className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-sm transition-shadow group"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex-1 min-w-0">
+                      {/* Tags */}
+                      {nota.tags.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mb-2">
+                          {nota.tags.map(tag => {
+                            const info = TAG_INFO[tag];
+                            if (!info) return null;
+                            const Icon = info.icon;
+                            return (
+                              <span
+                                key={tag}
+                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold border ${info.color}`}
+                              >
+                                <Icon size={10} />
+                                {info.label}
+                              </span>
+                            );
+                          })}
+                        </div>
+                      )}
+                      {/* Contenido */}
+                      <p className="text-sm text-gray-900 whitespace-pre-wrap leading-relaxed">
+                        {nota.contenido}
+                      </p>
+                      {/* Monto si es gasto */}
+                      {nota.monto && (
+                        <p className="text-sm font-bold text-red-600 mt-1">
+                          S/ {Number(nota.monto).toFixed(2)}
+                        </p>
+                      )}
+                      {/* Fecha */}
+                      <div className="flex items-center gap-1.5 mt-2 text-[10px] text-gray-400">
+                        <Clock size={10} />
+                        {formatearFecha(nota.created_at)}
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-
-          <div className="md:hidden space-y-3">
-            {gastos.map(g => (
-              <div key={g.id} className="bg-white border border-gray-200 rounded-xl p-4">
-                <div className="flex justify-between items-start mb-2">
-                  <p className="text-sm font-semibold text-gray-900">{g.descripcion}</p>
-                  <div className="flex gap-1">
-                    <button onClick={() => handleEdit(g)} className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"><Edit size={14} /></button>
-                    <button onClick={() => handleDelete(g.id)} className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"><Trash2 size={14} /></button>
+                    </div>
+                    {/* Acciones */}
+                    <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={() => handleEdit(nota)}
+                        className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="Editar"
+                      >
+                        <Edit3 size={14} />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(nota.id)}
+                        className="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Eliminar"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-gray-100 text-gray-600">{g.categoria}</span>
-                  <span className="text-sm font-bold text-red-600">S/ {Number(g.monto).toFixed(2)}</span>
-                </div>
-                <p className="text-xs text-gray-400 mt-1">{g.fecha}</p>
-              </div>
-            ))}
-          </div>
-
-          {gastos.length === 0 && (
-            <div className="text-center py-16 border-2 border-dashed border-gray-200 rounded-2xl bg-gray-50">
-              <p className="font-medium text-gray-600">No hay gastos registrados</p>
+              ))}
             </div>
           )}
         </>
-      )}
-
-      {/* Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-          onClick={e => { if (e.target === e.currentTarget) setShowModal(false); }}>
-          <div className="bg-white w-full max-w-md rounded-2xl shadow-2xl">
-            <div className="px-6 py-5 border-b border-gray-100 flex justify-between items-center">
-              <h2 className="text-lg font-semibold text-gray-900">{editingGasto ? 'Editar Gasto' : 'Nuevo Gasto'}</h2>
-              <button onClick={() => setShowModal(false)} className="p-2 hover:bg-gray-100 rounded-full transition-colors text-gray-400">✕</button>
-            </div>
-            <form onSubmit={handleSave} className="px-6 py-5 space-y-4">
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Descripción *</label>
-                <input type="text" required value={formData.descripcion}
-                  onChange={e => setFormData({ ...formData, descripcion: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Categoría</label>
-                <select value={formData.categoria}
-                  onChange={e => setFormData({ ...formData, categoria: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500 bg-white">
-                  {categorias.map(c => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Monto (S/) *</label>
-                <input type="text" inputMode="decimal" required value={formData.monto === 0 ? '' : formData.monto}
-                  onChange={e => setFormData({ ...formData, monto: e.target.value === '' ? 0 : parseFloat(e.target.value) })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
-              </div>
-              <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">Fecha</label>
-                <input type="date" value={formData.fecha}
-                  onChange={e => setFormData({ ...formData, fecha: e.target.value })}
-                  className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/30 focus:border-blue-500" />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <button type="submit" disabled={isSaving}
-                  className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors disabled:opacity-60 flex items-center justify-center gap-2">
-                  {isSaving ? <Loader2 size={15} className="animate-spin" /> : 'Guardar'}
-                </button>
-                <button type="button" onClick={() => setShowModal(false)}
-                  className="flex-1 bg-gray-100 text-gray-700 py-2.5 rounded-xl text-sm font-medium hover:bg-gray-200 transition-colors">
-                  Cancelar
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
       )}
     </div>
   );

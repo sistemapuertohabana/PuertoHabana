@@ -20,11 +20,21 @@ export async function checkAndNotifyLowStock(item: {
   const unidad = item.unidad || 'unid';
   const mensaje = `"${item.nombre}" (${item.seccion}) tiene solo ${item.cantidad} ${unidad} — mínimo: ${minimo}`;
 
+  // Si es bebidas o tapers, también notificar al mozo
+  const esParaMozo = item.seccion === 'bebidas' || item.seccion === 'tapers';
+
   // Crear notificación en BD (para toasts en la app)
   await sb
     .from('notificaciones')
     .insert([{ rol_destino: 'admin', titulo, mensaje }])
     .maybeSingle();
+
+  if (esParaMozo) {
+    await sb
+      .from('notificaciones')
+      .insert([{ rol_destino: 'mozo', titulo, mensaje }])
+      .maybeSingle();
+  }
 
   // Enviar push notification nativa (no bloqueante)
   sendPushNotification({
@@ -33,6 +43,15 @@ export async function checkAndNotifyLowStock(item: {
     mensaje,
     url: '/admin/inventario',
   }).catch(() => {});
+
+  if (esParaMozo) {
+    sendPushNotification({
+      rol_destino: 'mozo',
+      titulo,
+      mensaje,
+      url: '/mozo/inventario',
+    }).catch(() => {});
+  }
 }
 
 // ── VAPID Configuration ──────────────────────────────────────────────────────

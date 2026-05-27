@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Wine, Package, Plus, Search, X, DollarSign, Barcode, ScanLine } from 'lucide-react';
 import { subscribeInventario, addInventarioItem, type InventarioItem } from '@/lib/db';
 import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
@@ -31,6 +31,12 @@ export default function MozoInventarioPage() {
       unsubTapers();
     };
   }, []);
+
+  // Low stock detection
+  const lowStockItems = useMemo(() => {
+    const all = [...bebidas, ...tapers];
+    return all.filter(i => i.cantidad <= (i.minimo || 3));
+  }, [bebidas, tapers]);
 
   const currentData = tab === 'bebidas' ? bebidas : tapers;
 
@@ -108,6 +114,34 @@ export default function MozoInventarioPage() {
       {successMsg && (
         <div className="mb-4 px-4 py-3 bg-green-50 border border-green-200 rounded-xl text-sm font-medium text-green-700">
           {successMsg}
+        </div>
+      )}
+
+      {/* Alerta de stock bajo */}
+      {lowStockItems.length > 0 && (
+        <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-xl">
+          <div className="flex items-start gap-3">
+            <span className="text-lg mt-0.5 shrink-0">⚠️</span>
+            <div className="flex-1 min-w-0">
+              <h3 className="text-xs font-semibold text-red-800">
+                Stock Bajo — {lowStockItems.length} producto{lowStockItems.length !== 1 ? 's' : ''} por agotarse
+              </h3>
+              <p className="text-[10px] text-red-600 mt-0.5 mb-2">
+                Reponer a tiempo para evitar quedarte sin stock
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {lowStockItems.map(item => (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-red-200 rounded-full text-[10px] font-medium text-red-700"
+                  >
+                    {item.nombre}
+                    <span className="text-red-400 font-semibold">({item.cantidad} {item.unidad || 'unid'})</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

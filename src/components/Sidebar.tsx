@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard, Package, Users, DollarSign,
-  Settings, User, LogOut, Landmark, Megaphone, X,
+  Settings, User, LogOut, Landmark, Megaphone, X, MessageSquare,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useLocalStorageValue } from '@/hooks/useProfilePhoto';
@@ -37,7 +37,7 @@ const menuGroups: MenuGroup[] = [
     label: 'Finanzas',
     items: [
       { href: '/admin/sunat', icon: Landmark, label: 'SUNAT' },
-      { href: '/admin/gastos', icon: DollarSign, label: 'Gastos' },
+      { href: '/admin/gastos', icon: MessageSquare, label: 'Notas' },
     ],
   },
   {
