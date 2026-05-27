@@ -13,10 +13,12 @@ export interface BoletaPayload {
   items: BoletaItem[];
   ruc?: string;
   negocioNombre?: string;
+  clienteNombre?: string;
+  clienteDocumento?: string;
 }
 
 export function buildEscPosTicket(payload: BoletaPayload): string {
-  const { mesa, mozoNombre, fecha, hora, items, ruc = '20XXXXXXXXX', negocioNombre = 'PUERTO HABANA' } = payload;
+  const { mesa, mozoNombre, fecha, hora, items, ruc = '20XXXXXXXXX', negocioNombre = 'PUERTO HABANA', clienteNombre, clienteDocumento } = payload;
 
   const formatFecha = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -46,6 +48,8 @@ export function buildEscPosTicket(payload: BoletaPayload): string {
   ticket += `Mesa   : ${mesa}\n`;
   ticket += `Mozo   : ${mozoNombre}\n`;
   ticket += `Fecha  : ${formatFecha(fecha)} ${hora}\n`;
+  if (clienteNombre) ticket += `Cliente: ${clienteNombre.length > 39 ? clienteNombre.substring(0, 39) : clienteNombre}\n`;
+  if (clienteDocumento) ticket += `Doc    : ${clienteDocumento}\n`;
   ticket += LINE;
   ticket += ROW('PRODUCTO', 'TOTAL');
   ticket += LINE;

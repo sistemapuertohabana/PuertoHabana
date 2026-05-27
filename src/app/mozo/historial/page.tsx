@@ -514,6 +514,22 @@ export default function MozoHistorialPage() {
                               )}
                               {sendingSunatHist ? 'Enviando...' : 'Boleta Electrónica'}
                             </button>
+                            <button
+                              onClick={() => {
+                                setBoletaData({
+                                  mesa: c.mesa,
+                                  mozoNombre: c.mozo_nombre || 'Mozo',
+                                  fecha: c.fecha,
+                                  hora: c.hora,
+                                  items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+                                  clienteNombre: clienteHist.nombre,
+                                  clienteDocumento: clienteHist.ruc || clienteHist.dni
+                                });
+                              }}
+                              className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition-colors shadow-sm"
+                            >
+                              🖨️ Ticket
+                            </button>
                             {clienteHist.telefono && (
                               <button
                                 onClick={async () => {

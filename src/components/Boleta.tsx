@@ -20,6 +20,8 @@ interface BoletaProps {
   onClose: () => void;
   ruc?: string;
   negocioNombre?: string;
+  clienteNombre?: string;
+  clienteDocumento?: string;
 }
 
 export default function Boleta({
@@ -31,6 +33,8 @@ export default function Boleta({
   onClose,
   ruc = process.env.NEXT_PUBLIC_NEGOCIO_RUC ?? '10429025546',
   negocioNombre = process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'CEVICHERIA PUERTO HABANA',
+  clienteNombre,
+  clienteDocumento,
 }: BoletaProps) {
   const boletaRef = useRef<HTMLDivElement>(null);
   const [printing, setPrinting] = useState(false);
@@ -94,6 +98,8 @@ export default function Boleta({
           <div>Mesa   : ${mesa}</div>
           <div>Mozo   : ${mozoNombre}</div>
           <div>Fecha  : ${formatFecha(fecha)} ${hora}</div>
+          ${clienteNombre ? `<div>Cliente: ${clienteNombre}</div>` : ''}
+          ${clienteDocumento ? `<div>Doc    : ${clienteDocumento}</div>` : ''}
           <div class="dashed-line"></div>
           <div class="flex-between font-bold">
             <span>PRODUCTO</span>
@@ -139,6 +145,8 @@ export default function Boleta({
           items,
           ruc,
           negocioNombre,
+          clienteNombre,
+          clienteDocumento,
         }),
       });
       const data = await res.json();
@@ -162,7 +170,7 @@ export default function Boleta({
         throw new Error('Tu navegador no soporta conexión USB/COM (Usa Chrome en PC o Android).');
       }
 
-      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre });
+      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre, clienteNombre, clienteDocumento });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -190,7 +198,7 @@ export default function Boleta({
         throw new Error('Bluetooth directo no soportado en este navegador.');
       }
 
-      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre });
+      const ticketText = buildEscPosTicket({ mesa, mozoNombre, fecha, hora, items, ruc, negocioNombre, clienteNombre, clienteDocumento });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -258,6 +266,8 @@ export default function Boleta({
             <div>Mesa   : {mesa}</div>
             <div>Mozo   : {mozoNombre}</div>
             <div>Fecha  : {formatFecha(fecha)} {hora}</div>
+            {clienteNombre && <div>Cliente: {clienteNombre}</div>}
+            {clienteDocumento && <div>Doc    : {clienteDocumento}</div>}
             <div className="border-t border-dashed border-gray-400 my-2" />
             <div className="flex justify-between font-bold">
               <span>PRODUCTO</span>

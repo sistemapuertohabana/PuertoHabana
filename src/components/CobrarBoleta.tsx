@@ -556,6 +556,8 @@ export default function CobrarBoleta({
           fecha={fecha}
           hora={hora}
           items={pedidos}
+          clienteNombre={clienteSelected?.nombre}
+          clienteDocumento={clienteSelected?.ruc || clienteSelected?.dni}
           onClose={() => { setShowBoleta(false); onSuccess?.(); }}
         />
       )}
