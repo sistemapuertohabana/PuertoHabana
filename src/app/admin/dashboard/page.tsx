@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import DashboardCard from '@/components/DashboardCard';
 import Boleta from '@/components/Boleta';
 import CobrarBoleta from '@/components/CobrarBoleta';
