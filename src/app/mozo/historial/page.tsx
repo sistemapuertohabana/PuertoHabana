@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, CreditCard } from 'lucide-react';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
+import Boleta from '@/components/Boleta';
 
 interface Comanda {
   id: number;
@@ -25,6 +26,7 @@ export default function MozoHistorialPage() {
   const [comandas, setComandas] = useState<Comanda[]>([]);
   const [loading,  setLoading]  = useState(true);
   const [pagoModalData, setPagoModalData] = useState<Comanda | null>(null);
+  const [boletaData, setBoletaData] = useState<any>(null);
   const [pagoInputs, setPagoInputs] = useState({ yape: '', efectivo: '' });
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
   const [taperModalData, setTaperModalData] = useState<Comanda | null>(null);
@@ -315,9 +317,15 @@ export default function MozoHistorialPage() {
                 </div>
                 
                 <div className="flex gap-2" onClick={e => e.stopPropagation()}>
-                  <a href={`/print/${c.id}`} target="_blank" rel="noopener noreferrer" className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm">
+                  <button onClick={() => setBoletaData({
+                    mesa: c.mesa,
+                    mozoNombre: c.mozo_nombre || 'Mozo',
+                    fecha: c.fecha,
+                    hora: c.hora,
+                    items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio }))
+                  })} className="flex-1 bg-gray-100 text-gray-700 px-4 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-2 hover:bg-gray-200 transition-colors text-sm">
                     🖨️ Imprimir
-                  </a>
+                  </button>
                   {c.estado === 'Entregado' && tapers.length > 0 && (
                     <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
                       className="flex-shrink-0 bg-emerald-100 text-emerald-700 px-3 py-2.5 rounded-xl font-semibold flex items-center justify-center gap-1.5 hover:bg-emerald-200 transition-colors text-xs">
@@ -1045,6 +1053,18 @@ export default function MozoHistorialPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Modal Boleta */}
+      {boletaData && (
+        <Boleta
+          mesa={boletaData.mesa}
+          mozoNombre={boletaData.mozoNombre}
+          fecha={boletaData.fecha}
+          hora={boletaData.hora}
+          items={boletaData.items}
+          onClose={() => setBoletaData(null)}
+        />
       )}
     </div>
   );
