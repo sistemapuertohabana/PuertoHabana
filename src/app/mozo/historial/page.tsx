@@ -160,23 +160,42 @@ export default function MozoHistorialPage() {
         })),
       }));
       // Filtrar por mozo si hay sesión
-      setComandas(mozoId ? mapped.filter(c => c.mozo_id === mozoId) : mapped);
+      const mozoComandas = mozoId ? mapped.filter(c => c.mozo_id === mozoId) : mapped;
+      
+      // Group by Mesa + Status (Entregado vs Activo)
+      const groupedMap = new Map<string, Comanda>();
+      mozoComandas.forEach(c => {
+        const isEntregado = c.estado === 'Entregado';
+        const key = `${c.mesa}-${isEntregado ? 'Entregado' : 'Activo'}`;
+        if (!groupedMap.has(key)) {
+          groupedMap.set(key, { ...c, items: [...(c.items || [])] });
+        } else {
+          const existing = groupedMap.get(key)!;
+          existing.items = [...(existing.items || []), ...(c.items || [])];
+          existing.total += c.total;
+          if (c.hora > existing.hora) existing.hora = c.hora; // update to latest time
+        }
+      });
+      setComandas(Array.from(groupedMap.values()).sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
     } catch {
       // Fallback localStorage
       try {
         const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
         const hoy = all.filter((p: any) => p.fecha === fecha);
-        // Agrupar por mesa+hora como "comanda"
+        // Agrupar por mesa+estado
         const grouped: Record<string, Comanda> = {};
         hoy.forEach((p: any) => {
-          const key = `${p.mesa}-${p.hora}`;
+          const isEntregado = p.estado === 'Entregado';
+          const key = `${p.mesa}-${isEntregado ? 'Entregado' : 'Activo'}`;
           if (!grouped[key]) {
-            grouped[key] = { id: p.id, mesa: p.mesa, mozo_nombre: p.mozoNombre, estado: p.estado, hora: p.hora, fecha: p.fecha, total: 0, items: [] };
+            grouped[key] = { id: p.id, mesa: p.mesa, mozo_nombre: p.mozoNombre, mozo_id: p.mozoId, estado: p.estado, hora: p.hora, fecha: p.fecha, total: 0, items: [] };
           }
           grouped[key].total += p.precio * p.cantidad;
           grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio });
+          if (p.hora > grouped[key].hora) grouped[key].hora = p.hora;
         });
-        setComandas(Object.values(grouped));
+        const mozoComandasFallback = Object.values(grouped).filter(c => !mozoId || c.mozo_id === mozoId);
+        setComandas(mozoComandasFallback.sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
       } catch { setComandas([]); }
     }
     setLoading(false);

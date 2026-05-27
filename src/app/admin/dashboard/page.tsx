@@ -2348,10 +2348,11 @@ export default function DashboardPage() {
                 const mozoOrders = pedidos.filter(p => p.mozoId === mozoHistoryModal.id && p.fecha === simulatedDate);
                 if (mozoOrders.length === 0) return <p className="text-center text-gray-400 py-8 text-sm">No hay comandas registradas hoy.</p>;
 
-                // Group by comandaId
+                // Group by mesa and status (Entregado vs Activo) to merge multiple comandas for the same table
                 const comandasMap = new Map<string, Pedido[]>();
                 mozoOrders.forEach(p => {
-                  const key = p.comandaId ? String(p.comandaId) : `${p.mesa}-${p.hora}`;
+                  const statusGroup = p.estado === 'Entregado' ? 'Entregado' : 'Activo';
+                  const key = `${p.mesa}-${statusGroup}`;
                   if (!comandasMap.has(key)) comandasMap.set(key, []);
                   comandasMap.get(key)!.push(p);
                 });
