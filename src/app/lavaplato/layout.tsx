@@ -1,6 +1,7 @@
 'use client';
 
 import LavaplatoSidebar from '@/components/LavaplatoSidebar';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 export default function LavaplatoLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function LavaplatoLayout({ children }: { children: React.ReactNod
           {children}
         </div>
       </main>
+      <NotificacionesToast rol="lavaplato" />
     </div>
   );
 }

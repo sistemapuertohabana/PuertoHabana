@@ -4,7 +4,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle } from 'lucide-react';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
-import NotificacionesToast from '@/components/NotificacionesToast';
 
 interface Pedido {
   id: number;
@@ -410,7 +409,6 @@ export default function CocinaPage() {
         </div>
       )}
 
-      <NotificacionesToast rol="cocina" />
     </div>
   );
 }

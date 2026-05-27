@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import DevSidebar from '@/components/DevSidebar';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 export default function DevLayoutClient({ children }: { children: React.ReactNode }) {
   const [hasSession, setHasSession] = useState(false);
@@ -43,6 +44,7 @@ export default function DevLayoutClient({ children }: { children: React.ReactNod
           {children}
         </div>
       </main>
+      <NotificacionesToast rol="desarrollador" />
     </div>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import CocinaSidebar from '@/components/CocinaSidebar';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 export default function CocinaLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -11,6 +12,7 @@ export default function CocinaLayout({ children }: { children: React.ReactNode }
           {children}
         </div>
       </main>
+      <NotificacionesToast rol="cocina" />
     </div>
   );
 }
