@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
-import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle } from 'lucide-react';
+import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle, MessageSquareText, Timer, AlertCircle } from 'lucide-react';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 
 interface Pedido {
@@ -21,20 +21,6 @@ function getLocalDateString() {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 }
-
-const estadoColor = {
-  Pendiente: 'text-orange-600 bg-orange-50 border-orange-100',
-  Preparando: 'text-blue-600 bg-blue-50 border-blue-100',
-  Listo: 'text-green-600 bg-green-50 border-green-100',
-  Entregado: 'text-gray-400 bg-gray-50 border-gray-100',
-} as Record<string, string>;
-
-const estadoBorder = {
-  Pendiente: 'border-l-orange-400',
-  Preparando: 'border-l-blue-400',
-  Listo: 'border-l-green-400',
-  Entregado: 'border-l-gray-300',
-} as Record<string, string>;
 
 export default function CocinaPage() {
   const [pedidos,     setPedidos]     = useState<Pedido[]>([]);
@@ -139,7 +125,6 @@ export default function CocinaPage() {
   useEffect(() => {
     loadPedidos();
     const interval = setInterval(loadPedidos, 5000);
-    // Sincronizar config de turnos cada 30s para reflejar cambios del admin sin recargar
     const configInterval = setInterval(syncTurnosConfig, 30000);
     window.addEventListener('storage', loadPedidos);
     return () => { clearInterval(interval); clearInterval(configInterval); window.removeEventListener('storage', loadPedidos); };
@@ -179,18 +164,49 @@ export default function CocinaPage() {
     }
   };
 
+  const estadoConfig: Record<string, { label: string; color: string; bg: string; border: string; dot: string }> = {
+    Pendiente:  { label: 'Pendiente',  color: 'text-orange-700', bg: 'bg-orange-50',  border: 'border-orange-200',  dot: 'bg-orange-400' },
+    Preparando: { label: 'Preparando', color: 'text-blue-700',   bg: 'bg-blue-50',    border: 'border-blue-200',    dot: 'bg-blue-500' },
+    Listo:      { label: 'Listo',      color: 'text-green-700',  bg: 'bg-green-50',   border: 'border-green-200',   dot: 'bg-green-500' },
+    Entregado:  { label: 'Entregado',  color: 'text-gray-500',   bg: 'bg-gray-50',    border: 'border-gray-200',    dot: 'bg-gray-400' },
+  };
+
+  const estadoAccentBorder: Record<string, string> = {
+    Pendiente:  'border-l-orange-400',
+    Preparando: 'border-l-blue-500',
+    Listo:      'border-l-green-500',
+    Entregado:  'border-l-gray-300',
+  };
+
+  const getTiempoTranscurrido = (hora: string) => {
+    try {
+      const [h, m] = hora.split(':').map(Number);
+      const ahora = new Date();
+      const pedidoTime = new Date();
+      pedidoTime.setHours(h, m, 0, 0);
+      const diffMin = Math.floor((ahora.getTime() - pedidoTime.getTime()) / 60000);
+      if (diffMin < 0) return '0 min';
+      if (diffMin < 60) return `${diffMin} min`;
+      const hrs = Math.floor(diffMin / 60);
+      const mins = diffMin % 60;
+      return `${hrs}h ${mins}min`;
+    } catch { return ''; }
+  };
+
+  const tieneItemsConNotas = (items: Pedido['items']) => 
+    items?.some(i => i.notas && i.notas.trim()) ?? false;
+
   return (
     <div className="animate-in fade-in duration-300">
-      {/* Header minimalista */}
+      {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
           <ChefHat size={20} className="text-orange-500" strokeWidth={1.5} />
         </div>
         <div className="flex-1">
-          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Comandas</h1>
+          <h1 className="text-xl font-medium text-gray-900 tracking-tight">Cocina</h1>
           <p className="text-xs text-gray-400 mt-0.5">{fecha}</p>
         </div>
-        {/* Asistencia */}
         {cocinaSession.id ? (
           asistencia ? (
             <div
@@ -205,8 +221,6 @@ export default function CocinaPage() {
               onClick={async () => {
                 if (!cocinaSession.id || registrando) return;
                 setErrorAsistencia('');
-                
-                // Validar si hoy es día laboral
                 const turno = cocinaSession.turno;
                 if (turno) {
                   try {
@@ -222,14 +236,13 @@ export default function CocinaPage() {
                       const diaHoy = diasSemana[new Date().getDay()];
                       const horarioHoy = config[turno as 'mañana' | 'noche']?.[diaHoy];
                       if (!horarioHoy) {
-                        setErrorAsistencia(`Hoy (${diasLabels[diaHoy]}) es descanso para tu turno. No puedes registrar asistencia.`);
+                        setErrorAsistencia(`Hoy (${diasLabels[diaHoy]}) es descanso para tu turno.`);
                         setTimeout(() => setErrorAsistencia(''), 5000);
                         return;
                       }
                     }
                   } catch {}
                 }
-                
                 setRegistrando(true);
                 try {
                   const res = await fetch('/api/asistencia', {
@@ -269,7 +282,6 @@ export default function CocinaPage() {
         </div>
       )}
 
-      {/* Historial de asistencias */}
       {historialAsistencia.length > 0 && showHistorialAsist && (
         <div className="mb-6 bg-white border border-gray-100 rounded-xl p-4 shadow-sm">
           <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-2">
@@ -287,7 +299,7 @@ export default function CocinaPage() {
         </div>
       )}
 
-      {/* Toggle minimalista */}
+      {/* Toggle Activas / Historial */}
       <div className="flex gap-1.5 mb-6 p-1 bg-gray-100 rounded-lg w-fit">
         <button onClick={() => setShowHistory(false)}
           className={`px-3.5 py-1.5 rounded-md text-xs font-medium transition-all ${
@@ -316,109 +328,148 @@ export default function CocinaPage() {
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-          {pedidos.map(p => (
-            <div
-              key={p.id}
-              className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
-            >
-              {/* Header de tarjeta */}
-              <div className="flex items-start justify-between mb-4 border-b border-gray-50 pb-3">
-                <div>
-                  <div className="flex items-center gap-3">
-                    <span className="font-bold text-lg text-gray-900">{p.mesa}</span>
-                    <span className="flex items-center gap-1 text-xs text-gray-400">
-                      <Clock size={12} /> {p.hora}
-                    </span>
-                  </div>
-                  {p.mozo_nombre && (
-                    <p className="text-xs text-gray-400 mt-0.5">Mozo: {p.mozo_nombre}</p>
-                  )}
-                </div>
-                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                  p.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
-                  p.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
-                  p.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
-                  'bg-gray-100 text-gray-600'
-                }`}>
-                  {p.estado}
-                </span>
-              </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {pedidos.map(p => {
+            const cfg = estadoConfig[p.estado] || estadoConfig.Pendiente;
+            const accentBorder = estadoAccentBorder[p.estado] || 'border-l-gray-300';
+            const foodItems = p.items?.filter(item => item.categoria !== 'bebidas') || [];
+            const totalPlatos = foodItems.reduce((s, i) => s + i.cantidad, 0);
+            const tiempo = getTiempoTranscurrido(p.hora);
+            const conNotas = tieneItemsConNotas(p.items);
 
-              {/* Items — solo mostrar comida */}
-              {p.items && p.items.length > 0 && (
-                <>
-                  {/* PLATOS VENDIDOS */}
-                  <div className="mb-3 px-3 py-2 bg-amber-50 border border-amber-200 rounded-xl">
-                    <span className="text-xs font-bold text-amber-800 uppercase tracking-wider">
-                      🍽️ Platos Vendidos:{' '}
-                      <span className="text-base font-black">
-                        {p.items
-                          .filter(item => item.categoria !== 'bebidas')
-                          .reduce((s, item) => s + item.cantidad, 0)}
-                      </span>
+            return (
+              <div
+                key={p.id}
+                className={`bg-white rounded-2xl border-l-4 ${accentBorder} border border-gray-100 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden`}
+              >
+                {/* ─── Header ─── */}
+                <div className="px-5 pt-4 pb-3 flex items-start justify-between gap-3">
+                  <div className="flex items-center gap-3 min-w-0">
+                    {/* Número de mesa grande */}
+                    <div className={`w-12 h-12 rounded-xl ${cfg.bg} border ${cfg.border} flex items-center justify-center shrink-0`}>
+                      <span className={`text-lg font-black ${cfg.color}`}>{p.mesa.replace('Mesa ', '')}</span>
+                    </div>
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <span className="font-bold text-base text-gray-900">{p.mesa}</span>
+                        <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${cfg.bg} ${cfg.color} border ${cfg.border}`}>
+                          <span className={`w-1.5 h-1.5 rounded-full ${cfg.dot}`}></span>
+                          {cfg.label}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 mt-0.5 text-xs text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Clock size={11} />
+                          {p.hora}
+                        </span>
+                        <span className="text-gray-200">|</span>
+                        <span className="flex items-center gap-1">
+                          <Timer size={11} />
+                          {tiempo}
+                        </span>
+                        {p.mozo_nombre && (
+                          <>
+                            <span className="text-gray-200">|</span>
+                            <span>{p.mozo_nombre}</span>
+                          </>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                  {/* Badge total platos */}
+                  <div className={`shrink-0 ${cfg.bg} ${cfg.color} px-2.5 py-1 rounded-lg border ${cfg.border} text-center`}>
+                    <span className="block text-sm font-black">{totalPlatos}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider">Platos</span>
+                  </div>
+                </div>
+
+                {/* ─── Indicador de notas ─── */}
+                {conNotas && (
+                  <div className="mx-5 mb-2 px-3 py-1.5 bg-amber-50 border border-amber-200 rounded-lg flex items-center gap-1.5">
+                    <MessageSquareText size={12} className="text-amber-600" />
+                    <span className="text-[10px] font-semibold text-amber-700 uppercase tracking-wider">
+                      Con notas del mozo
                     </span>
                   </div>
-                  <ul className="space-y-2 mb-4">
-                    {p.items
-                      .filter(item => item.categoria !== 'bebidas')
-                      .map((item, i) => (
-                      <li key={i} className="flex items-start gap-3 text-sm text-gray-800 bg-gray-50/50 p-2 rounded-lg">
-                        <span className="font-black text-gray-900 text-base min-w-[1.5rem]">({item.cantidad})</span>
-                        <div className="flex-1">
-                          <div className="font-medium text-gray-900 flex flex-wrap items-center gap-1.5">
-                            {item.nombre.startsWith('🎁') ? (
-                              <>
-                                <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm border border-amber-200">
-                                  🎁 Cortesía
+                )}
+
+                {/* ─── Items ─── */}
+                {foodItems.length > 0 && (
+                  <div className="px-5 pb-2 space-y-1.5">
+                    {foodItems.map((item, i) => (
+                      <div key={i} className={`rounded-xl border p-3 transition-colors ${
+                        item.notas && item.notas.trim() 
+                          ? 'bg-amber-50/60 border-amber-200 border-l-2 border-l-amber-400' 
+                          : 'bg-gray-50 border-gray-100'
+                      }`}>
+                        <div className="flex items-start gap-3">
+                          {/* Cantidad grande */}
+                          <span className="font-black text-gray-900 text-lg min-w-[1.8rem] text-center leading-none mt-0.5">
+                            {item.cantidad}
+                          </span>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              {item.nombre.startsWith('🎁') ? (
+                                <>
+                                  <span className="bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider shadow-sm border border-amber-200">
+                                    🎁 Cortesía
+                                  </span>
+                                  <span className="font-medium text-amber-900 text-sm">{item.nombre.replace(/^🎁\s*/, '')}</span>
+                                </>
+                              ) : (
+                                <span className="font-medium text-gray-900 text-sm">{item.nombre}</span>
+                              )}
+                            </div>
+                            {/* Nota del item - más visible */}
+                            {item.notas && item.notas.trim() && (
+                              <div className="mt-1.5 flex items-start gap-1.5 bg-white/60 rounded-lg px-2.5 py-1.5 border border-amber-100">
+                                <MessageSquareText size={11} className="text-amber-500 mt-0.5 shrink-0" />
+                                <span className="text-[11px] text-amber-800 font-medium leading-relaxed">
+                                  {item.notas}
                                 </span>
-                                <span className="text-amber-900">{item.nombre.replace(/^🎁\s*/, '')}</span>
-                              </>
-                            ) : (
-                              <span>{item.nombre}</span>
+                              </div>
                             )}
                           </div>
-                          {item.notas && (
-                            <p className="text-xs text-gray-500 italic mt-1 opacity-90 border-l-2 border-gray-300 pl-2">
-                              * {item.notas}
-                            </p>
-                          )}
                         </div>
-                      </li>
+                      </div>
                     ))}
-                  </ul>
-                </>
-              )}
+                  </div>
+                )}
 
-              {p.notas && (
-                <p className="text-xs text-gray-600 italic mb-4 bg-yellow-50/50 border border-yellow-100 px-3 py-2 rounded-xl">
-                  📝 {p.notas}
-                </p>
-              )}
+                {/* ─── Nota general de la comanda ─── */}
+                {p.notas && (
+                  <div className="mx-5 mb-2 px-3 py-2 bg-yellow-50 border border-yellow-200 rounded-xl flex items-start gap-2">
+                    <AlertCircle size={13} className="text-yellow-600 mt-0.5 shrink-0" />
+                    <p className="text-xs text-yellow-800 font-medium leading-relaxed">{p.notas}</p>
+                  </div>
+                )}
 
-              {/* Acciones */}
-              {!showHistory && (
-                <div className="flex gap-2 pt-2">
-                  {p.estado === 'Pendiente' && (
-                    <button
-                      onClick={() => updateEstado(p.id, 'Preparando')}
-                      className="flex-1 text-sm font-bold py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-colors"
-                    >
-                      Empezar a Preparar
-                    </button>
-                  )}
-                  {p.estado === 'Preparando' && (
-                    <button
-                      onClick={() => updateEstado(p.id, 'Listo')}
-                      className="flex-1 text-sm font-bold py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg"
-                    >
-                      <Check size={16} /> Listo para Entregar
-                    </button>
-                  )}
-                </div>
-              )}
-            </div>
-          )          )}
+                {/* ─── Acciones ─── */}
+                {!showHistory && (
+                  <div className="px-5 pt-2 pb-4">
+                    {p.estado === 'Pendiente' && (
+                      <button
+                        onClick={() => updateEstado(p.id, 'Preparando')}
+                        className="w-full text-sm font-bold py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800 active:scale-[0.99] transition-all flex items-center justify-center gap-2"
+                      >
+                        <ChefHat size={16} />
+                        Empezar a Preparar
+                      </button>
+                    )}
+                    {p.estado === 'Preparando' && (
+                      <button
+                        onClick={() => updateEstado(p.id, 'Listo')}
+                        className="w-full text-sm font-bold py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 active:scale-[0.99] transition-all flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
+                      >
+                        <Check size={18} />
+                        Listo para Entregar
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            );
+          })}
         </div>
       )}
 

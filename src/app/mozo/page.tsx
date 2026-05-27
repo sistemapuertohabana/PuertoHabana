@@ -129,7 +129,8 @@ function getLocalDateString() {
 
 export default function MozoPage() {
   const [activeMesa, setActiveMesa] = useState<MesaConfig | null>(null);
-  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean }[]>([]);
+  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean; notas?: string }[]>([]);
+  const [cartItemNote, setCartItemNote] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [lastOrder, setLastOrder] = useState<{ mesa: string; items: { nombre: string; cantidad: number; categoria?: string }[]; fecha: string; hora: string; mozoNombre: string } | null>(null);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
@@ -321,9 +322,13 @@ export default function MozoPage() {
         if (newQty <= 0) return prev.filter(c => c.name !== item.name);
         return prev.map(c => c.name === item.name ? { ...c, qty: newQty } : c);
       }
-      if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category }];
+      if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category, notas: '' }];
       return prev;
     });
+  };
+
+  const updateItemNota = (itemName: string, nota: string) => {
+    setCart(prev => prev.map(c => c.name === itemName ? { ...c, notas: nota } : c));
   };
 
   const total = cart.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0);
@@ -425,7 +430,9 @@ export default function MozoPage() {
       cantidad: c.qty,
       precio: c.esCortesia ? 0 : c.price,
       categoria: c.category,
-      notas: c.esCortesia ? '🎁 Cortesía de la Casa' : null,
+      notas: c.esCortesia 
+        ? '🎁 Cortesía de la Casa' 
+        : (c.notas && c.notas.trim() ? c.notas.trim() : null),
     }));
 
     try {
@@ -687,6 +694,7 @@ export default function MozoPage() {
                       } else {
                         setActiveMesa(mesa); 
                         setCart([]); 
+                        setCartItemNote(null);
                       }
                     }}
                     className={`w-full text-left rounded-xl border-2 transition-all ${
@@ -764,7 +772,7 @@ export default function MozoPage() {
               <h2 className="text-base font-medium text-gray-900">{getDisplayName(activeMesa)}</h2>
               <p className="text-[11px] text-gray-400">Selecciona los productos</p>
             </div>
-            <button onClick={() => { setActiveMesa(null); setCart([]); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+            <button onClick={() => { setActiveMesa(null); setCart([]); setCartItemNote(null); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
               <X size={16} className="text-gray-400" />
             </button>
           </div>
@@ -951,8 +959,54 @@ export default function MozoPage() {
             })}
           </div>
 
-          {/* Footer */}
+          {/* Footer — carrito + envío */}
           <div className="px-5 py-4 border-t border-gray-100 bg-white">
+            {/* Lista del carrito con notas */}
+            {cart.length > 0 && (
+              <div className="mb-3 max-h-52 overflow-y-auto space-y-1.5">
+                {cart.map(c => (
+                  <div key={c.name} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <span className="text-xs font-bold text-gray-900 shrink-0">x{c.qty}</span>
+                        <span className="text-xs text-gray-700 truncate">
+                          {c.esCortesia && <span className="mr-0.5">🎁</span>}
+                          {c.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        {!c.esCortesia && (
+                          <button
+                            onClick={() => setCartItemNote(cartItemNote === c.name ? null : c.name)}
+                            className={`p-1 rounded-md transition-colors ${
+                              c.notas && c.notas.trim() 
+                                ? 'bg-amber-100 text-amber-700' 
+                                : 'text-gray-400 hover:bg-gray-200'
+                            }`}
+                            title="Agregar nota para cocina"
+                          >
+                            <span className="text-xs">📝</span>
+                          </button>
+                        )}
+                      </div>
+                    </div>
+                    {/* Input de nota expandible */}
+                    {cartItemNote === c.name && (
+                      <div className="mt-1.5 pl-4">
+                        <input
+                          type="text"
+                          placeholder="Ej: sin cebolla, poco picante..."
+                          value={c.notas || ''}
+                          onChange={e => updateItemNota(c.name, e.target.value)}
+                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-400 placeholder-gray-300"
+                          autoFocus
+                        />
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
             <div className="flex justify-between items-center mb-3">
               <span className="text-xs text-gray-400">
                 {cart.reduce((s, c) => s + c.qty, 0)} productos
