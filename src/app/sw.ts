@@ -57,11 +57,13 @@ swSelf.addEventListener('push', (event: any) => {
   }
   const title = data.titulo || 'Puerto Habana';
   const body  = data.mensaje || 'Tienes una nueva notificación';
+
   event.waitUntil(
     swSelf.registration.showNotification(title, {
       body,
       icon: '/icon-192.png',
       vibrate: [200, 100, 200],
+      sound: '/notification.mp3',
       data: { url: data.url || '/', rol_destino: data.rol_destino || '' },
     })
   );

@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { Settings, Users as UsersIcon, Link as LinkIcon, Unlink, Plus, X, Minus, CheckCircle, Package, OctagonX, LayoutGrid, Clock, Wine } from 'lucide-react';
-import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 interface MesaConfig {
   id: string;
@@ -519,8 +519,6 @@ export default function MozoPage() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <NotificacionesToast rol="mozo" usuarioId={typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('ph_mozo_session') || '{}')?.id) : undefined} />
-
       {/* Header minimalista */}
       <div className="flex items-center gap-4 mb-6">
         <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center shrink-0">
@@ -975,6 +973,8 @@ export default function MozoPage() {
           </div>
         </div>
       )}
+
+      <NotificacionesToast rol="mozo" usuarioId={typeof window !== 'undefined' ? (JSON.parse(localStorage.getItem('ph_mozo_session') || '{}')?.id) : undefined} />
     </div>
   );
 }

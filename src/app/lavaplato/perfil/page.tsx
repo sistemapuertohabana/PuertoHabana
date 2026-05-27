@@ -66,7 +66,7 @@ export default function LavaplatoPerfilPage() {
     const id = session.id ?? '';
 
     // Cargar estado de notificaciones
-    setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
 
     if (!id) {
       setLoading(false);

@@ -3,8 +3,8 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { Check, Clock, UtensilsCrossed, ChefHat, CheckCircle } from 'lucide-react';
-import NotificacionesToast from '@/components/NotificacionesToast';
 import { addToSyncQueue } from '@/components/ServiceWorkerRegister';
+import NotificacionesToast from '@/components/NotificacionesToast';
 
 interface Pedido {
   id: number;
@@ -182,8 +182,6 @@ export default function CocinaPage() {
 
   return (
     <div className="animate-in fade-in duration-300">
-      <NotificacionesToast rol="cocina" />
-
       {/* Header minimalista */}
       <div className="flex items-center gap-4 mb-8">
         <div className="w-10 h-10 rounded-xl bg-orange-50 border border-orange-100 flex items-center justify-center shrink-0">
@@ -408,9 +406,11 @@ export default function CocinaPage() {
                 </div>
               )}
             </div>
-          ))}
+          )          )}
         </div>
       )}
+
+      <NotificacionesToast rol="cocina" />
     </div>
   );
 }

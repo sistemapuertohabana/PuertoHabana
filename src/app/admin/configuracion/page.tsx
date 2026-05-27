@@ -180,7 +180,7 @@ export default function ConfiguracionPage() {
     if (ns) setNavbarStyle(ns);
     setConfig(p => ({ ...p, ...configUpdate }));
     if (tc) { try { setTurnosConfig(JSON.parse(tc)); } catch {} }
-    setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
     
     // Sincronizar desde Supabase para recoger cambios hechos desde otros dispositivos
     syncTurnosConfigFromServer();

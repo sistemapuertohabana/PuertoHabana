@@ -58,17 +58,31 @@ export default function Boleta({
 
     let itemsHtml = '';
     items.forEach(item => {
-      itemsHtml += `
-        <div style="margin-bottom: 8px;">
-          <div>${item.cantidad}x ${item.item}</div>
-          <div style="display: flex; justify-content: space-between; padding-left: 12px;">
-            <span>S/ ${item.precio.toFixed(2)} c/u</span>
-            <span>S/ ${(item.precio * item.cantidad).toFixed(2)}</span>
+      if (item.precio === 0) {
+        itemsHtml += `
+          <div style="margin-bottom: 8px;">
+            <div style="display: flex; align-items: center; gap: 4px;">
+              <span>🎁</span>
+              <span style="font-weight: bold; color: #059669;">Cortesía</span>
+              <span style="margin-left: auto;">S/ 0.00</span>
+            </div>
+            <div style="padding-left: 24px; font-size: 11px; color: #888;">${item.cantidad}x ${item.item}</div>
+            ${item.notas ? `<div style="padding-left: 24px; color: #555;">* ${item.notas}</div>` : ''}
           </div>
-          ${item.notas ? `<div style="padding-left: 12px; color: #555;">* ${item.notas}</div>` : ''}
-        </div>
-      `;
-    });
+        `;
+        return;
+      } else {
+        itemsHtml += `
+          <div style="margin-bottom: 8px;">
+            <div>${item.cantidad}x ${item.item}</div>
+            <div style="display: flex; justify-content: space-between; padding-left: 12px;">
+              <span>S/ ${item.precio.toFixed(2)} c/u</span>
+              <span>S/ ${(item.precio * item.cantidad).toFixed(2)}</span>
+            </div>                ${item.notas ? `<div style="padding-left: 12px; color: #555;">* ${item.notas}</div>` : ''}
+              </div>
+            `;
+          }
+        });
 
     const html = `
       <!DOCTYPE html>
@@ -276,11 +290,24 @@ export default function Boleta({
             <div className="border-t border-dashed border-gray-400 my-2" />
             {items.map((item, idx) => (
               <div key={idx} className="mb-2">
-                <div>{item.cantidad}x {item.item}</div>
-                <div className="flex justify-between pl-3">
-                  <span>S/ {item.precio.toFixed(2)} c/u</span>
-                  <span>S/ {(item.precio * item.cantidad).toFixed(2)}</span>
-                </div>
+                {item.precio === 0 ? (
+                  <div>
+                    <div className="flex items-center gap-1.5">
+                      <span>🎁</span>
+                      <span className="font-semibold text-emerald-600">Cortesía</span>
+                      <span className="text-gray-400 ml-auto">S/ 0.00</span>
+                    </div>
+                    <div className="pl-6 text-xs text-gray-500">{item.cantidad}x {item.item}</div>
+                  </div>
+                ) : (
+                  <>
+                    <div>{item.cantidad}x {item.item}</div>
+                    <div className="flex justify-between pl-3">
+                      <span>S/ {item.precio.toFixed(2)} c/u</span>
+                      <span>S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                    </div>
+                  </>
+                )}
                 {item.notas && <div className="pl-3 text-gray-500">* {item.notas}</div>}
               </div>
             ))}

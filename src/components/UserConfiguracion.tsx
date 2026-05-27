@@ -56,7 +56,7 @@ export default function UserConfiguracion({ role }: { role: string }) {
     setMounted(true);
     setSidebarDesign((localStorage.getItem(`sidebarDesign_${role}`) as SidebarDesign) || 'normal');
     setNavbarStyle((localStorage.getItem(`navbarStyle_${role}`) as NavbarStyle) || 'original');
-    setNotifActivas(localStorage.getItem('notificaciones_activas') !== 'false');
+    setNotifActivas(localStorage.getItem('notificaciones_activas') === 'true');
   }, []);
 
   const changeSidebar = (val: SidebarDesign) => {
