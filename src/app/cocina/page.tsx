@@ -323,67 +323,75 @@ export default function CocinaPage() {
           {pedidos.map(p => (
             <div
               key={p.id}
-              className={`bg-white rounded-xl border border-gray-100 shadow-sm p-4 border-l-4 transition-all hover:shadow-md ${estadoBorder[p.estado] || 'border-l-gray-200'}`}
+              className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow"
             >
               {/* Header de tarjeta */}
-              <div className="flex justify-between items-start mb-3">
+              <div className="flex items-start justify-between mb-4 border-b border-gray-50 pb-3">
                 <div>
-                  <h3 className="font-medium text-sm text-gray-900">{p.mesa}</h3>
+                  <div className="flex items-center gap-3">
+                    <span className="font-bold text-lg text-gray-900">{p.mesa}</span>
+                    <span className="flex items-center gap-1 text-xs text-gray-400">
+                      <Clock size={12} /> {p.hora}
+                    </span>
+                  </div>
                   {p.mozo_nombre && (
-                    <p className="text-[11px] text-gray-400 mt-0.5">{p.mozo_nombre}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">Mozo: {p.mozo_nombre}</p>
                   )}
                 </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] text-gray-400 flex items-center gap-1">
-                    <Clock size={11} className="text-gray-300" />
-                    {p.hora}
-                  </span>
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full border ${estadoColor[p.estado] || 'text-gray-500 bg-gray-50 border-gray-100'}`}>
-                    {p.estado}
-                  </span>
-                </div>
+                <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                  p.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
+                  p.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
+                  p.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
+                  'bg-gray-100 text-gray-600'
+                }`}>
+                  {p.estado}
+                </span>
               </div>
 
               {/* Items — solo mostrar comida */}
               {p.items && p.items.length > 0 && (
-                <ul className="space-y-1 mb-3">
+                <ul className="space-y-2 mb-4">
                   {p.items
                     .filter(item => item.categoria === 'comida' || item.categoria === undefined)
                     .map((item, i) => (
-                    <li key={i} className="flex items-center gap-2 text-sm text-gray-700">
-                      <span className="font-medium text-gray-900 w-6 text-right text-xs">{item.cantidad}×</span>
-                      <span>{item.nombre}</span>
-                      {item.notas && (
-                        <span className="text-[11px] text-gray-400 italic">({item.notas})</span>
-                      )}
+                    <li key={i} className="flex items-start gap-3 text-sm text-gray-800">
+                      <span className="font-black text-gray-900 text-base">{item.cantidad}×</span>
+                      <div>
+                        <span className="font-medium">{item.nombre}</span>
+                        {item.notas && (
+                          <p className="text-xs text-gray-500 italic mt-0.5 opacity-80">
+                            * {item.notas}
+                          </p>
+                        )}
+                      </div>
                     </li>
                   ))}
                 </ul>
               )}
 
               {p.notas && (
-                <p className="text-[11px] text-gray-500 italic mb-3 bg-gray-50 px-3 py-1.5 rounded-lg">
+                <p className="text-xs text-gray-600 italic mb-4 bg-yellow-50/50 border border-yellow-100 px-3 py-2 rounded-xl">
                   📝 {p.notas}
                 </p>
               )}
 
               {/* Acciones */}
               {!showHistory && (
-                <div className="flex gap-2 mt-2">
+                <div className="flex gap-2 pt-2">
                   {p.estado === 'Pendiente' && (
                     <button
                       onClick={() => updateEstado(p.id, 'Preparando')}
-                      className="flex-1 text-xs font-medium py-2 rounded-lg bg-gray-900 text-white hover:bg-gray-800 transition-colors"
+                      className="flex-1 text-sm font-bold py-3 rounded-xl bg-gray-900 text-white hover:bg-gray-800 transition-colors"
                     >
-                      Preparar
+                      Empezar a Preparar
                     </button>
                   )}
                   {p.estado === 'Preparando' && (
                     <button
                       onClick={() => updateEstado(p.id, 'Listo')}
-                      className="flex-1 text-xs font-medium py-2 rounded-lg bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5"
+                      className="flex-1 text-sm font-bold py-3 rounded-xl bg-green-600 text-white hover:bg-green-700 transition-colors flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg"
                     >
-                      <Check size={14} /> Listo
+                      <Check size={16} /> Listo para Entregar
                     </button>
                   )}
                 </div>
