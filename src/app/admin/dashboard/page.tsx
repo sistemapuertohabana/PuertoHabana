@@ -201,6 +201,13 @@ export default function DashboardPage() {
     fecha: string;
     contenido: string;
   } | null>(null);
+  const [sunatHistoryModal, setSunatHistoryModal] = useState<{
+    comandaId: number;
+    mesa: string;
+    mozoNombre: string;
+    fecha: string;
+    hora: string;
+  } | null>(null);
 
   // Date Formatting helper
   const formatDate = (dateStr: string) => {
@@ -1843,7 +1850,7 @@ export default function DashboardPage() {
                             <td className="px-4 py-3.5 text-right font-semibold text-xs whitespace-nowrap text-green-600 dark:text-green-500">
                               S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
                             </td>
-                            <td className="px-2 py-3.5 text-center">
+                            <td className="px-2 py-3.5 text-center flex flex-col gap-1.5 items-center justify-center">
                               {pedido.comandaId && partialComandaIds.has(pedido.comandaId) && (
                                 <button
                                   onClick={() => {
@@ -1859,10 +1866,24 @@ export default function DashboardPage() {
                                       });
                                     }
                                   }}
-                                  className="text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-lg border border-amber-200 transition-colors whitespace-nowrap"
+                                  className="w-full text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-lg border border-amber-200 transition-colors whitespace-nowrap"
                                 >
                                   <HandCoins size={10} className="inline mr-0.5" />
                                   Ver desglose
+                                </button>
+                              )}
+                              {pedido.comandaId && (
+                                <button
+                                  onClick={() => setSunatHistoryModal({
+                                    comandaId: pedido.comandaId!,
+                                    mesa: pedido.mesa,
+                                    mozoNombre: pedido.mozoNombre,
+                                    fecha: pedido.fecha,
+                                    hora: pedido.hora,
+                                  })}
+                                  className="w-full text-blue-600 hover:text-blue-800 text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 px-2 py-1 rounded-lg border border-blue-200 transition-colors whitespace-nowrap"
+                                >
+                                  Detalle / SUNAT
                                 </button>
                               )}
                             </td>
@@ -1902,26 +1923,42 @@ export default function DashboardPage() {
                         <span>Mesa: <strong className="font-semibold text-gray-700 dark:text-gray-300">{pedido.mesa}</strong></span>
                         <span>Cant: <strong className="font-bold text-gray-700 dark:text-gray-350">{pedido.cantidad}</strong></span>
                       </div>
-                      {pedido.comandaId && partialComandaIds.has(pedido.comandaId) && (
-                        <button
-                          onClick={() => {
-                            const raw = pedido.comandaId ? rawPartialComandas[pedido.comandaId] : undefined;
-                            if (raw) {
-                              setPagoDetalleMesa({
-                                comandaId: pedido.comandaId!,
-                                mesa: pedido.mesa,
-                                mozoNombre: pedido.mozoNombre,
-                                hora: pedido.hora,
-                                fecha: pedido.fecha,
-                                items: raw,
-                              });
-                            }
-                          }}
-                          className="w-full mt-2 text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
-                        >
-                          <HandCoins size={10} />
-                          Ver desglose
-                        </button>
+                      {pedido.comandaId && (
+                        <div className="mt-2 flex gap-2">
+                          {partialComandaIds.has(pedido.comandaId) && (
+                            <button
+                              onClick={() => {
+                                const raw = pedido.comandaId ? rawPartialComandas[pedido.comandaId] : undefined;
+                                if (raw) {
+                                  setPagoDetalleMesa({
+                                    comandaId: pedido.comandaId!,
+                                    mesa: pedido.mesa,
+                                    mozoNombre: pedido.mozoNombre,
+                                    hora: pedido.hora,
+                                    fecha: pedido.fecha,
+                                    items: raw,
+                                  });
+                                }
+                              }}
+                              className="flex-1 text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
+                            >
+                              <HandCoins size={10} />
+                              Ver desglose
+                            </button>
+                          )}
+                          <button
+                            onClick={() => setSunatHistoryModal({
+                              comandaId: pedido.comandaId!,
+                              mesa: pedido.mesa,
+                              mozoNombre: pedido.mozoNombre,
+                              fecha: pedido.fecha,
+                              hora: pedido.hora,
+                            })}
+                            className="flex-1 text-blue-600 hover:text-blue-800 text-[10px] font-semibold bg-blue-50 hover:bg-blue-100 px-2 py-1.5 rounded-lg border border-blue-200 transition-colors flex items-center justify-center gap-1"
+                          >
+                            Detalle / SUNAT
+                          </button>
+                        </div>
                       )}
                     </div>
                   ))}
@@ -3170,6 +3207,41 @@ export default function DashboardPage() {
           </div>
         </div>
       )}
+        </div>
+      )}
+
+      {/* Modal Detalle Comanda (SUNAT desde Calendario) */}
+      {sunatHistoryModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-[100] p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg bg-white rounded-2xl shadow-xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h2 className="text-lg font-bold text-gray-900">Detalle de Comanda</h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {sunatHistoryModal.mesa} - {sunatHistoryModal.mozoNombre} - {formatDate(sunatHistoryModal.fecha)} {sunatHistoryModal.hora}
+                </p>
+              </div>
+              <button onClick={() => setSunatHistoryModal(null)} className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center hover:bg-gray-100 transition-colors">
+                <X size={16} className="text-gray-500" />
+              </button>
+            </div>
+            <div className="p-5 overflow-y-auto flex-1 bg-white">
+              <CobrarBoleta
+                readOnly={true}
+                mesaLabel={sunatHistoryModal.mesa}
+                mozoNombre={sunatHistoryModal.mozoNombre}
+                fecha={sunatHistoryModal.fecha}
+                hora={sunatHistoryModal.hora}
+                comandaId={sunatHistoryModal.comandaId}
+                pedidos={pedidos.filter(p => p.comandaId === sunatHistoryModal.comandaId).map(i => ({
+                  item: i.item,
+                  cantidad: i.cantidad,
+                  precio: Number(i.precio),
+                  notas: i.notas
+                }))}
+              />
+            </div>
+          </div>
         </div>
       )}
 

@@ -213,6 +213,41 @@ export default function CobrarBoleta({
     } finally { setSendingSunat(false); }
   };
 
+  const handleEmitirBoletaElectronicaSinCliente = async () => {
+    setSendingSunat(true);
+    try {
+      const res = await fetch('/api/sunat/enviar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          comanda_id: comandaId,
+          cliente_id: null, // Sin cliente registrado en BD
+          tipo_doc: 'boleta',
+          cliente: {
+            tipo_doc: 'DNI',
+            numero_doc: '00000000',
+            razon_social: 'CLIENTES VARIOS',
+          },
+          items: pedidos.map(p => ({
+            nombre: p.item,
+            cantidad: p.cantidad,
+            precio: p.precio,
+          })),
+          observaciones: `Mesa: ${mesaLabel}`,
+        }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setSunatResult(`✅ Boleta ${data.boleta?.numero_doc || ''} enviada a SUNAT`);
+        setToast(`✅ Boleta ${data.boleta?.numero_doc || ''} emitida (Clientes Varios)`);
+      } else {
+        setToast(`❌ Error SUNAT: ${data.mensaje || data.error}`);
+      }
+    } catch {
+      setToast('❌ Error al emitir boleta');
+    } finally { setSendingSunat(false); }
+  };
+
   const handleRegistrarNuevoCliente = async () => {
     if (!newClienteForm.nombre) return alert('Nombre requerido');
     try {
@@ -302,6 +337,26 @@ export default function CobrarBoleta({
           <Search size={13} />
           {clienteSelected ? `🧑 ${clienteSelected.nombre}${clienteSelected.dni ? ` · ${clienteSelected.dni}` : ''}` : 'Buscar o registrar cliente para Boleta Electrónica'}
         </button>
+
+        {!clienteSelected && (
+          <button
+            onClick={handleEmitirBoletaElectronicaSinCliente}
+            disabled={sendingSunat}
+            className="w-full flex items-center justify-center gap-1.5 bg-gray-100 text-gray-600 border border-gray-200 px-3 py-2 rounded-lg hover:bg-gray-200 transition-colors text-xs font-semibold mt-1"
+          >
+            {sendingSunat ? (
+              <div className="w-3.5 h-3.5 border-2 border-gray-500 border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                <polyline points="14 2 14 8 20 8"/>
+                <line x1="16" y1="13" x2="8" y2="13"/>
+                <line x1="16" y1="17" x2="8" y2="17"/>
+              </svg>
+            )}
+            Enviar a SUNAT sin RUC / DNI (Clientes Varios)
+          </button>
+        )}
 
         {clienteSelected && (
           <div className="flex gap-2">
