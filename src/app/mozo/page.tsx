@@ -1462,47 +1462,85 @@ export default function MozoPage() {
               </p>
             </div>
 
-            {/* Contador interactivo — desglose + controles lado a lado */}
-            <div className="bg-amber-50/50 rounded-2xl px-5 py-4 border border-amber-100 mb-4">
-              <div className="flex items-center justify-between gap-4">
-                {/* Izquierda: desglose y precio */}
-                <div className="min-w-0 flex-1">
-                  <div className="text-xl font-bold text-gray-900 truncate">
-                    {desgloseLabel(tempVasosCount)}
+            {/* Controles interactivos separados para Jarras y Vasos */}
+            <div className="bg-amber-50/50 rounded-2xl p-4 border border-amber-100 mb-4 space-y-3">
+              
+              {/* Controles para JARRAS */}
+              <div className="flex items-center justify-between gap-4 bg-white p-2.5 rounded-xl border border-amber-200 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-amber-100 flex items-center justify-center shrink-0">
+                    <span className="text-xl">🍶</span>
                   </div>
-                  <div className="text-base font-semibold text-amber-600 mt-0.5">
-                    S/ {precioTotal.toFixed(2)}
-                  </div>
-                  {/* Barra de stock mini */}
-                  <div className="mt-2 flex items-center gap-1.5">
-                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden max-w-24">
-                      <div
-                        className="h-full bg-amber-400 rounded-full transition-all duration-200"
-                        style={{ width: `${maxVasos > 0 ? (tempVasosCount / maxVasos) * 100 : 0}%` }}
-                      />
-                    </div>
-                    <span className="text-[9px] text-gray-400 font-medium">{tempVasosCount}/{maxVasos}</span>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Jarras</p>
+                    <p className="text-[10px] text-amber-600 font-medium leading-tight">1 Jarra = 3 Vasos</p>
                   </div>
                 </div>
-                {/* Derecha: controles + y - */}
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-1.5 shrink-0">
+                  <button
+                    onClick={() => setTempVasosCount(prev => Math.max(0, prev - 3))}
+                    disabled={tempVasosCount < 3}
+                    className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:border-red-300 hover:bg-red-50 transition-all active:scale-90"
+                  >
+                    <Minus size={16} className="text-red-500" />
+                  </button>
+                  <div className="w-8 text-center font-extrabold text-lg text-gray-900">{jarras}</div>
+                  <button
+                    onClick={() => setTempVasosCount(prev => Math.min(maxVasos, prev + 3))}
+                    disabled={tempVasosCount + 3 > maxVasos}
+                    className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:border-emerald-300 hover:bg-emerald-50 transition-all active:scale-90"
+                  >
+                    <Plus size={16} className="text-emerald-500" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Controles para VASOS */}
+              <div className="flex items-center justify-between gap-4 bg-white p-2.5 rounded-xl border border-amber-200 shadow-sm">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-10 h-10 rounded-lg bg-amber-50 flex items-center justify-center shrink-0">
+                    <span className="text-xl">🥤</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-gray-900 leading-tight">Vasos sueltos</p>
+                    <p className="text-[10px] text-gray-400 font-medium leading-tight">Fracción de jarra</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1.5 shrink-0">
                   <button
                     onClick={() => setTempVasosCount(prev => Math.max(0, prev - 1))}
-                    disabled={!puedeDecrementar}
-                    className="w-11 h-11 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center disabled:opacity-30 hover:border-red-300 hover:bg-red-50 transition-all active:scale-90 shadow-sm"
+                    disabled={tempVasosCount === 0}
+                    className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:border-red-300 hover:bg-red-50 transition-all active:scale-90"
                   >
-                    <Minus size={18} className="text-red-500" />
+                    <Minus size={16} className="text-red-500" />
                   </button>
-                  <div className="w-16 h-11 rounded-xl bg-white border-2 border-amber-200 flex items-center justify-center shadow-sm">
-                    <span className="text-xl font-extrabold text-gray-900">{tempVasosCount}</span>
-                  </div>
+                  <div className="w-8 text-center font-extrabold text-lg text-gray-900">{vasosSueltos}</div>
                   <button
                     onClick={() => setTempVasosCount(prev => Math.min(maxVasos, prev + 1))}
-                    disabled={!puedeIncrementar}
-                    className="w-11 h-11 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center disabled:opacity-30 hover:border-emerald-300 hover:bg-emerald-50 transition-all active:scale-90 shadow-sm"
+                    disabled={tempVasosCount + 1 > maxVasos}
+                    className="w-9 h-9 rounded-full bg-gray-50 border border-gray-200 flex items-center justify-center disabled:opacity-40 hover:border-emerald-300 hover:bg-emerald-50 transition-all active:scale-90"
                   >
-                    <Plus size={18} className="text-emerald-500" />
+                    <Plus size={16} className="text-emerald-500" />
                   </button>
+                </div>
+              </div>
+
+              {/* Barra de stock y total */}
+              <div className="pt-1 px-1">
+                <div className="flex justify-between items-center mb-1.5">
+                  <span className="text-xs font-semibold text-gray-700">Total a pagar:</span>
+                  <span className="text-base font-bold text-amber-600">S/ {precioTotal.toFixed(2)}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex-1 h-2 bg-gray-200 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-amber-400 rounded-full transition-all duration-200"
+                      style={{ width: `${maxVasos > 0 ? (tempVasosCount / maxVasos) * 100 : 0}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] font-medium text-gray-500 whitespace-nowrap">
+                    Uso: {formatStock(tempVasosCount, 'unid', fractionableSelector.bebidaNombre)} de {formatStock(maxVasos, 'unid', fractionableSelector.bebidaNombre)}
+                  </span>
                 </div>
               </div>
             </div>
