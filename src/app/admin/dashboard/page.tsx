@@ -45,7 +45,8 @@ import {
   Printer,
   X,
   MessageSquare,
-  Tag
+  Tag,
+  Banknote
 } from 'lucide-react';
 
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
@@ -1243,8 +1244,49 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Cierres de Caja del Día Section */}
+      {(() => {
+        const cierresDelDia = ultimasNotas.filter(n => n.tags.includes('cierre'));
+        if (cierresDelDia.length === 0) return null;
+        
+        return (
+          <div className="mb-8">
+            <div className="flex items-center gap-2 mb-4">
+              <Banknote size={18} className="text-emerald-600" />
+              <h2 className="text-base font-semibold text-gray-900">Cierres de Caja</h2>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {cierresDelDia.map(cierre => {
+                const lines = cierre.contenido.split('\n');
+                const mozoLine = lines.find(l => l.includes('Mozo:')) || '';
+                const mozo = mozoLine.split('Mozo:')[1]?.trim() || 'Desconocido';
+                const turnoLine = lines.find(l => l.includes('Turno:')) || '';
+                const turno = turnoLine.split('Turno:')[1]?.trim() || 'Turno';
+                
+                return (
+                  <div key={cierre.id} className="p-4 rounded-xl border bg-gradient-to-br from-emerald-50 to-white border-emerald-100 shadow-sm flex flex-col justify-between">
+                    <div>
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">{turno}</p>
+                          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Mozo: {mozo}</p>
+                        </div>
+                        <span className="text-[10px] text-gray-400">
+                          {new Date(cierre.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                        </span>
+                      </div>
+                      <p className="text-2xl font-black text-emerald-600 mt-3">S/ {Number(cierre.monto).toFixed(2)}</p>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Últimas Notas Section */}
-      {ultimasNotas.length > 0 && (
+      {ultimasNotas.filter(n => !n.tags.includes('cierre')).length > 0 && (
         <div className="mb-8">
           <div className="flex items-center gap-2 mb-4">
             <MessageSquare size={18} className="text-violet-600" />
