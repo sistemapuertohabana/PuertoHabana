@@ -342,6 +342,30 @@ export default function MozoHistorialPage() {
 
   const total = comandas.reduce((s, c) => s + Number(c.total), 0);
 
+  // ── Agrupamiento de comandas (por persona o normal) ──────────────────────
+  const getBaseMesa = (mesa: string) => mesa.replace(/\s*·\s*Persona\s*\d+$/i, '').trim();
+  const getPersonaNum = (mesa: string) => {
+    const match = mesa.match(/·\s*Persona\s*(\d+)/i);
+    return match ? parseInt(match[1]) : null;
+  };
+
+  const comandaGroups = (() => {
+    const groups: Map<string, { baseMesa: string; comandas: Comanda[] }> = new Map();
+    comandas.forEach(c => {
+      const baseMesa = getBaseMesa(c.mesa);
+      const esPorPersona = getPersonaNum(c.mesa) !== null;
+      if (esPorPersona) {
+        const horaH = parseInt((c.hora || '00:00').split(':')[0], 10);
+        const groupKey = `${baseMesa}__${horaH}`;
+        if (!groups.has(groupKey)) groups.set(groupKey, { baseMesa, comandas: [] });
+        groups.get(groupKey)!.comandas.push(c);
+      } else {
+        groups.set(`__single__${c.id}`, { baseMesa: c.mesa, comandas: [c] });
+      }
+    });
+    return Array.from(groups.values());
+  })();
+
   // Totales por turno
   const HORA_CAMBIO_TURNO = 16; // 16:00 divide mañana y noche
   const entregadas = comandas.filter(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
@@ -429,53 +453,23 @@ export default function MozoHistorialPage() {
           <div className="flex justify-center py-20">
             <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
           </div>
-        ) : comandas.length === 0 ? (
+        ): comandas.length === 0 ? (
           <div className="mt-12 text-center border-2 border-dashed border-gray-200 py-16 rounded-2xl bg-white">
             <FileText size={48} className="mx-auto text-gray-300 mb-4" />
             <p className="text-sm text-gray-500 uppercase font-medium tracking-widest">Sin pedidos registrados hoy</p>
           </div>
         ) : (
           <div className="space-y-4">
-            {(() => {
-              // Agrupar: detectar si la comanda tiene "· Persona N" en el nombre de mesa
-              const getBaseMesa = (mesa: string) => mesa.replace(/\s*·\s*Persona\s*\d+$/i, '').trim();
-              const getPersonaNum = (mesa: string) => {
-                const match = mesa.match(/·\s*Persona\s*(\d+)/i);
-                return match ? parseInt(match[1]) : null;
-              };
+            {comandaGroups.map(group => {
+              const { baseMesa, comandas: gComandas } = group;
+              const isPorPersona = gComandas.length > 1 || getPersonaNum(gComandas[0].mesa) !== null;
+              const isAllEntregado = gComandas.every(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
+              const totalGrupo = gComandas.reduce((s, c) => s + Number(c.total), 0);
+              const firstComanda = gComandas[0];
+              const groupKey = isPorPersona ? `${baseMesa}__${firstComanda.hora}` : `single_${firstComanda.id}`;
+              const c = firstComanda; // alias para compatibilidad con el JSX que usa 'c'
 
-              // Separar: comandas con personas vs. comandas normales de mesa
-              // Para el agrupamiento: usar baseMesa + hora (redondeada a 30min) como clave de grupo
-              const groups: Map<string, { baseMesa: string; comandas: Comanda[] }> = new Map();
-
-              comandas.forEach(c => {
-                const baseMesa = getBaseMesa(c.mesa);
-                const esPorPersona = getPersonaNum(c.mesa) !== null;
-                
-                if (esPorPersona) {
-                  // Agrupar con las otras personas de la misma mesa y hora similar
-                  const horaH = parseInt((c.hora || '00:00').split(':')[0], 10);
-                  const groupKey = `${baseMesa}__${horaH}`;
-                  if (!groups.has(groupKey)) {
-                    groups.set(groupKey, { baseMesa, comandas: [] });
-                  }
-                  groups.get(groupKey)!.comandas.push(c);
-                } else {
-                  // Comanda de mesa normal: grupo propio con id único
-                  const groupKey = `__single__${c.id}`;
-                  groups.set(groupKey, { baseMesa: c.mesa, comandas: [c] });
-                }
-              });
-
-              return Array.from(groups.values()).map(group => {
-                const { baseMesa, comandas: gComandas } = group;
-                const isPorPersona = gComandas.length > 1 || getPersonaNum(gComandas[0].mesa) !== null;
-                const isAllEntregado = gComandas.every(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
-                const totalGrupo = gComandas.reduce((s, c) => s + Number(c.total), 0);
-                const firstComanda = gComandas[0];
-                const groupKey = isPorPersona ? `${baseMesa}__${firstComanda.hora}` : `single_${firstComanda.id}`;
-
-                return (
+              return (
               <div key={groupKey} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
 
                 {/* === Card Header === */}
@@ -1549,10 +1543,12 @@ export default function MozoHistorialPage() {
                   </div>
                 )}
               </div>
-            ))}
+            );
+            })}
           </div>
         )}
       </div>
+      
 
       {/* ── Modal QR Yape ───────────────────────────────────────────────── */}
       {yapeQRData && (
