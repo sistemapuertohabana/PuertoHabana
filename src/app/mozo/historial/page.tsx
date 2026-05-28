@@ -258,6 +258,11 @@ export default function MozoHistorialPage() {
     const fechaSnapshot = pagoModalData?.fecha || '';
     const horaSnapshot = pagoModalData?.hora || '';
 
+    // Capturar total antes de limpiar modal (para notificación a admin)
+    const totalSnapshot = isPartial
+      ? paidItemsSnapshot.reduce((s, i) => s + i.precio * i.cantidad, 0)
+      : pagoModalData?.total || 0;
+
     // Cierra el modal de inmediato (optimistic UI)
     setPagoModalData(null);
     setPagoInputs({ yape: '', efectivo: '' });
@@ -290,16 +295,16 @@ export default function MozoHistorialPage() {
         });
       }
 
-      // Notificar al admin
+      // Notificar al admin en tiempo real — destacando mesa y monto
       fetch('/api/notificaciones', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rol_destino: 'admin',
-          titulo: isPartial ? '💰 Pago Parcial' : 'Nuevo Pago Recibido',
+          titulo: isPartial ? '💰 Pago Parcial' : '💰 Nuevo Pago',
           mensaje: isPartial
-            ? `Se cobraron ${paidItemIds!.length} item(s) de comanda #${id} con ${metodo}`
-            : `La comanda fue cobrada con ${metodo}`
+            ? `${mesaSnapshot} · S/ ${totalSnapshot.toFixed(2)} · ${paidItemIds!.length} items (${metodo})`
+            : `${mesaSnapshot} · S/ ${totalSnapshot.toFixed(2)} · Pagado con ${metodo}`
         })
       }).catch(() => {});
 

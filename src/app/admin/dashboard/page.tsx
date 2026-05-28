@@ -114,6 +114,7 @@ interface ComandaItem {
   precio: number;
   categoria?: string;
   notas?: string;
+  estado?: string;
 }
 
 const platosMenu = [
@@ -183,6 +184,15 @@ export default function DashboardPage() {
   // Partial payment tracking
   const [partialComandaIds, setPartialComandaIds] = useState<Set<string | number>>(new Set());
   const [showPartialOnly, setShowPartialOnly] = useState(false);
+  const [pagoDetalleMesa, setPagoDetalleMesa] = useState<{
+    comandaId: number | string;
+    mesa: string;
+    mozoNombre: string;
+    hora: string;
+    fecha: string;
+    items: (ComandaItem & { estado: string })[];
+  } | null>(null);
+  const [rawPartialComandas, setRawPartialComandas] = useState<Record<string | number, (ComandaItem & { estado: string })[]>>({});
 
   // Date Formatting helper
   const formatDate = (dateStr: string) => {
@@ -351,6 +361,23 @@ export default function DashboardPage() {
           }
         });
         setPartialComandaIds(partialIds);
+
+        // Guardar datos crudos de comandas con pagos parciales (con item-level estados)
+        const rawMap: Record<string | number, (ComandaItem & { estado: string })[]> = {};
+        data.forEach((c: Comanda & { items?: (ComandaItem & { estado?: string })[] }) => {
+          if (partialIds.has(c.id) && c.items) {
+            rawMap[c.id] = c.items.map(i => ({
+              id: i.id,
+              nombre: i.nombre,
+              cantidad: i.cantidad,
+              precio: i.precio,
+              categoria: i.categoria,
+              notas: i.notas,
+              estado: (i as any).estado || 'Pendiente',
+            }));
+          }
+        });
+        setRawPartialComandas(rawMap);
       }
     } catch {
       try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
@@ -429,9 +456,139 @@ export default function DashboardPage() {
           <div className="h-48 bg-gray-200 rounded-xl"></div>
           <div className="h-48 bg-gray-200 rounded-xl"></div>
         </div>
-      </div>
-    );
-  }
+      {/* ── Modal: Desglose de pago parcial ── */}
+      {pagoDetalleMesa && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border bg-white border-gray-200 text-gray-800 max-h-[90vh] flex flex-col">
+            {/* Header */}
+            <div className="px-6 py-4 border-b border-gray-150 flex justify-between items-center shrink-0 bg-gradient-to-r from-amber-50 to-white">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                  <HandCoins size={18} className="text-amber-600" />
+                  Pago Parcial
+                </h2>
+                <p className="text-xs text-gray-500 mt-0.5">
+                  {pagoDetalleMesa.mesa} — {pagoDetalleMesa.mozoNombre} — {pagoDetalleMesa.hora}
+                </p>
+              </div>
+              <button
+                onClick={() => setPagoDetalleMesa(null)}
+                className="text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-5">
+              {/* Items Pagados */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-3 text-green-700">
+                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                  Pagados ({pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length})
+                </h3>
+                {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length > 0 ? (
+                  <div className="space-y-2">
+                    {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-green-50 border border-green-100">
+                        <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
+                          <span className="text-white text-[9px] font-bold">✓</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">
+                            {item.cantidad}x {item.nombre}
+                          </p>
+                          {item.notas && (
+                            <p className="text-[10px] text-gray-400 italic truncate">📝 {item.notas}</p>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-green-700 shrink-0">
+                          S/ {(item.precio * item.cantidad).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end pt-1">
+                      <span className="text-xs font-bold text-green-700">
+                        Subtotal Pagado: S/ {pagoDetalleMesa.items
+                          .filter(i => i.estado === 'Entregado')
+                          .reduce((s, i) => s + i.precio * i.cantidad, 0)
+                          .toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic pl-1">Ningún item pagado aún</p>
+                )}
+              </div>
+
+              {/* Items Pendientes */}
+              <div>
+                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-3 text-amber-700">
+                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
+                  Pendientes ({pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length})
+                </h3>
+                {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length > 0 ? (
+                  <div className="space-y-2">
+                    {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').map((item, idx) => (
+                      <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-amber-50 border border-amber-100">
+                        <div className="w-4 h-4 rounded border-2 border-amber-300 bg-white flex items-center justify-center shrink-0">
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-gray-800 truncate">
+                            {item.cantidad}x {item.nombre}
+                          </p>
+                          {item.notas && (
+                            <p className="text-[10px] text-gray-400 italic truncate">📝 {item.notas}</p>
+                          )}
+                        </div>
+                        <span className="text-xs font-bold text-amber-700 shrink-0">
+                          S/ {(item.precio * item.cantidad).toFixed(2)}
+                        </span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end pt-1">
+                      <span className="text-xs font-bold text-amber-700">
+                        Subtotal Pendiente: S/ {pagoDetalleMesa.items
+                          .filter(i => i.estado !== 'Entregado')
+                          .reduce((s, i) => s + i.precio * i.cantidad, 0)
+                          .toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic pl-1">Todos los items han sido pagados</p>
+                )}
+              </div>
+
+              {/* Total General */}
+              <div className="pt-4 border-t border-gray-200">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm font-bold text-gray-900">Total Comanda</span>
+                  <span className="text-lg font-black text-gray-900">
+                    S/ {pagoDetalleMesa.items
+                      .reduce((s, i) => s + i.precio * i.cantidad, 0)
+                      .toFixed(2)}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="px-6 py-3 border-t border-gray-150 bg-gray-50 shrink-0 flex justify-end">
+              <button
+                onClick={() => setPagoDetalleMesa(null)}
+                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+}
 
   // Simulate Day Close / End of Day (00:00 AM Reset)
   const handleNextDaySimulate = () => {
@@ -1737,6 +1894,7 @@ export default function DashboardPage() {
                           <th className="px-4 py-3 text-left font-medium text-xs text-gray-500 uppercase tracking-wider">Plato / Bebida</th>
                           <th className="px-4 py-3 text-center font-medium text-xs text-gray-500 uppercase tracking-wider">Cant.</th>
                           <th className="px-4 py-3 text-right font-medium text-xs text-gray-500 uppercase tracking-wider">Total</th>
+                          <th className="px-2 py-3 text-center font-medium text-xs text-gray-500 uppercase tracking-wider"></th>
                         </tr>
                       </thead>
                       <tbody className={`divide-y divide-gray-100`}>
@@ -1757,6 +1915,29 @@ export default function DashboardPage() {
                             <td className="px-4 py-3.5 text-center text-xs font-semibold">{pedido.cantidad}</td>
                             <td className="px-4 py-3.5 text-right font-semibold text-xs whitespace-nowrap text-green-600 dark:text-green-500">
                               S/ {(Number(pedido.precio) * Number(pedido.cantidad)).toFixed(2)}
+                            </td>
+                            <td className="px-2 py-3.5 text-center">
+                              {pedido.comandaId && partialComandaIds.has(pedido.comandaId) && (
+                                <button
+                                  onClick={() => {
+                                    const raw = pedido.comandaId ? rawPartialComandas[pedido.comandaId] : undefined;
+                                    if (raw) {
+                                      setPagoDetalleMesa({
+                                        comandaId: pedido.comandaId!,
+                                        mesa: pedido.mesa,
+                                        mozoNombre: pedido.mozoNombre,
+                                        hora: pedido.hora,
+                                        fecha: pedido.fecha,
+                                        items: raw,
+                                      });
+                                    }
+                                  }}
+                                  className="text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1 rounded-lg border border-amber-200 transition-colors whitespace-nowrap"
+                                >
+                                  <HandCoins size={10} className="inline mr-0.5" />
+                                  Ver desglose
+                                </button>
+                              )}
                             </td>
                           </tr>
                         ))}
@@ -1794,6 +1975,27 @@ export default function DashboardPage() {
                         <span>Mesa: <strong className="font-semibold text-gray-700 dark:text-gray-300">{pedido.mesa}</strong></span>
                         <span>Cant: <strong className="font-bold text-gray-700 dark:text-gray-350">{pedido.cantidad}</strong></span>
                       </div>
+                      {pedido.comandaId && partialComandaIds.has(pedido.comandaId) && (
+                        <button
+                          onClick={() => {
+                            const raw = pedido.comandaId ? rawPartialComandas[pedido.comandaId] : undefined;
+                            if (raw) {
+                              setPagoDetalleMesa({
+                                comandaId: pedido.comandaId!,
+                                mesa: pedido.mesa,
+                                mozoNombre: pedido.mozoNombre,
+                                hora: pedido.hora,
+                                fecha: pedido.fecha,
+                                items: raw,
+                              });
+                            }
+                          }}
+                          className="w-full mt-2 text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <HandCoins size={10} />
+                          Ver desglose
+                        </button>
+                      )}
                     </div>
                   ))}
                 </div>
