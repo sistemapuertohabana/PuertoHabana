@@ -391,7 +391,7 @@ export default function MozoPage() {
   const agregarFraccionableAlCarrito = (bebidaNombre: string, bebidaPrecio: number, totalVasos: number) => {
     const jarras = Math.floor(totalVasos / 3);
     const vasos = totalVasos % 3;
-    const vasoPrice = Math.round(bebidaPrecio / 3 * 100) / 100;
+    const vasoPrice = 3; // Precio fijo del vaso según solicitud
     
     limpiarFraccionableDelCarrito(bebidaNombre);
     
@@ -411,7 +411,7 @@ export default function MozoPage() {
 
   const calcularPrecioFraccionable = (totalVasos: number, precioJarra: number) => {
     const { jarras, vasosSueltos } = calcularDesglose(totalVasos);
-    const vasoPrice = precioJarra / 3;
+    const vasoPrice = 3; // Precio fijo del vaso según solicitud
     return jarras * precioJarra + vasosSueltos * vasoPrice;
   };
 

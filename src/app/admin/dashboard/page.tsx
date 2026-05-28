@@ -1875,7 +1875,7 @@ export default function DashboardPage() {
                               {pedido.comandaId && (
                                 <button
                                   onClick={() => setSunatHistoryModal({
-                                    comandaId: pedido.comandaId!,
+                                    comandaId: Number(pedido.comandaId),
                                     mesa: pedido.mesa,
                                     mozoNombre: pedido.mozoNombre,
                                     fecha: pedido.fecha,
@@ -1948,7 +1948,7 @@ export default function DashboardPage() {
                           )}
                           <button
                             onClick={() => setSunatHistoryModal({
-                              comandaId: pedido.comandaId!,
+                              comandaId: Number(pedido.comandaId),
                               mesa: pedido.mesa,
                               mozoNombre: pedido.mozoNombre,
                               fecha: pedido.fecha,
@@ -3233,7 +3233,7 @@ export default function DashboardPage() {
                 fecha={sunatHistoryModal.fecha}
                 hora={sunatHistoryModal.hora}
                 comandaId={sunatHistoryModal.comandaId}
-                pedidos={pedidos.filter(p => p.comandaId === sunatHistoryModal.comandaId).map(i => ({
+                pedidos={pedidos.filter(p => Number(p.comandaId) === sunatHistoryModal.comandaId).map(i => ({
                   item: i.item,
                   cantidad: i.cantidad,
                   precio: Number(i.precio),
