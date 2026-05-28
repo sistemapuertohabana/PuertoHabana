@@ -315,13 +315,13 @@ export default function MozoPage() {
         const res = await fetch(`/api/pedidos?fecha=${fecha}`);
         if (!res.ok) throw new Error();
         const data = await res.json();
-        const activas = data.filter((c: any) => c.estado !== 'Entregado');
+        const activas = data.filter((c: any) => c.estado !== 'Entregado' && c.estado !== 'Cerrado');
         setMesasOcupadas(new Set(activas.map((c: any) => c.mesa || c.mesa_nombre)));
       } catch {
         try {
           const pedidos = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
           const hoy = localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString();
-          const filtered = pedidos.filter((p: any) => p.fecha === hoy && p.estado !== 'Entregado');
+          const filtered = pedidos.filter((p: any) => p.fecha === hoy && p.estado !== 'Entregado' && p.estado !== 'Cerrado');
           setMesasOcupadas(new Set(filtered.map((p: any) => p.mesa)));
         } catch {
           setMesasOcupadas(new Set());
