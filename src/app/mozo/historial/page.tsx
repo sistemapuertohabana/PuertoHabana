@@ -367,11 +367,10 @@ export default function MozoHistorialPage() {
                   {(() => {
                     let clienteGuardado: any = null;
                     try { const raw = localStorage.getItem('ph_cliente_comanda_' + c.id); if (raw) clienteGuardado = JSON.parse(raw); } catch {}
-                    const enabled = c.estado === 'Entregado';
+                    const enabled = Number(c.total) > 0;
                     return (
                       <button
                         onClick={() => {
-                          if (!enabled) return;
                           setBoletaData({
                             mesa: c.mesa,
                             mozoNombre: c.mozo_nombre || 'Mozo',
@@ -394,13 +393,13 @@ export default function MozoHistorialPage() {
                       <Package size={12} /> Tapers
                     </button>
                   )}
-                  {c.estado === 'Listo' && Number(c.total) > 0 && (
+                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) > 0 && (
                     <button onClick={() => handlePagoModalOpen(c)}
                       className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px]">
                       <CheckCircle2 size={12} /> Cobrar
                     </button>
                   )}
-                  {c.estado === 'Listo' && Number(c.total) === 0 && (
+                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) === 0 && (
                     <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
                       className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px]">
                       🎁 Cortesía
