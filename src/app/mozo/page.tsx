@@ -425,8 +425,10 @@ export default function MozoPage() {
       if (session?.nombre) { mozoId = session.id || null; mozoNombre = session.nombre; }
     } catch {}
 
-    const items = cart.map(c => ({
-      nombre: c.esCortesia ? `🎁 ${c.name.replace('||', ' ')}` : c.name.replace('||', ' '),
+    const items = cart.map(c => {
+      const formattedName = c.name.includes('||') ? `${c.name.split('||')[0]} (${c.name.split('||')[1]})` : c.name;
+      return {
+      nombre: c.esCortesia ? `🎁 ${formattedName}` : formattedName,
       cantidad: c.qty,
       precio: c.esCortesia ? 0 : c.price,
       categoria: c.category,
@@ -447,8 +449,10 @@ export default function MozoPage() {
         mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
       });
       const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      const nuevos = cart.map(c => ({
-        id: Date.now() + Math.random(), item: c.esCortesia ? `🎁 ${c.name}` : c.name, cantidad: c.qty,
+      const nuevos = cart.map(c => {
+        const formattedName = c.name.includes('||') ? `${c.name.split('||')[0]} (${c.name.split('||')[1]})` : c.name;
+        return {
+        id: Date.now() + Math.random(), item: c.esCortesia ? `🎁 ${formattedName}` : formattedName, cantidad: c.qty,
         mesa: mesaName, precio: c.esCortesia ? 0 : c.price, estado: 'Pendiente', hora,
         notas: c.esCortesia ? '🎁 Cortesía de la Casa' : '', category: c.category, fecha, mozoId, mozoNombre,
       }));

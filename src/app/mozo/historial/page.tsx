@@ -5,6 +5,7 @@ import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, CreditC
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 import Boleta from '@/components/Boleta';
 import ComandaTicket from '@/components/ComandaTicket';
+import CierreCajaTicket from '@/components/CierreCajaTicket';
 
 interface Comanda {
   id: number;
@@ -46,6 +47,7 @@ export default function MozoHistorialPage() {
   const [sendingSunatHist, setSendingSunatHist] = useState(false);
   const [toastHist, setToastHist] = useState<string | null>(null);
   const [showAllMozos, setShowAllMozos] = useState(false);
+  const [showCierreModal, setShowCierreModal] = useState(false);
 
 
   const [fecha] = useState(() =>
@@ -276,7 +278,13 @@ export default function MozoHistorialPage() {
         </div>
         <div className="text-right">
           <p className="text-xs text-gray-400 uppercase font-semibold">Total del Día</p>
-          <p className="text-2xl font-bold text-blue-600">S/ {Number(total).toFixed(2)}</p>
+          <p className="text-2xl font-bold text-blue-600 mb-1">S/ {Number(total).toFixed(2)}</p>
+          <button 
+            onClick={() => setShowCierreModal(true)}
+            className="text-[10px] bg-blue-100 text-blue-700 px-2 py-1 rounded font-bold hover:bg-blue-200"
+          >
+            Cerrar Caja
+          </button>
         </div>
       </div>
 
@@ -732,6 +740,16 @@ export default function MozoHistorialPage() {
           </div>
         )}
       </div>
+
+      {/* Modal de Cierre de Caja */}
+      {showCierreModal && (
+        <CierreCajaTicket 
+          mozoNombre={comandas.find(c => c.mozo_id === mozoId)?.mozo_nombre || 'Mozo'}
+          fecha={fecha}
+          total={total}
+          onClose={() => setShowCierreModal(false)}
+        />
+      )}
 
       {/* ── Modal QR Yape ───────────────────────────────────────────────── */}
       {yapeQRData && (

@@ -78,17 +78,34 @@ export async function POST(request: Request) {
   const itemsParaDescontar = items.filter((i: any) => i.categoria === 'bebidas' || i.categoria === 'tapers');
   if (itemsParaDescontar.length > 0) {
     for (const item of itemsParaDescontar) {
-      // Buscar el item en inventario por nombre
+      // Extraer nombre base y calcular multiplicador
+      let searchName = item.nombre.replace(/^🎁\s*/, '').trim();
+      let multiplier = 1;
+      
+      const sizeMatch = searchName.match(/^(.*?)\s*\((.*?)\)$/);
+      if (sizeMatch) {
+        searchName = sizeMatch[1].trim();
+        const sizeName = sizeMatch[2].toLowerCase();
+        
+        if (sizeName.includes('jarra') || sizeName.includes('botella') || sizeName.includes('litro')) {
+          multiplier = 3;
+        } else if (sizeName.includes('medio') || sizeName.includes('1/2')) {
+          multiplier = 2;
+        }
+      }
+
+      // Buscar el item en inventario por nombre base
       const { data: inventoryItems } = await sb
         .from('inventario')
         .select('id, cantidad, nombre, minimo, unidad, seccion')
         .eq('seccion', item.categoria)
-        .eq('nombre', item.nombre.replace(/^🎁\s*/, '')) // quitar prefijo 🎁 de cortesía
+        .eq('nombre', searchName)
         .limit(1);
 
       if (inventoryItems && inventoryItems.length > 0) {
         const invItem = inventoryItems[0];
-        const delta = -item.cantidad; // negativo = salida
+        const qtyToDeduct = item.cantidad * multiplier;
+        const delta = -qtyToDeduct; // negativo = salida
         const stockAnterior = invItem.cantidad;
         const stockNuevo = Math.max(0, stockAnterior + delta);
 
@@ -103,12 +120,12 @@ export async function POST(request: Request) {
           .insert([{
             inventario_id: invItem.id,
             tipo: 'salida',
-            cantidad: item.cantidad,
+            cantidad: qtyToDeduct,
             stock_anterior: stockAnterior,
             stock_nuevo: stockNuevo,
             referencia: 'pedido',
             referencia_id: String(comanda.id),
-            notas: `Pedido #${comanda.id} - ${mesa_nombre}`,
+            notas: `Pedido #${comanda.id} - ${mesa_nombre} (${item.nombre} x${item.cantidad})`,
           }])
           .maybeSingle();
 
