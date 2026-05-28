@@ -112,7 +112,7 @@ export default function MozoReportesPage() {
               Reporte de Turno
             </h1>
             <p className="text-sm text-gray-500 mt-1">
-              {profile?.nombre || 'Mozo'} — {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })}
+              {profile?.nombre || 'Mozo'} — {new Date().toLocaleDateString('es-PE', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' })} ({parseInt(new Date().toLocaleTimeString('en-US', { timeZone: 'America/Lima', hour12: false, hour: 'numeric' })) >= 16 ? 'Turno Noche' : 'Turno Mañana'})
             </p>
           </div>
           <button
@@ -200,7 +200,7 @@ export default function MozoReportesPage() {
                       <p className="text-[10px] text-gray-400">S/ {Number(p.precio).toFixed(2)} c/u</p>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">x{p.cantidad}</span>
+                      <span className="text-xs font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded-full">({p.cantidad})</span>
                       <p className="text-[10px] text-gray-500 mt-0.5">S/ {(p.cantidad * p.precio).toFixed(2)}</p>
                     </div>
                   </div>
@@ -239,7 +239,7 @@ export default function MozoReportesPage() {
                       <p className="text-[10px] text-gray-400">S/ {Number(b.precio).toFixed(2)} c/u</p>
                     </div>
                     <div className="text-right shrink-0 ml-3">
-                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">x{b.cantidad}</span>
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">({b.cantidad})</span>
                       <p className="text-[10px] text-gray-500 mt-0.5">S/ {(b.cantidad * b.precio).toFixed(2)}</p>
                     </div>
                   </div>
@@ -287,7 +287,7 @@ export default function MozoReportesPage() {
                     <div className="mt-2 ml-12 flex flex-wrap gap-1">
                       {c.items.map((item, i) => (
                         <span key={i} className="text-[10px] text-gray-500 bg-gray-50 px-1.5 py-0.5 rounded">
-                          {item.nombre} x{item.cantidad}
+                          {item.nombre} ({item.cantidad})
                         </span>
                       ))}
                     </div>
