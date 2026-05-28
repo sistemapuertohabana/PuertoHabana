@@ -444,14 +444,14 @@ export default function MozoHistorialPage() {
                   )}
                 </div>
                 
-                <div className="flex gap-1.5" onClick={e => e.stopPropagation()}>
+                <div className="flex flex-wrap gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
                   <button onClick={() => setComandaTicketData({
                     mesa: c.mesa,
                     mozoNombre: c.mozo_nombre || 'Mozo',
                     fecha: c.fecha,
                     hora: c.hora,
                     items: (c.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, categoria: i.categoria }))
-                  })} className="flex-shrink-0 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px]">
+                  })} className="flex-1 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px] whitespace-nowrap">
                     🍳 Comanda
                   </button>
                   {(() => {
@@ -471,7 +471,7 @@ export default function MozoHistorialPage() {
                             clienteDocumento: clienteGuardado?.documento || '',
                           });
                         }}
-                        className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}
+                        className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] whitespace-nowrap ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}
                       >
                         🧾 Boleta
                       </button>
@@ -479,7 +479,7 @@ export default function MozoHistorialPage() {
                   })()}
                   {c.estado === 'Entregado' && tapers.length > 0 && (
                     <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
-                      className="flex-shrink-0 bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-emerald-200 transition-colors text-[11px]">
+                      className="flex-1 bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap">
                       <Package size={12} /> Tapers
                     </button>
                   )}
@@ -489,7 +489,7 @@ export default function MozoHistorialPage() {
                       setAddItemsCart([]);
                       setAddItemsSuccess(false);
                     }}
-                      className="flex-shrink-0 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px]">
+                      className="flex-1 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px] whitespace-nowrap">
                       <Plus size={12} /> Agregar
                     </button>
                   )}
@@ -499,19 +499,19 @@ export default function MozoHistorialPage() {
                       setSplitSelectedIds(new Set());
                       setSplitSuccess(null);
                     }}
-                      className="flex-shrink-0 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px]">
+                      className="flex-1 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px] whitespace-nowrap">
                       ✂️ Dividir
                     </button>
                   )}
                   {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) > 0 && (
                     <button onClick={() => handlePagoModalOpen(c)}
-                      className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px]">
+                      className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap">
                       <CheckCircle2 size={12} /> Cobrar
                     </button>
                   )}
                   {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) === 0 && (
                     <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
-                      className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px]">
+                      className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px] whitespace-nowrap">
                       🎁 Cortesía
                     </button>
                   )}

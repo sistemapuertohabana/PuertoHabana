@@ -50,7 +50,7 @@ import {
   HandCoins
 } from 'lucide-react';
 
-type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
+type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'cierres' | 'reportes';
 type RangoHistorial = 'dia' | 'semana' | 'mes';
 
 interface Pedido {
@@ -225,7 +225,7 @@ export default function DashboardPage() {
     requestAnimationFrame(() => {
       setMounted(true);
 
-      if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'reportes'].includes(savedActiveTab)) {
+      if (savedActiveTab && ['activos', 'historial', 'ventas_mozo', 'cierres', 'reportes'].includes(savedActiveTab)) {
         setActiveTab(savedActiveTab);
       }
 
@@ -1057,7 +1057,7 @@ export default function DashboardPage() {
 
   // Calculate dynamic sales for Tab-specific cards
   const getTabCards = () => {
-    if (activeTab === 'reportes') {
+    if (activeTab === 'cierres' || activeTab === 'reportes') {
       return {};
     }
     if (activeTab === 'activos') {
@@ -1370,65 +1370,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Cierres de Caja del Día Section */}
-      {(() => {
-        const cierresDelDia = ultimasNotas.filter(n => n.tags.includes('cierre'));
-        if (cierresDelDia.length === 0) return null;
-        
-        return (
-          <div className="mb-8">
-            <div className="flex items-center gap-2 mb-4">
-              <Banknote size={18} className="text-emerald-600" />
-              <h2 className="text-base font-semibold text-gray-900">Cierres de Caja</h2>
-            </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-              {cierresDelDia.map(cierre => {
-                const lines = cierre.contenido.split('\n');
-                const mozoLine = lines.find(l => l.includes('Mozo:')) || '';
-                const mozo = mozoLine.split('Mozo:')[1]?.trim() || 'Desconocido';
-                const turnoLine = lines.find(l => l.includes('Turno:')) || '';
-                const turno = turnoLine.split('Turno:')[1]?.trim() || 'Turno';
-                
-                return (
-                  <div key={cierre.id} className="p-4 rounded-xl border bg-gradient-to-br from-emerald-50 to-white border-emerald-100 shadow-sm flex flex-col justify-between">
-                    <div>
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">{turno}</p>
-                          <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Mozo: {mozo}</p>
-                        </div>
-                        <span className="text-[10px] text-gray-400">
-                          {new Date(cierre.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
-                        </span>
-                      </div>
-                      <p className="text-2xl font-black text-emerald-600 mt-3">S/ {Number(cierre.monto).toFixed(2)}</p>
-                      <button
-                        onClick={() => {
-                          const cierreMozo = mozo || 'Desconocido';
-                          const cierreFecha = cierre.created_at?.split('T')[0] || '';
-                          setCierreDetalleModal({
-                            cierreId: Number(cierre.id),
-                            mozo: cierreMozo,
-                            turno,
-                            monto: Number(cierre.monto) || 0,
-                            fecha: cierreFecha,
-                            contenido: cierre.contenido,
-                          });
-                        }}
-                        className="mt-3 w-full text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
-                      >
-                        <HandCoins size={10} />
-                        Ver desglose
-                      </button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })()}
-
       {/* Últimas Notas Section */}
       {ultimasNotas.filter(n => !n.tags.includes('cierre')).length > 0 && (
         <div className="mb-8">
@@ -1544,6 +1485,35 @@ export default function DashboardPage() {
             activeTab === 'reportes'
               ? 'border-blue-600 text-blue-600 font-semibold'
               : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}          >
+            <TrendingUp size={16} />
+            Reportes y Ganancias
+        </button>
+        <button
+          onClick={() => { setActiveTab('cierres'); localStorage.setItem('puerto_habana_active_tab', 'cierres'); }}
+          className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'cierres'
+              ? 'border-emerald-600 text-emerald-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
+          }`}
+        >
+          <Banknote size={16} />
+          Cierres de Caja
+          {(() => {
+            const count = ultimasNotas.filter(n => n.tags.includes('cierre')).length;
+            return count > 0 ? (
+              <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                {count}
+              </span>
+            ) : null;
+          })()}
+        </button>
+        <button
+          onClick={() => { setActiveTab('reportes'); localStorage.setItem('puerto_habana_active_tab', 'reportes'); }}
+          className={`pb-4 px-4 text-sm font-medium border-b-2 transition-all relative flex items-center gap-2 whitespace-nowrap ${
+            activeTab === 'reportes'
+              ? 'border-blue-600 text-blue-600 font-semibold'
+              : 'border-transparent text-gray-500 hover:text-gray-900'
           }`}
         >
           <TrendingUp size={16} />
@@ -1552,7 +1522,7 @@ export default function DashboardPage() {
       </div>
       
       {/* Summary Cards Grid */}
-      {activeTab !== 'reportes' && (
+      {activeTab !== 'reportes' && activeTab !== 'cierres' && (
         <div className={`grid grid-cols-1 ${activeTab === 'historial' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4 md:gap-6 mb-10 w-full overflow-hidden`}>
           {Object.entries(getTabCards()).map(([key, data]) => {
             const Icon = data.icon;
@@ -2228,6 +2198,74 @@ export default function DashboardPage() {
             )}
           </div>
 
+        </div>
+      )}
+
+      {/* Tab 3.5: Cierres de Caja */}
+      {activeTab === 'cierres' && (
+        <div className="animate-in fade-in duration-300">
+          <div className="flex items-center gap-2 mb-6">
+            <Banknote size={20} className="text-emerald-600" />
+            <h2 className="text-xl md:text-2xl font-medium text-gray-900">Cierres de Caja</h2>
+          </div>
+          {(() => {
+            const cierresDelDia = ultimasNotas.filter(n => n.tags.includes('cierre'));
+            if (cierresDelDia.length === 0) {
+              return (
+                <div className="border rounded-xl py-16 text-center bg-white border-gray-200">
+                  <Banknote size={36} className="mx-auto text-gray-300 mb-3" />
+                  <p className="text-sm font-semibold text-gray-400">Sin cierres de caja</p>
+                  <p className="text-xs text-gray-500 mt-1 max-w-xs mx-auto">No se han registrado cierres de caja en el día de operación actual.</p>
+                </div>
+              );
+            }
+            return (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                {cierresDelDia.map(cierre => {
+                  const lines = cierre.contenido.split('\n');
+                  const mozoLine = lines.find(l => l.includes('Mozo:')) || '';
+                  const mozo = mozoLine.split('Mozo:')[1]?.trim() || 'Desconocido';
+                  const turnoLine = lines.find(l => l.includes('Turno:')) || '';
+                  const turno = turnoLine.split('Turno:')[1]?.trim() || 'Turno';
+                  
+                  return (
+                    <div key={cierre.id} className="p-5 rounded-xl border bg-gradient-to-br from-emerald-50 to-white border-emerald-100 shadow-sm hover:shadow-md transition-all duration-200 flex flex-col justify-between">
+                      <div>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <p className="text-xs font-bold text-emerald-800 uppercase tracking-wider">{turno}</p>
+                            <p className="text-[10px] text-emerald-600 font-semibold mt-0.5">Mozo: {mozo}</p>
+                          </div>
+                          <span className="text-[10px] text-gray-400">
+                            {new Date(cierre.created_at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                        </div>
+                        <p className="text-2xl font-black text-emerald-600 mt-3">S/ {Number(cierre.monto).toFixed(2)}</p>
+                        <button
+                          onClick={() => {
+                            const cierreMozo = mozo || 'Desconocido';
+                            const cierreFecha = cierre.created_at?.split('T')[0] || '';
+                            setCierreDetalleModal({
+                              cierreId: Number(cierre.id),
+                              mozo: cierreMozo,
+                              turno,
+                              monto: Number(cierre.monto) || 0,
+                              fecha: cierreFecha,
+                              contenido: cierre.contenido,
+                            });
+                          }}
+                          className="mt-3 w-full text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
+                        >
+                          <HandCoins size={10} />
+                          Ver desglose
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })()}
         </div>
       )}
 
