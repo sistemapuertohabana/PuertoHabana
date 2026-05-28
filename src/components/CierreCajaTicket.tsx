@@ -30,19 +30,34 @@ export default function CierreCajaTicket({
   const totalTarjeta = comandas.filter(c => c.metodo_pago === 'Tarjeta').reduce((sum, c) => sum + Number(c.total || 0), 0);
   
   // Aggregate items
-  const itemMap: Record<string, number> = {};
+  const platosMap: Record<string, number> = {};
+  const bebidasMap: Record<string, number> = {};
+  const tapersMap: Record<string, number> = {};
+
   comandas.forEach(comanda => {
     if (comanda.items && Array.isArray(comanda.items)) {
       comanda.items.forEach((item: any) => {
-        // Ignorar items de cortesía si no tienen precio o si quieres sumarlos igual,
-        // asumiendo que sumamos las cantidades vendidas (o servidas)
-        if (!item.precio && !item.nombre.includes('🎁')) return; // skip if completely free and no prefix
-        const name = item.nombre;
-        itemMap[name] = (itemMap[name] || 0) + (item.cantidad || 1);
+        if (!item.precio && !item.nombre.includes('🎁')) return; 
+        
+        const cat = (item.categoria || '').toLowerCase();
+        const isBebida = cat === 'bebidas' || cat.includes('gaseosa') || cat.includes('chicha') || cat.includes('cerveza') || cat.includes('sporade') || cat.includes('agua');
+        const isTaper = cat === 'tapers' || cat.includes('taper') || cat.includes('bolsa');
+
+        const mapToUse = isBebida ? bebidasMap : (isTaper ? tapersMap : platosMap);
+        mapToUse[item.nombre] = (mapToUse[item.nombre] || 0) + (item.cantidad || 1);
       });
     }
   });
-  const aggregatedItems = Object.entries(itemMap).sort((a, b) => b[1] - a[1]);
+
+  const platosVendidos = Object.entries(platosMap).sort((a, b) => b[1] - a[1]);
+  const bebidasVendidas = Object.entries(bebidasMap).sort((a, b) => b[1] - a[1]);
+  const tapersVendidos = Object.entries(tapersMap).sort((a, b) => b[1] - a[1]);
+
+  const totalPlatos = platosVendidos.reduce((sum, [_, q]) => sum + q, 0);
+  const totalBebidas = bebidasVendidas.reduce((sum, [_, q]) => sum + q, 0);
+  const totalTapers = tapersVendidos.reduce((sum, [_, q]) => sum + q, 0);
+
+  const aggregatedItems = [...platosVendidos, ...bebidasVendidas, ...tapersVendidos];
   
   const handlePrintBrowser = () => {
     const ventana = window.open('', '_blank', 'width=280,height=500');
@@ -85,13 +100,37 @@ export default function CierreCajaTicket({
           <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Yape:</span> <span>S/ ${totalYape.toFixed(2)}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Tarjeta:</span> <span>S/ ${totalTarjeta.toFixed(2)}</span></div>
           <div class="line"></div>
-          <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">PRODUCTOS VENDIDOS:</div>
-          ${aggregatedItems.length > 0 ? aggregatedItems.map(([name, qty]) => `
+          <div class="line"></div>
+          
+          <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">CANTIDAD DE PLATOS VENDIDOS: ${totalPlatos}</div>
+          ${platosVendidos.length > 0 ? platosVendidos.map(([name, qty]) => `
             <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
               <span style="flex: 1; padding-right: 5px;">${name}</span>
-              <span style="white-space: nowrap;">x${qty}</span>
+              <span style="white-space: nowrap;">(${qty})</span>
             </div>
-          `).join('') : '<div style="font-size: 12px;">Sin productos registrados</div>'}
+          `).join('') : '<div style="font-size: 12px;">0</div>'}
+
+          ${bebidasVendidas.length > 0 ? `
+            <div class="line"></div>
+            <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">BEBIDAS VENDIDAS: ${totalBebidas}</div>
+            ${bebidasVendidas.map(([name, qty]) => `
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                <span style="flex: 1; padding-right: 5px;">${name}</span>
+                <span style="white-space: nowrap;">(${qty})</span>
+              </div>
+            `).join('')}
+          ` : ''}
+
+          ${tapersVendidos.length > 0 ? `
+            <div class="line"></div>
+            <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">TAPERS/OTROS: ${totalTapers}</div>
+            ${tapersVendidos.map(([name, qty]) => `
+              <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+                <span style="flex: 1; padding-right: 5px;">${name}</span>
+                <span style="white-space: nowrap;">(${qty})</span>
+              </div>
+            `).join('')}
+          ` : ''}
           <div class="line"></div>
           <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">Cierre de Turno</div>
           <script>
