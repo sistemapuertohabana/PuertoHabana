@@ -19,6 +19,7 @@ interface ComandaTicketProps {
   items: ItemComanda[];
   onClose: () => void;
   negocioNombre?: string;
+  totalAcumuladoTurno?: number; // total de platos del turno hasta este pedido
 }
 
 export default function ComandaTicket({
@@ -29,6 +30,7 @@ export default function ComandaTicket({
   items,
   onClose,
   negocioNombre = process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'CEVICHERIA PUERTO HABANA',
+  totalAcumuladoTurno,
 }: ComandaTicketProps) {
   const boletaRef = useRef<HTMLDivElement>(null);
   const [printing, setPrinting] = useState(false);
@@ -81,7 +83,7 @@ export default function ComandaTicket({
               <img src="${window.location.origin}/logo/LogoPuertoHabana.png" alt="Logo" style="width: 60px; height: 60px; object-fit: contain;" />
             </div>
           </div>
-          <div class="text-center" style="font-size: 13px; font-weight: bold; color: #d97706; margin-bottom: 2px;">🍽️ PLATOS VENDIDOS: ${totalItems}</div>
+          <div class="text-center" style="font-size: 13px; font-weight: bold; color: #d97706; margin-bottom: 2px;">🍽️ PLATOS VENDIDOS: ${totalItems}${totalAcumuladoTurno !== undefined ? ` &nbsp;|&nbsp; TURNO: ${totalAcumuladoTurno}` : ''}</div>
           <div class="text-center font-bold" style="font-size: 22px; margin-bottom: 2px;">🍳 COMANDA</div>
           <div class="text-center" style="font-size: 12px; margin-bottom: 6px;">${negocioNombre}</div>
           <div class="line"></div>
@@ -243,7 +245,10 @@ export default function ComandaTicket({
           <div>
             <div className="mb-1.5 px-2.5 py-1 bg-amber-50 border border-amber-200 rounded-lg inline-block">
               <span className="text-[11px] font-bold text-amber-800 uppercase tracking-wider">
-                🍽️ Platos Vendidos: <span className="text-base">{totalItems}</span>
+                🍽️ Este pedido: <span className="text-base">{totalItems}</span>
+                {totalAcumuladoTurno !== undefined && (
+                  <span className="ml-2 text-amber-600">· Turno: <span className="text-base">{totalAcumuladoTurno}</span></span>
+                )}
               </span>
             </div>
             <h2 className="text-lg font-bold text-gray-900">🍳 Comanda</h2>

@@ -176,6 +176,7 @@ export default function MozoPage() {
     fecha: string;
     hora: string;
     items: { nombre: string; cantidad: number; categoria?: string; notas?: string }[];
+    totalAcumuladoTurno?: number;
   } | null>(null);
 
   const isFractionable = (nombre: string) => {
@@ -661,6 +662,33 @@ export default function MozoPage() {
       processed.add(leader.id);
     }
   });
+
+  // Calcula cuántos platos se han vendido en el turno actual hasta ahora (incluyendo el recién enviado)
+  const obtenerAcumuladoTurno = async (horaComanda: string): Promise<number> => {
+    try {
+      const fechaHoy = typeof window !== 'undefined'
+        ? localStorage.getItem('puerto_habana_simulated_date') || getLocalDateString()
+        : getLocalDateString();
+      const res = await fetch(`/api/pedidos?fecha=${fechaHoy}&_=${Date.now()}`, { cache: 'no-store' });
+      if (!res.ok) throw new Error();
+      const data: any[] = await res.json();
+      const HORA_TURNO = 16;
+      const horaH = parseInt((horaComanda || '00:00').split(':')[0], 10);
+      const esMañana = horaH < HORA_TURNO;
+      // Sumar todos los platos (no bebidas) del mismo turno
+      let total = 0;
+      for (const p of data) {
+        const pH = parseInt((p.hora || '00:00').split(':')[0], 10);
+        const pEsMañana = pH < HORA_TURNO;
+        if (pEsMañana !== esMañana) continue;
+        const food = (p.items || []).filter((i: any) => i.categoria !== 'bebidas');
+        total += food.reduce((s: number, i: any) => s + (i.cantidad || 0), 0);
+      }
+      return total;
+    } catch {
+      return 0;
+    }
+  };
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -1746,6 +1774,7 @@ export default function MozoPage() {
           fecha={comandaPrintData.fecha}
           hora={comandaPrintData.hora}
           items={comandaPrintData.items}
+          totalAcumuladoTurno={comandaPrintData.totalAcumuladoTurno}
           onClose={() => setComandaPrintData(null)}
         />
       )}
