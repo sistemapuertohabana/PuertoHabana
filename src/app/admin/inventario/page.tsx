@@ -133,6 +133,23 @@ export default function InventarioPage() {
   const totalInsumos = insumos.reduce((sum, i) => sum + (i.precio * i.cantidad), 0);
   const totalIngresos = totalComida + totalBebidas + totalTapers;
 
+  const isFractionable = (nombre: string) => {
+    const n = nombre.toLowerCase();
+    return n.includes('chicha') || n.includes('maracuya') || n.includes('limonada') || n.includes('refresco');
+  };
+
+  const formatStock = (cantidad: number, unidad: string, nombre: string) => {
+    if (isFractionable(nombre)) {
+      const jarras = Math.floor(cantidad / 3);
+      const vasos = cantidad % 3;
+      if (jarras === 0 && vasos === 0) return '0 Vasos';
+      if (jarras === 0) return `${vasos} Vaso(s)`;
+      if (vasos === 0) return `${jarras} Jarra(s)`;
+      return `${jarras} Jarra(s) y ${vasos} Vaso(s)`;
+    }
+    return `${cantidad} ${unidad || 'unid'}`;
+  };
+
   // Funciones para manejar modales
   const handleAdd = () => {
     setEditingItem(null);
@@ -311,7 +328,7 @@ export default function InventarioPage() {
               <div className="flex flex-wrap gap-2 mt-2">
                 {itemsConBajoStock.slice(0, 5).map(item => (
                   <span key={item.id} className="inline-flex items-center gap-1 px-2.5 py-1 bg-white border border-red-200 rounded-full text-xs font-medium text-red-700">
-                    {item.nombre} <span className="text-red-400">({item.cantidad} {item.unidad || 'unid'})</span>
+                    {item.nombre} <span className="text-red-400">({formatStock(item.cantidad, item.unidad || 'unid', item.nombre)})</span>
                   </span>
                 ))}
                 {itemsConBajoStock.length > 5 && (
@@ -785,7 +802,7 @@ export default function InventarioPage() {
                         <div className="flex-1">
                           <div className="flex justify-between text-xs mb-1">
                             <span className="text-gray-500">Stock actual</span>
-                            <span className="font-bold text-red-600">{item.cantidad} {item.unidad || 'unid'}</span>
+                            <span className="font-bold text-red-600">{formatStock(item.cantidad, item.unidad || 'unid', item.nombre)}</span>
                           </div>
                           <div className="w-full bg-red-200 rounded-full h-2">
                             <div
@@ -880,7 +897,7 @@ export default function InventarioPage() {
                   <div>
                     <p className="text-xs text-gray-500">Stock</p>
                     <p className={`text-sm font-medium ${item.cantidad <= (item.minimo || 3) ? 'text-red-600' : 'text-gray-900'}`}>
-                      {item.cantidad} {item.unidad || 'unid'}
+                      {formatStock(item.cantidad, item.unidad || 'unid', item.nombre)}
                     </p>
                   </div>
                   {item.costo > 0 && (
@@ -1154,7 +1171,7 @@ export default function InventarioPage() {
                 </div>
                 <div>
                   <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
-                    Cantidad
+                    Cantidad {isFractionable(formData.nombre || '') ? '(en Vasos)' : ''}
                   </label>
                   <input
                     type="text"
@@ -1165,6 +1182,17 @@ export default function InventarioPage() {
                     className="w-full px-3 sm:px-4 py-2.5 sm:py-3 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all duration-200 text-gray-900 text-sm"
                     placeholder="0"
                   />
+                  {isFractionable(formData.nombre || '') && (
+                    <div className="mt-2 text-xs font-bold text-amber-600 bg-amber-50 p-2 rounded-lg border border-amber-200">
+                      Visual: {formatStock(formData.cantidad || 0, formData.unidad || 'unid', formData.nombre || '')}
+                    </div>
+                  )}
+                  {isFractionable(formData.nombre || '') && (
+                    <div className="flex gap-2 mt-2">
+                      <button type="button" onClick={() => setFormData({...formData, cantidad: (formData.cantidad||0) + 3})} className="flex-1 py-1.5 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg hover:bg-amber-200 transition-colors shadow-sm">+1 Jarra</button>
+                      <button type="button" onClick={() => setFormData({...formData, cantidad: Math.max(0, (formData.cantidad||0) - 3)})} className="flex-1 py-1.5 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors border border-red-100">-1 Jarra</button>
+                    </div>
+                  )}
                 </div>
 
                 {/* Editor de Tamaños (solo para bebidas) */}

@@ -55,6 +55,23 @@ export default function MozoInventarioPage() {
     return all.filter(i => i.cantidad <= (i.minimo || 3));
   }, [bebidas, tapers]);
 
+  const isFractionable = (nombre: string) => {
+    const n = nombre.toLowerCase();
+    return n.includes('chicha') || n.includes('maracuya') || n.includes('limonada') || n.includes('refresco');
+  };
+
+  const formatStock = (cantidad: number, unidad: string, nombre: string) => {
+    if (isFractionable(nombre)) {
+      const jarras = Math.floor(cantidad / 3);
+      const vasos = cantidad % 3;
+      if (jarras === 0 && vasos === 0) return '0 Vasos';
+      if (jarras === 0) return `${vasos} Vaso(s)`;
+      if (vasos === 0) return `${jarras} Jarra(s)`;
+      return `${jarras} Jarra(s) y ${vasos} Vaso(s)`;
+    }
+    return `${cantidad} ${unidad || 'unid'}`;
+  };
+
   const currentData = tab === 'bebidas' ? bebidas : tapers;
 
   const filtered = search
@@ -153,7 +170,7 @@ export default function MozoInventarioPage() {
                     className="inline-flex items-center gap-1 px-2 py-1 bg-white border border-red-200 rounded-full text-[10px] font-medium text-red-700"
                   >
                     {item.nombre}
-                    <span className="text-red-400 font-semibold">({item.cantidad} {item.unidad || 'unid'})</span>
+                    <span className="text-red-400 font-semibold">({formatStock(item.cantidad, item.unidad || 'unid', item.nombre)})</span>
                   </span>
                 ))}
               </div>
@@ -252,7 +269,7 @@ export default function MozoInventarioPage() {
                         : 'text-gray-800'
                     }`}
                   >
-                    {item.cantidad} {item.unidad || 'unid'}
+                    {formatStock(item.cantidad, item.unidad || 'unid', item.nombre)}
                   </span>
                 </span>
                 {item.costo != null && Number(item.costo) > 0 && (
@@ -366,6 +383,17 @@ export default function MozoInventarioPage() {
                       +
                     </button>
                   </div>
+                  {isFractionable(detailItem.nombre) && (
+                    <div className="mt-2 text-xs font-bold text-amber-600 bg-amber-50 p-1.5 rounded-lg border border-amber-200 inline-block">
+                      Visual: {formatStock(detailItem.cantidad, detailItem.unidad || 'unid', detailItem.nombre)}
+                    </div>
+                  )}
+                  {isFractionable(detailItem.nombre) && (
+                    <div className="flex gap-2 mt-2">
+                      <button onClick={() => handleUpdateStock(detailItem.id, detailItem.cantidad, 3)} disabled={updatingStock} className="flex-1 py-1 bg-amber-100 text-amber-700 text-xs font-bold rounded-lg hover:bg-amber-200 transition-colors shadow-sm">+1 Jarra</button>
+                      <button onClick={() => handleUpdateStock(detailItem.id, detailItem.cantidad, -3)} disabled={updatingStock || detailItem.cantidad < 3} className="flex-1 py-1 bg-red-50 text-red-600 text-xs font-bold rounded-lg hover:bg-red-100 transition-colors border border-red-100">-1 Jarra</button>
+                    </div>
+                  )}
                 </div>
               </div>
 

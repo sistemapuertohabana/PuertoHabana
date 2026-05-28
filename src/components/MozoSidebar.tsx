@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarSign, Package } from 'lucide-react';
+import { LayoutGrid, User, LogOut, ListOrdered, CalendarClock, Settings, DollarSign, Package, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useProfilePhoto, useLocalStorageValue } from '@/hooks/useProfilePhoto';
 
@@ -15,6 +15,7 @@ const menuItems = [
   { href: '/mozo/inventario',    icon: Package,       label: 'Inventario'},
   { href: '/mozo/historial',     icon: ListOrdered,   label: 'Historial' },
   { href: '/mozo/pagos',         icon: DollarSign,    label: 'Pagos'     },
+  { href: '/mozo/reportes',      icon: FileText,      label: 'Reportes'  },
   { href: '/mozo/perfil',        icon: User,          label: 'Perfil'    },
   { href: '/mozo/configuracion', icon: Settings,      label: 'Ajustes'   },
 ];

@@ -166,6 +166,23 @@ export default function MozoPage() {
     items: { nombre: string; cantidad: number; categoria?: string; notas?: string }[];
   } | null>(null);
 
+  const isFractionable = (nombre: string) => {
+    const n = nombre.toLowerCase();
+    return n.includes('chicha') || n.includes('maracuya') || n.includes('limonada') || n.includes('refresco');
+  };
+
+  const formatStock = (cantidad: number, unidad: string, nombre: string) => {
+    if (isFractionable(nombre)) {
+      const jarras = Math.floor(cantidad / 3);
+      const vasos = cantidad % 3;
+      if (jarras === 0 && vasos === 0) return '0 Vasos';
+      if (jarras === 0) return `${vasos} Vaso(s)`;
+      if (vasos === 0) return `${jarras} Jarra(s)`;
+      return `${jarras} Jarra(s) y ${vasos} Vaso(s)`;
+    }
+    return `${cantidad}`;
+  };
+
   useEffect(() => {
     const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
     const unsubComida = subscribeInventario('comida', (data) => setComidaDinamica(data));
@@ -888,7 +905,7 @@ export default function MozoPage() {
                                       {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
                                     </p>
                                     <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
-                                      Stock: {bebida.cantidad}
+                                      Stock: {formatStock(bebida.cantidad, bebida.unidad || 'unid', bebida.nombre)}
                                     </span>
                                   </div>
                                 </div>
@@ -938,7 +955,7 @@ export default function MozoPage() {
                                   {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
                                 </p>
                                 <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
-                                  Stock: {bebida.cantidad}
+                                  Stock: {formatStock(bebida.cantidad, bebida.unidad || 'unid', bebida.nombre)}
                                 </span>
                               </div>
                             </div>
