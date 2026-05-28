@@ -1435,7 +1435,19 @@ export default function DashboardPage() {
                     <div className="space-y-4">
                       {mozo.pedidosByMesa.map((mesaGroup, mIdx) => (
                         <div key={mIdx} className="bg-gray-50/50 rounded-lg p-3 border border-gray-100">
-                          <h4 className="text-sm font-semibold text-gray-800 mb-2 pb-1 border-b border-gray-200">{mesaGroup.mesa}</h4>
+                          <div className="flex justify-between items-center mb-2 pb-1 border-b border-gray-200">
+                            <h4 className="text-sm font-semibold text-gray-800">{mesaGroup.mesa}</h4>
+                            <button
+                              onClick={() => {
+                                const cId = mesaGroup.pedidos[0]?.comandaId;
+                                if (cId) handleDeleteComanda(String(cId));
+                              }}
+                              className="text-red-500 hover:text-red-700 bg-red-50 hover:bg-red-100 p-1.5 rounded-lg transition-colors"
+                              title="Eliminar Mesa"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          </div>
                           <div className="space-y-2">
                             {mesaGroup.pedidos.map((pedido, idx) => (
                               <div key={idx} className={`flex justify-between items-center py-1.5`}>
