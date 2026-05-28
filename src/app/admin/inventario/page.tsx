@@ -271,7 +271,7 @@ export default function InventarioPage() {
     try {
       await addInventarioItem('comida', {
         nombre: nombrePlato.trim(),
-        categoria: categoriaPlato || 'Platos Fuertes',
+        categoria: categoriaPlato || 'Promos',
         precio: precioPlato,
         cantidad: cantidadPlato,
       });
@@ -645,7 +645,7 @@ export default function InventarioPage() {
                   >
                     <option value="">Seleccionar categoría</option>
                     <option value="Ceviches">Ceviches</option>
-                    <option value="Platos Fuertes">Platos Fuertes</option>
+                    <option value="Promos">Promos</option>
                     <option value="Duo">Duo</option>
                     <option value="Entradas">Entradas</option>
                     <option value="Postres">Postres</option>
@@ -1346,7 +1346,7 @@ export default function InventarioPage() {
                     {activeSection === 'comida' && (
                       <>
                         <option value="Ceviches">Ceviches</option>
-                        <option value="Platos Fuertes">Platos Fuertes</option>
+                        <option value="Promos">Promos</option>
                         <option value="Duo">Duo</option>
                         <option value="Entradas">Entradas</option>
                         <option value="Postres">Postres</option>
