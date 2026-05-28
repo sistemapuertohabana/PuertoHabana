@@ -1063,7 +1063,6 @@ export default function MozoPage() {
                 if (comidaDinamica.length === 0) return null;
                 const categories = ['Todos', ...Array.from(new Set(comidaDinamica.map(c => c.categoria || 'Otros').filter(Boolean)))];
                 const filtered = activeComidaCat === 'Todos' ? comidaDinamica : comidaDinamica.filter(c => (c.categoria || 'Otros') === activeComidaCat);
-                const items = filtered.map(c => ({ name: c.nombre, price: c.precio, category: 'comida' }));
                 
                 return (
                   <div key={cat} className="mb-2">
@@ -1087,9 +1086,56 @@ export default function MozoPage() {
                       ))}
                     </div>
                     <div className="space-y-1.5">
-                      {items.map(item => {
-                        const qty = cart.find(c => c.name === item.name && c.persona === currentPersona)?.qty || 0;
-                        return renderProductItem(item, qty);
+                      {filtered.map(comidaItem => {
+                        // Si tiene tamaños, mostrar cada tamaño como item separado
+                        if (comidaItem.tamanos && comidaItem.tamanos.length > 0) {
+                          return comidaItem.tamanos.map((t: any, ti: number) => {
+                            const itemKey = `${comidaItem.nombre}||${t.nombre}`;
+                            const cartItem = cart.find(c => c.name === itemKey && c.persona === currentPersona);
+                            const qty = cartItem?.qty || 0;
+                            return (
+                              <div key={itemKey} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm text-gray-900 truncate">
+                                    {qty > 0 && cartItem?.esCortesia && <span className="mr-1">🎁</span>}
+                                    {comidaItem.nombre} <span className="text-gray-500 font-medium">{t.nombre}</span>
+                                  </p>
+                                  <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                    {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
+                                  </p>
+                                </div>
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                  {qty > 0 && (
+                                    <button
+                                      onClick={() => toggleCortesia(itemKey)}
+                                      className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                                        cartItem?.esCortesia
+                                          ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                                          : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+                                      }`}
+                                      title="Marcar como Cortesía"
+                                    >
+                                      🎁
+                                    </button>
+                                  )}
+                                  <RenderQtyControls
+                                    itemKey={itemKey}
+                                    itemName={`${comidaItem.nombre} ${t.nombre}`}
+                                    itemPrice={t.precio}
+                                    qty={qty}
+                                    category="comida"
+                                    cart={cart}
+                                    updateCart={updateCart}
+                                    toggleCortesia={toggleCortesia}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          });
+                        }
+                        // Sin tamaños, mostrar item normal
+                        const qty = cart.find(c => c.name === comidaItem.nombre && c.persona === currentPersona)?.qty || 0;
+                        return renderProductItem({ name: comidaItem.nombre, price: comidaItem.precio, category: 'comida' }, qty);
                       })}
                     </div>
                   </div>

@@ -23,6 +23,7 @@ interface Comida {
   unidad?: string;
   codigo_barras?: string;
   imagen_url?: string;
+  tamanos?: Array<{nombre: string; precio: number; costo?: number}>;
 }
 
 interface Bebida {
@@ -104,6 +105,7 @@ export default function InventarioPage() {
   const [showAdditionsHistory, setShowAdditionsHistory] = useState(false);
   const [adiciones, setAdiciones] = useState<any[]>([]);
   const [loadingAdditions, setLoadingAdditions] = useState(false);
+  const [adicionesSearch, setAdicionesSearch] = useState('');
 
   // Cargar movimientos y alertas
   useEffect(() => {
@@ -166,6 +168,8 @@ export default function InventarioPage() {
     } else if (activeSection === 'insumos') {
       setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 3, codigo_barras: '', imagen_url: '', costo: 0, turno: 'ambos' });
     } else if (activeSection === 'bebidas') {
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [], turno: 'ambos' });
+    } else if (activeSection === 'comida') {
       setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [], turno: 'ambos' });
     } else {
       setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, turno: 'ambos' });
@@ -641,6 +645,7 @@ export default function InventarioPage() {
                     <option value="">Seleccionar categoría</option>
                     <option value="Ceviches">Ceviches</option>
                     <option value="Platos Fuertes">Platos Fuertes</option>
+                    <option value="Duo">Duo</option>
                     <option value="Entradas">Entradas</option>
                     <option value="Postres">Postres</option>
                   </select>
@@ -939,6 +944,17 @@ export default function InventarioPage() {
               </div>
             ) : (
               <>
+                {/* Buscador en el historial */}
+                <div className="mb-4 relative">
+                  <input
+                    type="text"
+                    value={adicionesSearch}
+                    onChange={(e) => setAdicionesSearch(e.target.value)}
+                    placeholder="🔍 Buscar en adiciones..."
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 transition-all text-sm"
+                  />
+                </div>
+
                 {/* Resumen por bebida */}
                 <div className="mb-6">
                   <h4 className="text-sm font-semibold text-gray-700 mb-3">
@@ -946,9 +962,13 @@ export default function InventarioPage() {
                   </h4>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                     {(() => {
+                      // Filtrar por búsqueda
+                      const adicionesFiltradas = adicionesSearch
+                        ? adiciones.filter(m => (m.inventario?.nombre || '').toLowerCase().includes(adicionesSearch.toLowerCase()))
+                        : adiciones;
                       // Agrupar por nombre de bebida
                       const grouped: Record<string, { total: number; count: number; precio: number; movimientos: any[] }> = {};
-                      for (const mov of adiciones) {
+                      for (const mov of adicionesFiltradas) {
                         const nombre = mov.inventario?.nombre || `Item #${mov.inventario_id}`;
                         if (!grouped[nombre]) {
                           grouped[nombre] = { total: 0, count: 0, precio: mov.inventario?.precio || 0, movimientos: [] };
@@ -991,7 +1011,10 @@ export default function InventarioPage() {
                     Detalle de Adiciones
                   </h4>
                   <div className="space-y-2">
-                    {adiciones.map((mov: any) => (
+                    {(adicionesSearch
+                      ? adiciones.filter(m => (m.inventario?.nombre || '').toLowerCase().includes(adicionesSearch.toLowerCase()))
+                      : adiciones
+                    ).map((mov: any) => (
                       <div key={mov.id} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-green-200 transition-colors">
                         <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
                           <Plus size={14} className="text-green-600" />
@@ -1254,6 +1277,7 @@ export default function InventarioPage() {
                       <>
                         <option value="Ceviches">Ceviches</option>
                         <option value="Platos Fuertes">Platos Fuertes</option>
+                        <option value="Duo">Duo</option>
                         <option value="Entradas">Entradas</option>
                         <option value="Postres">Postres</option>
                       </>
@@ -1408,14 +1432,14 @@ export default function InventarioPage() {
                   )}
                 </div>
 
-                {/* Editor de Tamaños (solo para bebidas) */}
-                {activeSection === 'bebidas' && (
+                {/* Editor de Tamaños / Presentaciones */}
+                {(activeSection === 'bebidas' || activeSection === 'comida') && (
                   <div className="border-t border-gray-100 pt-4 sm:pt-6">
                     <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3">
                       Tamaños / Presentaciones
                     </label>
                     <p className="text-xs text-gray-400 mb-3 sm:mb-4">
-                      Define diferentes tamaños y precios para esta bebida
+                      Agrega presentaciones como <strong>Individual</strong>, <strong>Duo</strong>, <strong>Familiar</strong> con sus precios
                     </p>
                     <div className="space-y-2 sm:space-y-3">
                       {(formData.tamanos || []).map((t: any, idx: number) => (
