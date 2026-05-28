@@ -747,6 +747,7 @@ export default function MozoHistorialPage() {
           mozoNombre={comandas.find(c => c.mozo_id === mozoId)?.mozo_nombre || 'Mozo'}
           fecha={fecha}
           total={total}
+          comandas={comandas}
           onClose={() => setShowCierreModal(false)}
         />
       )}

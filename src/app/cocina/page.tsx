@@ -63,6 +63,7 @@ function getLocalDateString() {
 
 export default function CocinaPage() {
   const [pedidos,     setPedidos]     = useState<Pedido[]>([]);
+  const [todosPedidos, setTodosPedidos] = useState<Pedido[]>([]);
   const [showHistory, setShowHistory] = useState(false);
   const [asistencia, setAsistencia] = useState<{ id: number; hora_llegada: string } | null>(null);
   const [registrando, setRegistrando] = useState(false);
@@ -149,19 +150,20 @@ export default function CocinaPage() {
 
   const loadPedidos = useCallback(async () => {
     try {
-      const url = showHistory
-        ? `/api/pedidos?fecha=${fecha}&estado=Entregado&_=${Date.now()}`
-        : `/api/pedidos?fecha=${fecha}&_=${Date.now()}`;
+      const url = `/api/pedidos?fecha=${fecha}&_=${Date.now()}`;
       const res = await fetch(url, { cache: 'no-store' });
       if (!res.ok) throw new Error();
       const data: Pedido[] = await res.json();
-      setPedidos(showHistory ? data : data.filter(p => p.estado !== 'Entregado'));
+      setTodosPedidos(data);
+      setPedidos(showHistory ? data.filter(p => p.estado === 'Entregado') : data.filter(p => p.estado !== 'Entregado'));
     } catch {
       try {
         const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+        const todays = all.filter((p: any) => p.fecha === fecha);
+        setTodosPedidos(todays);
         setPedidos(showHistory
-          ? all.filter((p: any) => p.estado === 'Entregado')
-          : all.filter((p: any) => p.fecha === fecha && p.estado !== 'Entregado'));
+          ? todays.filter((p: any) => p.estado === 'Entregado')
+          : todays.filter((p: any) => p.estado !== 'Entregado'));
       } catch { setPedidos([]); }
     }
   }, [fecha, showHistory]);
@@ -293,6 +295,24 @@ export default function CocinaPage() {
   const tieneItemsConNotas = (items: Pedido['items']) => 
     items?.some(i => i.notas && i.notas.trim()) ?? false;
 
+  const totalPlatosDia = todosPedidos.reduce((acc, p) => {
+    const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
+    return acc + food.reduce((s, i) => s + i.cantidad, 0);
+  }, 0);
+
+  const pedidosConAcumulado = typeof window !== 'undefined' ? (() => {
+    let acc = 0;
+    const sorted = [...todosPedidos].sort((a, b) => a.id - b.id);
+    const map = new Map<number, number>();
+    for (const p of sorted) {
+      const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
+      const pTotal = food.reduce((s, i) => s + i.cantidad, 0);
+      acc += pTotal;
+      map.set(p.id, acc);
+    }
+    return map;
+  })() : new Map<number, number>();
+
   return (
     <div className="animate-in fade-in duration-300">
       {/* Header */}
@@ -365,11 +385,18 @@ export default function CocinaPage() {
             </button>
           )
         ) : null}
-        <div className="text-right">
-          <p className="text-2xl font-light text-gray-900">{pedidos.length}</p>
-          <p className="text-[10px] text-gray-400 uppercase tracking-wider">
-            {showHistory ? 'Entregadas' : 'Activas'}
-          </p>
+        <div className="text-right flex items-center gap-4">
+          <div className="text-right">
+            <p className="text-2xl font-bold text-orange-600">{totalPlatosDia}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Platos Hoy</p>
+          </div>
+          <div className="w-px h-8 bg-gray-200"></div>
+          <div className="text-right">
+            <p className="text-2xl font-light text-gray-900">{pedidos.length}</p>
+            <p className="text-[10px] text-gray-400 uppercase tracking-wider">
+              {showHistory ? 'Entregadas' : 'Activas'}
+            </p>
+          </div>
         </div>
       </div>
 
@@ -456,6 +483,7 @@ export default function CocinaPage() {
             const accentBorder = estadoAccentBorder[p.estado] || 'border-l-gray-300';
             const foodItems = p.items?.filter(item => item.categoria !== 'bebidas') || [];
             const totalPlatos = foodItems.reduce((s, i) => s + i.cantidad, 0);
+            const acumulado = pedidosConAcumulado.get(p.id) || totalPlatos;
             const tiempo = getTiempoTranscurrido(p.hora);
             const conNotas = tieneItemsConNotas(p.items);
 
@@ -501,6 +529,11 @@ export default function CocinaPage() {
                   <div className={`shrink-0 ${cfg.bg} ${cfg.color} px-2.5 py-1 rounded-lg border ${cfg.border} text-center`}>
                     <span className="block text-sm font-black">{totalPlatos}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider">Platos</span>
+                  </div>
+                  {/* Badge acumulado día */}
+                  <div className="shrink-0 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-200 text-center" title="Total de platos vendidos hasta este pedido">
+                    <span className="block text-sm font-black">{acumulado}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider">Total Día</span>
                   </div>
                   {/* Botón Ver detalle */}
                   <button

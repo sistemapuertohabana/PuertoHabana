@@ -8,6 +8,7 @@ interface CierreCajaTicketProps {
   total: number;
   onClose: () => void;
   negocioNombre?: string;
+  comandas: any[];
 }
 
 export default function CierreCajaTicket({
@@ -16,7 +17,28 @@ export default function CierreCajaTicket({
   total,
   onClose,
   negocioNombre = process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'CEVICHERIA PUERTO HABANA',
+  comandas,
 }: CierreCajaTicketProps) {
+  
+  // Calculate totals by payment method
+  const totalEfectivo = comandas.filter(c => c.metodo_pago === 'Efectivo').reduce((sum, c) => sum + Number(c.total || 0), 0);
+  const totalYape = comandas.filter(c => c.metodo_pago === 'Yape' || c.metodo_pago === 'Yape/Mixto').reduce((sum, c) => sum + Number(c.total || 0), 0);
+  const totalTarjeta = comandas.filter(c => c.metodo_pago === 'Tarjeta').reduce((sum, c) => sum + Number(c.total || 0), 0);
+  
+  // Aggregate items
+  const itemMap: Record<string, number> = {};
+  comandas.forEach(comanda => {
+    if (comanda.items && Array.isArray(comanda.items)) {
+      comanda.items.forEach((item: any) => {
+        // Ignorar items de cortesía si no tienen precio o si quieres sumarlos igual,
+        // asumiendo que sumamos las cantidades vendidas (o servidas)
+        if (!item.precio && !item.nombre.includes('🎁')) return; // skip if completely free and no prefix
+        const name = item.nombre;
+        itemMap[name] = (itemMap[name] || 0) + (item.cantidad || 1);
+      });
+    }
+  });
+  const aggregatedItems = Object.entries(itemMap).sort((a, b) => b[1] - a[1]);
   
   const handlePrintBrowser = () => {
     const ventana = window.open('', '_blank', 'width=280,height=500');
@@ -53,6 +75,19 @@ export default function CierreCajaTicket({
           <div class="line"></div>
           <div class="text-center font-bold" style="font-size: 16px; margin: 10px 0;">TOTAL VENDIDO</div>
           <div class="text-center font-bold" style="font-size: 24px; margin-bottom: 10px;">S/ ${total.toFixed(2)}</div>
+          <div class="line"></div>
+          <div style="font-size: 14px; margin-top: 5px;" class="font-bold">DESGLOSE DE PAGOS:</div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Efectivo:</span> <span>S/ ${totalEfectivo.toFixed(2)}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Yape:</span> <span>S/ ${totalYape.toFixed(2)}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Tarjeta/Otros:</span> <span>S/ ${totalTarjeta.toFixed(2)}</span></div>
+          <div class="line"></div>
+          <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">PRODUCTOS VENDIDOS:</div>
+          ${aggregatedItems.length > 0 ? aggregatedItems.map(([name, qty]) => `
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+              <span style="flex: 1; padding-right: 5px;">${name}</span>
+              <span style="white-space: nowrap;">x${qty}</span>
+            </div>
+          `).join('') : '<div style="font-size: 12px;">Sin productos registrados</div>'}
           <div class="line"></div>
           <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">Cierre de Turno</div>
           <script>
