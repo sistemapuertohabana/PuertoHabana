@@ -714,6 +714,10 @@ export default function MozoPage() {
                         if (mergeTarget) handleMerge(mesa.id);
                         else setMergeTarget(mesa.id);
                       } else {
+                        if (mozoSession.turno && !turnoInfo.activo) {
+                          alert(`${turnoInfo.mensaje} — No puedes registrar pedidos ahora.`);
+                          return;
+                        }
                         setActiveMesa(mesa); 
                         setCart([]); 
                         setCartItemNote(null);

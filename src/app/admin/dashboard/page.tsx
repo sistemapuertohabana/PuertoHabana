@@ -1521,24 +1521,41 @@ export default function DashboardPage() {
                             ))}
                           </div>
                           {/* Mesa Action */}
-                          <div className="mt-2 pt-2 border-t border-gray-200 flex justify-end">
-                            <button
-                              onClick={() => {
-                                setShowClienteSearchForMesa({
-                                  mesa: mesaGroup.mesa,
-                                  mozoNombre: mozo.mozoNombre,
-                                  items: mesaGroup.pedidos,
-                                  hora: mesaGroup.pedidos[0]?.hora || '',
-                                });
-                                setClienteInfoForMesa(null);
-                                setClienteSearchQuery('');
-                                setClientesSearchResults([]);
-                              }}
-                              className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors text-xs font-semibold"
-                            >
-                              <Printer size={12} />
-                              Imprimir Mesa
-                            </button>
+                          <div className="mt-2 pt-2 border-t border-gray-200">
+                            <div className="flex justify-end mb-2">
+                              <button
+                                onClick={() => {
+                                  setShowClienteSearchForMesa({
+                                    mesa: mesaGroup.mesa,
+                                    mozoNombre: mozo.mozoNombre,
+                                    items: mesaGroup.pedidos,
+                                    hora: mesaGroup.pedidos[0]?.hora || '',
+                                  });
+                                  setClienteInfoForMesa(null);
+                                  setClienteSearchQuery('');
+                                  setClientesSearchResults([]);
+                                }}
+                                className="flex items-center gap-1.5 text-blue-600 hover:text-blue-700 transition-colors text-xs font-semibold"
+                              >
+                                <Printer size={12} />
+                                Imprimir Comanda Físicamente
+                              </button>
+                            </div>
+                            
+                            <CobrarBoleta
+                              readOnly={true}
+                              mesaLabel={mesaGroup.mesa}
+                              mozoNombre={mozo.mozoNombre}
+                              fecha={simulatedDate}
+                              hora={mesaGroup.pedidos[0]?.hora || ''}
+                              comandaId={mesaGroup.pedidos[0]?.comandaId ? Number(mesaGroup.pedidos[0].comandaId) : undefined}
+                              pedidos={mesaGroup.pedidos.map(i => ({
+                                item: i.item,
+                                cantidad: i.cantidad,
+                                precio: Number(i.precio),
+                                notas: i.notas
+                              }))}
+                            />
                           </div>
                         </div>
                       ))}
