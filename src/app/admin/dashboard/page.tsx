@@ -3241,6 +3241,8 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
 
       {/* Cierre Detalle Modal */}
       {cierreDetalleModal && (
@@ -3298,8 +3300,6 @@ export default function DashboardPage() {
               </button>
             </div>
           </div>
-        </div>
-      )}
         </div>
       )}
 
