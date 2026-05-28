@@ -342,23 +342,65 @@ export default function MozoHistorialPage() {
 
   const total = comandas.reduce((s, c) => s + Number(c.total), 0);
 
+  // Totales por turno
+  const HORA_CAMBIO_TURNO = 16; // 16:00 divide mañana y noche
+  const entregadas = comandas.filter(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
+  const totalManiana = entregadas
+    .filter(c => parseInt((c.hora || '00:00').split(':')[0], 10) < HORA_CAMBIO_TURNO)
+    .reduce((s, c) => s + Number(c.total), 0);
+  const totalNoche = entregadas
+    .filter(c => parseInt((c.hora || '00:00').split(':')[0], 10) >= HORA_CAMBIO_TURNO)
+    .reduce((s, c) => s + Number(c.total), 0);
+  const totalPendiente = comandas
+    .filter(c => c.estado !== 'Entregado' && c.estado !== 'Cerrado')
+    .reduce((s, c) => s + Number(c.total), 0);
+
   return (
     <div className="min-h-screen bg-gray-50 pb-24 lg:pb-8">
       {/* Header */}
-      <div className="bg-white border-b border-gray-200 px-6 py-5 sticky top-0 z-10 flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Historial de Pedidos</h1>
-          <p className="text-sm text-gray-500 mt-0.5">{fecha}</p>
+      <div className="bg-white border-b border-gray-200 px-6 py-4 sticky top-0 z-10">
+        <div className="flex justify-between items-start mb-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900">Historial de Pedidos</h1>
+            <p className="text-sm text-gray-500 mt-0.5">{fecha}</p>
+          </div>
+          <div className="text-right">
+            <p className="text-xs text-gray-400 uppercase font-semibold">Total del Día</p>
+            <p className="text-2xl font-bold text-blue-600 mb-1">S/ {Number(total).toFixed(2)}</p>
+            <Link 
+              href="/mozo/reportes"
+              className="inline-block text-[10px] bg-blue-100 text-blue-700 px-3 py-1.5 rounded font-bold hover:bg-blue-200 transition-colors"
+            >
+              Ver Reporte
+            </Link>
+          </div>
         </div>
-        <div className="text-right">
-          <p className="text-xs text-gray-400 uppercase font-semibold">Total del Día</p>
-          <p className="text-2xl font-bold text-blue-600 mb-1">S/ {Number(total).toFixed(2)}</p>
-          <Link 
-            href="/mozo/reportes"
-            className="inline-block text-[10px] bg-blue-100 text-blue-700 px-3 py-1.5 rounded font-bold hover:bg-blue-200 transition-colors"
-          >
-            Ver Reporte
-          </Link>
+
+        {/* Resumen por turno */}
+        <div className="flex gap-2">
+          <div className="flex-1 flex items-center gap-2 bg-amber-50 border border-amber-100 rounded-xl px-3 py-2">
+            <span className="text-base">🌅</span>
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold text-amber-700 uppercase tracking-wider">Turno Mañana</p>
+              <p className="text-sm font-black text-amber-900">S/ {totalManiana.toFixed(2)}</p>
+            </div>
+          </div>
+          <div className="flex-1 flex items-center gap-2 bg-indigo-50 border border-indigo-100 rounded-xl px-3 py-2">
+            <span className="text-base">🌙</span>
+            <div className="min-w-0">
+              <p className="text-[9px] font-bold text-indigo-700 uppercase tracking-wider">Turno Noche</p>
+              <p className="text-sm font-black text-indigo-900">S/ {totalNoche.toFixed(2)}</p>
+            </div>
+          </div>
+          {totalPendiente > 0 && (
+            <div className="flex-1 flex items-center gap-2 bg-orange-50 border border-orange-100 rounded-xl px-3 py-2">
+              <span className="text-base">⏳</span>
+              <div className="min-w-0">
+                <p className="text-[9px] font-bold text-orange-700 uppercase tracking-wider">Pendiente</p>
+                <p className="text-sm font-black text-orange-900">S/ {totalPendiente.toFixed(2)}</p>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
@@ -394,128 +436,244 @@ export default function MozoHistorialPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {comandas.map(c => (
-              <div key={c.id} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow">
-                <div onClick={() => setDetailModal(c)} className="cursor-pointer">
+            {(() => {
+              // Agrupar: detectar si la comanda tiene "· Persona N" en el nombre de mesa
+              const getBaseMesa = (mesa: string) => mesa.replace(/\s*·\s*Persona\s*\d+$/i, '').trim();
+              const getPersonaNum = (mesa: string) => {
+                const match = mesa.match(/·\s*Persona\s*(\d+)/i);
+                return match ? parseInt(match[1]) : null;
+              };
+
+              // Separar: comandas con personas vs. comandas normales de mesa
+              // Para el agrupamiento: usar baseMesa + hora (redondeada a 30min) como clave de grupo
+              const groups: Map<string, { baseMesa: string; comandas: Comanda[] }> = new Map();
+
+              comandas.forEach(c => {
+                const baseMesa = getBaseMesa(c.mesa);
+                const esPorPersona = getPersonaNum(c.mesa) !== null;
+                
+                if (esPorPersona) {
+                  // Agrupar con las otras personas de la misma mesa y hora similar
+                  const horaH = parseInt((c.hora || '00:00').split(':')[0], 10);
+                  const groupKey = `${baseMesa}__${horaH}`;
+                  if (!groups.has(groupKey)) {
+                    groups.set(groupKey, { baseMesa, comandas: [] });
+                  }
+                  groups.get(groupKey)!.comandas.push(c);
+                } else {
+                  // Comanda de mesa normal: grupo propio con id único
+                  const groupKey = `__single__${c.id}`;
+                  groups.set(groupKey, { baseMesa: c.mesa, comandas: [c] });
+                }
+              });
+
+              return Array.from(groups.values()).map(group => {
+                const { baseMesa, comandas: gComandas } = group;
+                const isPorPersona = gComandas.length > 1 || getPersonaNum(gComandas[0].mesa) !== null;
+                const isAllEntregado = gComandas.every(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
+                const totalGrupo = gComandas.reduce((s, c) => s + Number(c.total), 0);
+                const firstComanda = gComandas[0];
+                const groupKey = isPorPersona ? `${baseMesa}__${firstComanda.hora}` : `single_${firstComanda.id}`;
+
+                return (
+              <div key={groupKey} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
+
+                {/* === Card Header === */}
+                <div onClick={() => !isPorPersona && setDetailModal(firstComanda)} className={isPorPersona ? '' : 'cursor-pointer'}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
-                      <div className="flex items-center gap-3">
-                        <span className="font-bold text-lg text-gray-900">{c.mesa}</span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-bold text-lg text-gray-900">{baseMesa}</span>
+                        {isPorPersona && (
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
+                            👥 {gComandas.length} personas
+                          </span>
+                        )}
                         <span className="flex items-center gap-1 text-xs text-gray-400">
-                          <Clock size={12} /> {c.hora}
+                          <Clock size={12} /> {firstComanda.hora}
                         </span>
-                        <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
-                          c.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
-                          c.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
-                          c.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
-                          'bg-gray-100 text-gray-600'
-                        }`}>{c.estado}</span>
+                        {!isPorPersona && (
+                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
+                            firstComanda.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
+                            firstComanda.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
+                            firstComanda.estado === 'Listo'     ? 'bg-green-100 text-green-600'   :
+                            'bg-gray-100 text-gray-600'
+                          }`}>{firstComanda.estado}</span>
+                        )}
                       </div>
-                      {c.mozo_nombre && <p className="text-xs text-gray-400 mt-0.5">Mozo: {c.mozo_nombre}</p>}
-                      {c.items && <p className="text-xs text-gray-400 mt-0.5">{c.items.reduce((s, i) => s + i.cantidad, 0)} productos</p>}
+                      {firstComanda.mozo_nombre && <p className="text-xs text-gray-400 mt-0.5">Mozo: {firstComanda.mozo_nombre}</p>}
                     </div>
-                    <p className="text-base font-bold text-gray-900">S/ {Number(c.total).toFixed(2)}</p>
+                    <p className="text-base font-bold text-gray-900">S/ {Number(totalGrupo).toFixed(2)}</p>
                   </div>
 
-                  {c.items && c.items.length > 0 && (
-                    <ul className="space-y-1 mb-3">
-                      {c.items.map((item, i) => {
-                        const isPaid = item.estado === 'Entregado';
+                  {/* === Vistas de personas o items normales === */}
+                  {isPorPersona ? (
+                    <div className="space-y-2 mb-3">
+                      {gComandas.map(pc => {
+                        const personaNum = pc.mesa.match(/·\s*Persona\s*(\d+)/i)?.[1] || '?';
+                        const personaEntregada = pc.estado === 'Entregado' || pc.estado === 'Cerrado';
                         return (
-                          <li key={i} className={`text-sm flex items-center gap-2 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
-                            {isPaid ? (
-                              <span className="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
-                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
-                                  <polyline points="20 6 9 17 4 12"/>
-                                </svg>
+                          <div key={pc.id} className={`rounded-xl border p-3 ${personaEntregada ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
+                            <div className="flex items-center justify-between mb-1.5">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${personaEntregada ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
+                                👤 Persona {personaNum} {personaEntregada ? '· ✓ Cobrado' : ''}
                               </span>
-                            ) : (
-                              <span className="font-bold text-gray-900">{item.cantidad}×</span>
+                              <span className="text-xs font-bold text-gray-800">S/ {Number(pc.total).toFixed(2)}</span>
+                            </div>
+                            {pc.items && pc.items.length > 0 && (
+                              <ul className="space-y-0.5">
+                                {pc.items.map((item, i) => (
+                                  <li key={i} className="text-[11px] flex items-center gap-1.5 text-gray-600">
+                                    <span className="font-semibold">{item.cantidad}×</span>
+                                    <span className="truncate">{item.nombre}</span>
+                                    <span className="ml-auto text-gray-400 shrink-0">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
+                                  </li>
+                                ))}
+                              </ul>
                             )}
-                            <span className={isPaid ? 'line-through' : ''}>{item.nombre}</span>
-                            {isPaid && (
-                              <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full ml-1 shrink-0">Pagado</span>
+                            {/* Btn Cobrar por persona */}
+                            {!personaEntregada && Number(pc.total) > 0 && (
+                              <button
+                                onClick={e => { e.stopPropagation(); handlePagoModalOpen(pc); }}
+                                className="mt-2 w-full bg-gray-900 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
+                              >
+                                <CheckCircle2 size={11} /> Cobrar Persona {personaNum}
+                              </button>
                             )}
-                            <span className={`ml-auto ${isPaid ? 'text-green-600/60' : 'text-gray-400'}`}>S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
-                          </li>
+                            {!personaEntregada && Number(pc.total) === 0 && (
+                              <button
+                                onClick={e => { e.stopPropagation(); confirmarCobro(pc.id, 'Cortesía'); }}
+                                className="mt-2 w-full bg-amber-500 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1"
+                              >
+                                🎁 Cortesía Persona {personaNum}
+                              </button>
+                            )}
+                          </div>
                         );
                       })}
-                    </ul>
+                    </div>
+                  ) : (
+                    firstComanda.items && firstComanda.items.length > 0 && (
+                      <ul className="space-y-1 mb-3">
+                        {firstComanda.items.map((item, i) => {
+                          const isPaid = item.estado === 'Entregado';
+                          return (
+                            <li key={i} className={`text-sm flex items-center gap-2 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
+                              {isPaid ? (
+                                <span className="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                                  <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                    <polyline points="20 6 9 17 4 12"/>
+                                  </svg>
+                                </span>
+                              ) : (
+                                <span className="font-bold text-gray-900">{item.cantidad}×</span>
+                              )}
+                              <span className={isPaid ? 'line-through' : ''}>{item.nombre}</span>
+                              {isPaid && (
+                                <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full ml-1 shrink-0">Pagado</span>
+                              )}
+                              <span className={`ml-auto ${isPaid ? 'text-green-600/60' : 'text-gray-400'}`}>S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )
                   )}
                 </div>
-                
-                <div className="flex flex-wrap gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
-                  <button onClick={() => setComandaTicketData({
-                    mesa: c.mesa,
-                    mozoNombre: c.mozo_nombre || 'Mozo',
-                    fecha: c.fecha,
-                    hora: c.hora,
-                    items: (c.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, categoria: i.categoria }))
-                  })} className="flex-1 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px] whitespace-nowrap">
-                    🍳 Comanda
-                  </button>
-                  {(() => {
-                    let clienteGuardado: any = null;
-                    try { const raw = localStorage.getItem('ph_cliente_comanda_' + c.id); if (raw) clienteGuardado = JSON.parse(raw); } catch {}
-                    const enabled = Number(c.total) > 0;
-                    return (
-                      <button
-                        onClick={() => {
-                          setBoletaData({
-                            mesa: c.mesa,
-                            mozoNombre: c.mozo_nombre || 'Mozo',
-                            fecha: c.fecha,
-                            hora: c.hora,
-                            items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio, notas: i.notas })),
-                            clienteNombre: clienteGuardado?.nombre || '',
-                            clienteDocumento: clienteGuardado?.documento || '',
-                          });
-                        }}
-                        className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] whitespace-nowrap ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}
-                      >
-                        🧾 Boleta
+
+                {/* === Botones de acción === */}
+                {/* Para comandas agrupadas por persona: botones de mesa completa solo cuando todas están pendientes */}
+                {(() => {
+                  const c = firstComanda; // para el JSX que usa 'c'
+                  const allPending = gComandas.every(pc => pc.estado !== 'Entregado' && pc.estado !== 'Cerrado');
+                  const anyPending = gComandas.some(pc => pc.estado !== 'Entregado' && pc.estado !== 'Cerrado');
+
+                  return (
+                    <div className="flex flex-wrap gap-1.5 mt-3" onClick={e => e.stopPropagation()}>
+                      {/* Comanda ticket: solo 1 por grupo */}
+                      <button onClick={() => setComandaTicketData({
+                        mesa: baseMesa,
+                        mozoNombre: c.mozo_nombre || 'Mozo',
+                        fecha: c.fecha,
+                        hora: c.hora,
+                        items: gComandas.flatMap(pc => (pc.items || []).map((i: any) => ({ nombre: i.nombre, cantidad: i.cantidad, notas: i.notas, categoria: i.categoria })))
+                      })} className="flex-1 bg-orange-50 text-orange-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-orange-100 transition-colors text-[11px] whitespace-nowrap">
+                        🍳 Comanda
                       </button>
-                    );
-                  })()}
-                  {c.estado === 'Entregado' && tapers.length > 0 && (
-                    <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
-                      className="flex-1 bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap">
-                      <Package size={12} /> Tapers
-                    </button>
-                  )}
-                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && (
-                    <button onClick={() => {
-                      setAddItemsModal(c);
-                      setAddItemsCart([]);
-                      setAddItemsSuccess(false);
-                    }}
-                      className="flex-1 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px] whitespace-nowrap">
-                      <Plus size={12} /> Agregar
-                    </button>
-                  )}
-                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').length > 1 && (
-                    <button onClick={() => {
-                      setSplitModalData(c);
-                      setSplitSelectedIds(new Set());
-                      setSplitSuccess(null);
-                    }}
-                      className="flex-1 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px] whitespace-nowrap">
-                      ✂️ Dividir
-                    </button>
-                  )}
-                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) > 0 && (
-                    <button onClick={() => handlePagoModalOpen(c)}
-                      className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap">
-                      <CheckCircle2 size={12} /> Cobrar
-                    </button>
-                  )}
-                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) === 0 && (
-                    <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
-                      className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px] whitespace-nowrap">
-                      🎁 Cortesía
-                    </button>
-                  )}
-                </div>
+
+                      {/* Boleta: solo si hay total */}
+                      {(() => {
+                        let clienteGuardado: any = null;
+                        try { const raw = localStorage.getItem('ph_cliente_comanda_' + c.id); if (raw) clienteGuardado = JSON.parse(raw); } catch {}
+                        const enabled = Number(totalGrupo) > 0;
+                        return (
+                          <button
+                            onClick={() => {
+                              setBoletaData({
+                                mesa: baseMesa,
+                                mozoNombre: c.mozo_nombre || 'Mozo',
+                                fecha: c.fecha,
+                                hora: c.hora,
+                                items: gComandas.flatMap(pc => (pc.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio, notas: i.notas }))),
+                                clienteNombre: clienteGuardado?.nombre || '',
+                                clienteDocumento: clienteGuardado?.documento || '',
+                              });
+                            }}
+                            className={'flex-1 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 transition-colors text-[11px] whitespace-nowrap ' + (enabled ? 'bg-blue-600 text-white hover:bg-blue-700' : 'bg-gray-100 text-gray-300 cursor-not-allowed')}
+                          >
+                            🧾 Boleta
+                          </button>
+                        );
+                      })()}
+
+                      {/* Tapers: solo si la comanda principal está entregada */}
+                      {isAllEntregado && tapers.length > 0 && (
+                        <button onClick={() => { setTaperModalData(c); setTaperCart([]); }}
+                          className="flex-1 bg-emerald-100 text-emerald-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-emerald-200 transition-colors text-[11px] whitespace-nowrap">
+                          <Package size={12} /> Tapers
+                        </button>
+                      )}
+
+                      {/* Agregar items — solo si es comanda normal y está pendiente */}
+                      {!isPorPersona && anyPending && (
+                        <button onClick={() => { setAddItemsModal(c); setAddItemsCart([]); setAddItemsSuccess(false); }}
+                          className="flex-1 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px] whitespace-nowrap">
+                          <Plus size={12} /> Agregar
+                        </button>
+                      )}
+
+                      {/* Dividir — solo si es comanda normal */}
+                      {!isPorPersona && anyPending && c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').length > 1 && (
+                        <button onClick={() => { setSplitModalData(c); setSplitSelectedIds(new Set()); setSplitSuccess(null); }}
+                          className="flex-1 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px] whitespace-nowrap">
+                          ✂️ Dividir
+                        </button>
+                      )}
+
+                      {/* Cobrar todo — solo si es comanda normal o si se quiere cobrar todas las personas juntas */}
+                      {!isPorPersona && anyPending && Number(totalGrupo) > 0 && (
+                        <button onClick={() => handlePagoModalOpen(c)}
+                          className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap">
+                          <CheckCircle2 size={12} /> Cobrar
+                        </button>
+                      )}
+                      {!isPorPersona && anyPending && Number(totalGrupo) === 0 && (
+                        <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
+                          className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px] whitespace-nowrap">
+                          🎁 Cortesía
+                        </button>
+                      )}
+
+                      {/* Cobrar todas las personas juntas */}
+                      {isPorPersona && allPending && Number(totalGrupo) > 0 && (
+                        <button onClick={() => handlePagoModalOpen(gComandas[0])}
+                          className="w-full bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap mt-1">
+                          <CheckCircle2 size={12} /> Cobrar Mesa Completa
+                        </button>
+                      )}
+                    </div>
+                  );
+                })()}
 
                 {/* Modal de Pago Mixto / Vuelto */}
                 {/* Modal: Agregar items a comanda activa */}

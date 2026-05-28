@@ -295,23 +295,47 @@ export default function CocinaPage() {
   const tieneItemsConNotas = (items: Pedido['items']) => 
     items?.some(i => i.notas && i.notas.trim()) ?? false;
 
+  const HORA_TURNO = 16; // antes de 16:00 = mañana, desde 16:00 = noche
+
   const totalPlatosDia = todosPedidos.reduce((acc, p) => {
     const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
     return acc + food.reduce((s, i) => s + i.cantidad, 0);
   }, 0);
 
+  const platosManiana = todosPedidos
+    .filter(p => parseInt((p.hora || '00:00').split(':')[0], 10) < HORA_TURNO)
+    .reduce((acc, p) => {
+      const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
+      return acc + food.reduce((s, i) => s + i.cantidad, 0);
+    }, 0);
+
+  const platosNoche = todosPedidos
+    .filter(p => parseInt((p.hora || '00:00').split(':')[0], 10) >= HORA_TURNO)
+    .reduce((acc, p) => {
+      const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
+      return acc + food.reduce((s, i) => s + i.cantidad, 0);
+    }, 0);
+
+  // Acumulado por turno: cuántos platos se han vendido HASTA este pedido en su mismo turno
   const pedidosConAcumulado = typeof window !== 'undefined' ? (() => {
-    let acc = 0;
     const sorted = [...todosPedidos].sort((a, b) => a.id - b.id);
-    const map = new Map<number, number>();
+    const mapManiana = new Map<number, number>();
+    const mapNoche = new Map<number, number>();
+    let accM = 0, accN = 0;
     for (const p of sorted) {
       const food = p.items?.filter(i => i.categoria !== 'bebidas') || [];
       const pTotal = food.reduce((s, i) => s + i.cantidad, 0);
-      acc += pTotal;
-      map.set(p.id, acc);
+      const horaH = parseInt((p.hora || '00:00').split(':')[0], 10);
+      if (horaH < HORA_TURNO) {
+        accM += pTotal;
+        mapManiana.set(p.id, accM);
+      } else {
+        accN += pTotal;
+        mapNoche.set(p.id, accN);
+      }
     }
-    return map;
-  })() : new Map<number, number>();
+    return { maniana: mapManiana, noche: mapNoche };
+  })() : { maniana: new Map<number, number>(), noche: new Map<number, number>() };
 
   return (
     <div className="animate-in fade-in duration-300">
@@ -385,10 +409,15 @@ export default function CocinaPage() {
             </button>
           )
         ) : null}
-        <div className="text-right flex items-center gap-4">
+        <div className="text-right flex items-center gap-3">
           <div className="text-right">
-            <p className="text-2xl font-bold text-orange-600">{totalPlatosDia}</p>
-            <p className="text-[10px] text-gray-400 uppercase tracking-wider font-bold">Platos Hoy</p>
+            <p className="text-xl font-bold text-amber-600">{platosManiana}</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">🌅 Mañana</p>
+          </div>
+          <div className="w-px h-8 bg-gray-200"></div>
+          <div className="text-right">
+            <p className="text-xl font-bold text-indigo-600">{platosNoche}</p>
+            <p className="text-[9px] text-gray-400 uppercase tracking-wider font-bold">🌙 Noche</p>
           </div>
           <div className="w-px h-8 bg-gray-200"></div>
           <div className="text-right">
@@ -483,7 +512,11 @@ export default function CocinaPage() {
             const accentBorder = estadoAccentBorder[p.estado] || 'border-l-gray-300';
             const foodItems = p.items?.filter(item => item.categoria !== 'bebidas') || [];
             const totalPlatos = foodItems.reduce((s, i) => s + i.cantidad, 0);
-            const acumulado = pedidosConAcumulado.get(p.id) || totalPlatos;
+            const horaH = parseInt((p.hora || '00:00').split(':')[0], 10);
+            const esTurnoManiana = horaH < HORA_TURNO;
+            const acumuladoTurno = esTurnoManiana
+              ? (pedidosConAcumulado.maniana.get(p.id) || totalPlatos)
+              : (pedidosConAcumulado.noche.get(p.id) || totalPlatos);
             const tiempo = getTiempoTranscurrido(p.hora);
             const conNotas = tieneItemsConNotas(p.items);
 
@@ -530,10 +563,16 @@ export default function CocinaPage() {
                     <span className="block text-sm font-black">{totalPlatos}</span>
                     <span className="text-[9px] font-semibold uppercase tracking-wider">Platos</span>
                   </div>
-                  {/* Badge acumulado día */}
-                  <div className="shrink-0 bg-amber-50 text-amber-700 px-2.5 py-1 rounded-lg border border-amber-200 text-center" title="Total de platos vendidos hasta este pedido">
-                    <span className="block text-sm font-black">{acumulado}</span>
-                    <span className="text-[9px] font-semibold uppercase tracking-wider">Total Día</span>
+                  {/* Badge acumulado turno */}
+                  <div className={`shrink-0 px-2.5 py-1 rounded-lg border text-center ${
+                    horaH < HORA_TURNO
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-indigo-50 text-indigo-700 border-indigo-200'
+                  }`} title={`Platos acumulados en el turno ${horaH < HORA_TURNO ? 'mañana' : 'noche'}`}>
+                    <span className="block text-sm font-black">{acumuladoTurno}</span>
+                    <span className="text-[9px] font-semibold uppercase tracking-wider">
+                      {horaH < HORA_TURNO ? '🌅 Mañana' : '🌙 Noche'}
+                    </span>
                   </div>
                   {/* Botón Ver detalle */}
                   <button
