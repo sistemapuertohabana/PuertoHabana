@@ -101,14 +101,18 @@ export function subscribeInventario(
 
   // Re-fetch on store update events (e.g. after add/update/delete)
   const handler = () => { if (active) fetchData(); };
+  // Poll every 15s so cross-device changes (e.g. admin adds a new item) show up automatically
+  let interval: ReturnType<typeof setInterval> | null = null;
   if (typeof window !== 'undefined') {
     window.addEventListener('ph_store_update', handler);
+    interval = setInterval(() => { if (active) fetchData(); }, 15000);
   }
 
   return () => {
     active = false;
     if (typeof window !== 'undefined') {
       window.removeEventListener('ph_store_update', handler);
+      if (interval) clearInterval(interval);
     }
   };
 }
