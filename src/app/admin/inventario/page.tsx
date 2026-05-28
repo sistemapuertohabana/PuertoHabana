@@ -824,23 +824,46 @@ export default function InventarioPage() {
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-gray-900">
+                      <p className="text-sm font-bold text-gray-900 flex items-center gap-2">
                         {mov.inventario?.nombre || `Item #${mov.inventario_id}`}
-                        <span className="text-xs text-gray-400 ml-2">({mov.inventario?.seccion || ''})</span>
+                        <span className="text-[10px] font-medium text-gray-500 capitalize bg-gray-100 px-2 py-0.5 rounded-full border border-gray-200">
+                          {mov.inventario?.seccion || 'Desconocido'}
+                        </span>
                       </p>
-                      <p className="text-xs text-gray-500 mt-0.5">
-                        Stock: {mov.stock_anterior} → {mov.stock_nuevo}
-                        {mov.referencia && <span className="ml-2">• {mov.referencia} #{mov.referencia_id}</span>}
-                        {mov.notas && <span className="ml-2">• {mov.notas}</span>}
-                      </p>
+                      
+                      <div className="flex flex-wrap items-center gap-2 sm:gap-4 mt-2.5 text-xs">
+                        <div className="bg-gray-50 px-2.5 py-1.5 rounded-lg border border-gray-200 shadow-sm">
+                          <span className="text-gray-500">Tenías antes:</span>
+                          <span className="ml-1.5 font-bold text-gray-800 text-sm">{mov.stock_anterior}</span>
+                        </div>
+                        
+                        <div className={`px-2.5 py-1.5 rounded-lg font-medium shadow-sm border ${
+                          mov.tipo === 'entrada' ? 'bg-green-50 text-green-700 border-green-200' : 
+                          mov.tipo === 'salida' ? 'bg-red-50 text-red-700 border-red-200' : 
+                          'bg-yellow-50 text-yellow-700 border-yellow-200'
+                        }`}>
+                          {mov.tipo === 'entrada' ? '+ Agregaste:' : mov.tipo === 'salida' ? '- Se vendió/retiró:' : '~ Ajustaste:'}
+                          <span className="ml-1.5 font-bold text-sm">{mov.cantidad}</span>
+                        </div>
+                        
+                        <div className="bg-blue-50 px-2.5 py-1.5 rounded-lg border border-blue-200 shadow-sm">
+                          <span className="text-blue-700">Ahora tienes:</span>
+                          <span className="ml-1.5 font-extrabold text-blue-900 text-sm">{mov.stock_nuevo}</span>
+                        </div>
+                      </div>
+
+                      {(mov.notas || mov.referencia) && (
+                        <div className="mt-2.5 p-2 bg-gray-50 rounded-md border border-gray-100 flex items-start gap-1.5">
+                          <span className="text-[11px] text-gray-400 mt-0.5">📝 Detalle:</span>
+                          <p className="text-[11px] text-gray-600 leading-snug">
+                            {mov.notas && <span className="italic">{mov.notas}</span>}
+                            {mov.referencia && <span className="font-medium text-gray-500 ml-1">({mov.referencia} #{mov.referencia_id})</span>}
+                          </p>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-right shrink-0">
-                      <span className={`text-sm font-bold ${
-                        mov.tipo === 'entrada' ? 'text-green-600' : mov.tipo === 'salida' ? 'text-red-600' : 'text-yellow-600'
-                      }`}>
-                        {mov.tipo === 'entrada' ? '+' : mov.tipo === 'salida' ? '-' : '±'}{mov.cantidad}
-                      </span>
-                      <p className="text-[10px] text-gray-400 mt-0.5">
+                    <div className="text-right shrink-0 self-start">
+                      <p className="text-[10px] font-medium text-gray-500 bg-white border border-gray-200 px-2 py-1 rounded-md shadow-sm">
                         {new Date(mov.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                       </p>
                     </div>
