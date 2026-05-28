@@ -162,6 +162,14 @@ export default function MozoPage() {
   const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
   const [activeBebidaCat, setActiveBebidaCat] = useState<string>('Todos');
   const [enviarError, setEnviarError] = useState<string | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
+  const [fractionableSelector, setFractionableSelector] = useState<{
+    item: { name: string; price: number; category: string };
+    bebidaNombre: string;
+    bebidaPrecio: number;
+    bebidaCategoria: string;
+  } | null>(null);
+  const [tempVasosCount, setTempVasosCount] = useState(0);
   const [comandaPrintData, setComandaPrintData] = useState<{
     mesa: string;
     mozoNombre: string;
@@ -333,16 +341,20 @@ export default function MozoPage() {
   ];
 
   const toggleCortesia = (itemName: string) => {
-    setCart(prev => prev.map(c => c.name === itemName ? { ...c, esCortesia: !c.esCortesia } : c));
+    setCart(prev => prev.map(c =>
+      c.name === itemName && c.persona === currentPersona
+        ? { ...c, esCortesia: !c.esCortesia }
+        : c
+    ));
   };
 
   const updateCart = (item: MenuItem, delta: number) => {
     setCart(prev => {
-      const existing = prev.find(c => c.name === item.name);
+      const existing = prev.find(c => c.name === item.name && c.persona === currentPersona);
       if (existing) {
         const newQty = existing.qty + delta;
-        if (newQty <= 0) return prev.filter(c => c.name !== item.name);
-        return prev.map(c => c.name === item.name ? { ...c, qty: newQty } : c);
+        if (newQty <= 0) return prev.filter(c => !(c.name === item.name && c.persona === currentPersona));
+        return prev.map(c => c.name === item.name && c.persona === currentPersona ? { ...c, qty: newQty } : c);
       }
       if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category, notas: '', persona: currentPersona }];
       return prev;
@@ -350,10 +362,66 @@ export default function MozoPage() {
   };
 
   const updateItemNota = (itemName: string, nota: string) => {
-    setCart(prev => prev.map(c => c.name === itemName ? { ...c, notas: nota } : c));
+    setCart(prev => prev.map(c =>
+      c.name === itemName && c.persona === currentPersona
+        ? { ...c, notas: nota }
+        : c
+    ));
   };
 
   const total = cart.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0);
+
+  const categoriaBebidasFraccionables = (items: { name: string }[]) => {
+    return items.some(c => c.name.includes('||'));
+  };
+
+  const totalVasosEnCarrito = (bebidaNombre: string) => {
+    const jarraQty = cart.find(c => c.name === `${bebidaNombre}||Jarra` && c.persona === currentPersona)?.qty || 0;
+    const vasoQty = cart.find(c => c.name === `${bebidaNombre}||Vaso` && c.persona === currentPersona)?.qty || 0;
+    return jarraQty * 3 + vasoQty;
+  };
+
+  const limpiarFraccionableDelCarrito = (bebidaNombre: string) => {
+    setCart(prev => prev.filter(c =>
+      !(c.name === `${bebidaNombre}||Jarra` && c.persona === currentPersona) &&
+      !(c.name === `${bebidaNombre}||Vaso` && c.persona === currentPersona)
+    ));
+  };
+
+  const agregarFraccionableAlCarrito = (bebidaNombre: string, bebidaPrecio: number, totalVasos: number) => {
+    const jarras = Math.floor(totalVasos / 3);
+    const vasos = totalVasos % 3;
+    const vasoPrice = Math.round(bebidaPrecio / 3 * 100) / 100;
+    
+    limpiarFraccionableDelCarrito(bebidaNombre);
+    
+    if (jarras > 0) {
+      setCart(prev => [...prev, { name: `${bebidaNombre}||Jarra`, price: bebidaPrecio, qty: jarras, category: 'bebidas', notas: '', persona: currentPersona }]);
+    }
+    if (vasos > 0) {
+      setCart(prev => [...prev, { name: `${bebidaNombre}||Vaso`, price: vasoPrice, qty: vasos, category: 'bebidas', notas: '', persona: currentPersona }]);
+    }
+  };
+
+  const calcularDesglose = (totalVasos: number) => {
+    const jarras = Math.floor(totalVasos / 3);
+    const vasosSueltos = totalVasos % 3;
+    return { jarras, vasosSueltos };
+  };
+
+  const calcularPrecioFraccionable = (totalVasos: number, precioJarra: number) => {
+    const { jarras, vasosSueltos } = calcularDesglose(totalVasos);
+    const vasoPrice = precioJarra / 3;
+    return jarras * precioJarra + vasosSueltos * vasoPrice;
+  };
+
+  const desgloseLabel = (totalVasos: number) => {
+    const { jarras, vasosSueltos } = calcularDesglose(totalVasos);
+    if (jarras === 0 && vasosSueltos === 0) return '0 Vasos';
+    if (jarras === 0) return `${vasosSueltos} Vaso${vasosSueltos !== 1 ? 's' : ''}`;
+    if (vasosSueltos === 0) return `${jarras} Jarra${jarras !== 1 ? 's' : ''}`;
+    return `${jarras} Jarra${jarras !== 1 ? 's' : ''} / ${vasosSueltos} Vaso${vasosSueltos !== 1 ? 's' : ''}`;
+  };
 
   // ─── Render helpers ────────────────────────────────────────
 
@@ -383,7 +451,7 @@ export default function MozoPage() {
   );
 
   const renderProductItem = (item: MenuItem, qty: number) => {
-    const cartItem = cart.find(c => c.name === item.name);
+    const cartItem = cart.find(c => c.name === item.name && c.persona === currentPersona);
     return (
       <div key={item.name} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
         <div className="min-w-0 flex-1">
@@ -1020,7 +1088,7 @@ export default function MozoPage() {
                     </div>
                     <div className="space-y-1.5">
                       {items.map(item => {
-                        const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                        const qty = cart.find(c => c.name === item.name && c.persona === currentPersona)?.qty || 0;
                         return renderProductItem(item, qty);
                       })}
                     </div>
@@ -1039,7 +1107,7 @@ export default function MozoPage() {
                     </div>
                     <div className="space-y-1.5">
                       {items.map(item => {
-                        const qty = cart.find(c => c.name === item.name)?.qty || 0;
+                        const qty = cart.find(c => c.name === item.name && c.persona === currentPersona)?.qty || 0;
                         return renderProductItem(item, qty);
                       })}
                     </div>
@@ -1080,7 +1148,7 @@ export default function MozoPage() {
                         if (bebida.tamanos && bebida.tamanos.length > 0) {
                           return bebida.tamanos.map((t: any, ti: number) => {
                             const itemKey = `${bebida.nombre}||${t.nombre}`;
-                            const cartItem = cart.find(c => c.name === itemKey);
+                            const cartItem = cart.find(c => c.name === itemKey && c.persona === currentPersona);
                             const qty = cartItem?.qty || 0;
                             return (
                               <div key={itemKey} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
@@ -1102,7 +1170,7 @@ export default function MozoPage() {
                                   {qty > 0 && (
                                     <button
                                       onClick={() => {
-                                        const cartItemName = cart.find(c => c.name === itemKey);
+                                        const cartItemName = cart.find(c => c.name === itemKey && c.persona === currentPersona);
                                         if (cartItemName) toggleCortesia(cartItemName.name);
                                       }}
                                       className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
@@ -1131,29 +1199,61 @@ export default function MozoPage() {
                           });
                         }
                         // Sin tamaños, mostrar item normal
-                        const qty = cart.find(c => c.name === bebida.nombre)?.qty || 0;
+                        const qtyPersona = cart.find(c => c.name === bebida.nombre && c.persona === currentPersona)?.qty || 0;
+                        const cartItemBebida = cart.find(c => c.name === bebida.nombre && c.persona === currentPersona);
+                        const esFraccionable = isFractionable(bebida.nombre);
+                        const abrirSelectorFraccionable = () => {
+                          const total = totalVasosEnCarrito(bebida.nombre);
+                          setTempVasosCount(total);
+                          setFractionableSelector({
+                            item: { name: bebida.nombre, price: bebida.precio, category: 'bebidas' },
+                            bebidaNombre: bebida.nombre,
+                            bebidaPrecio: bebida.precio,
+                            bebidaCategoria: bebida.categoria || 'Otras',
+                          });
+                        };
                         return (
-                          <div key={bebida.id} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                          <div key={bebida.id}
+                            onClick={esFraccionable ? abrirSelectorFraccionable : undefined}
+                            className={`flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white transition-all ${
+                              esFraccionable
+                                ? 'cursor-pointer hover:border-amber-300 hover:shadow-md hover:-translate-y-0.5'
+                                : 'hover:border-gray-200 hover:shadow-sm'
+                            }`}
+                          >
                             <div className="min-w-0 flex-1">
                               <p className="text-sm text-gray-900 truncate">
-                                {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia && <span className="mr-1">🎁</span>}
+                                {qtyPersona > 0 && cartItemBebida?.esCortesia && <span className="mr-1">🎁</span>}
                                 {bebida.nombre}
+                                {esFraccionable && qtyPersona > 0 && (
+                                  <span className="ml-1.5 text-[10px] font-bold text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                                    {desgloseLabel(totalVasosEnCarrito(bebida.nombre))}
+                                  </span>
+                                )}
                               </p>
                               <div className="flex items-center gap-2 mt-0.5">
-                                <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
-                                  {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
+                                <p className={`text-[11px] ${qtyPersona > 0 && cartItemBebida?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                  {qtyPersona > 0 && cartItemBebida?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
                                 </p>
                                 <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
                                   Stock: {formatStock(bebida.cantidad, bebida.unidad || 'unid', bebida.nombre)}
                                 </span>
                               </div>
+                              {esFraccionable && (
+                                <div className="mt-1.5 flex items-center gap-1">
+                                  <Wine size={11} className="text-amber-400" />
+                                  <span className="text-[10px] text-amber-500 font-medium">
+                                    Toca para personalizar
+                                  </span>
+                                </div>
+                              )}
                             </div>
                             <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                              {qty > 0 && (
+                              {qtyPersona > 0 && (
                                 <button
-                                  onClick={() => toggleCortesia(bebida.nombre)}
+                                  onClick={(e) => { e.stopPropagation(); toggleCortesia(bebida.nombre); }}
                                   className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
-                                    cart.find(c => c.name === bebida.nombre)?.esCortesia
+                                    cartItemBebida?.esCortesia
                                       ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
                                       : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
                                   }`}
@@ -1162,16 +1262,32 @@ export default function MozoPage() {
                                   🎁
                                 </button>
                               )}
-                              <RenderQtyControls
-                                itemKey={bebida.nombre}
-                                itemName={bebida.nombre}
-                                itemPrice={bebida.precio}
-                                qty={qty}
-                                category="bebidas"
-                                cart={cart}
-                                updateCart={updateCart}
-                                toggleCortesia={toggleCortesia}
-                              />
+                              {esFraccionable ? (
+                                <button
+                                  onClick={(e) => { e.stopPropagation(); abrirSelectorFraccionable(); }}
+                                  className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border-2 transition-all active:scale-95 ${
+                                    qtyPersona > 0
+                                      ? 'bg-amber-50 border-amber-200 text-amber-700 hover:bg-amber-100'
+                                      : 'bg-white border-amber-200 text-amber-600 hover:bg-amber-50'
+                                  }`}
+                                >
+                                  <Wine size={14} />
+                                  <span className="text-xs font-bold">
+                                    {qtyPersona > 0 ? desgloseLabel(totalVasosEnCarrito(bebida.nombre)) : 'Jarra / Vaso'}
+                                  </span>
+                                </button>
+                              ) : (
+                                <RenderQtyControls
+                                  itemKey={bebida.nombre}
+                                  itemName={bebida.nombre}
+                                  itemPrice={bebida.precio}
+                                  qty={qtyPersona}
+                                  category="bebidas"
+                                  cart={cart}
+                                  updateCart={updateCart}
+                                  toggleCortesia={toggleCortesia}
+                                />
+                              )}
                             </div>
                           </div>
                         );
@@ -1260,13 +1376,236 @@ export default function MozoPage() {
               <span className="text-lg font-medium text-gray-900">S/ {Number(total).toFixed(2)}</span>
             </div>
             <button
-              onClick={handleEnviar}
+              onClick={() => {
+                if (!turnoInfo.activo && mozoSession.turno) {
+                  setHorarioMensaje(turnoInfo.mensaje);
+                  setShowHorarioModal(true);
+                  return;
+                }
+                setShowPreview(true);
+              }}
               disabled={cart.length === 0}
               className="w-full bg-blue-600 text-white text-sm font-medium py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-30 hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-200/50"
             >
               <CheckCircle size={18} strokeWidth={1.5} />
-              Enviar a Cocina
+              Ver Resumen
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* Modal selector interactivo Vaso / Jarra con contador */}
+      {fractionableSelector && (() => {
+        const bebidaStock = bebidasDinamica.find(b => b.nombre === fractionableSelector.bebidaNombre);
+        const stockActual = bebidaStock?.cantidad ?? 0;
+        const maxVasos = stockActual;
+        const { jarras, vasosSueltos } = calcularDesglose(tempVasosCount);
+        const precioTotal = calcularPrecioFraccionable(tempVasosCount, fractionableSelector.bebidaPrecio);
+        const puedeIncrementar = tempVasosCount < maxVasos;
+        const puedeDecrementar = tempVasosCount > 0;
+        return (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl shadow-lg w-[90%] max-w-sm mx-auto p-6 animate-in zoom-in-95 duration-200">
+            <div className="text-center mb-6">
+              <div className="w-14 h-14 rounded-xl bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-3">
+                <Wine size={28} className="text-amber-500" />
+              </div>
+              <h3 className="text-lg font-semibold text-gray-900">{fractionableSelector.bebidaNombre}</h3>
+              <p className="text-xs text-gray-400 mt-1">
+                Stock: {formatStock(stockActual, 'unid', fractionableSelector.bebidaNombre)}
+              </p>
+            </div>
+
+            {/* Contador interactivo — desglose + controles lado a lado */}
+            <div className="bg-amber-50/50 rounded-2xl px-5 py-4 border border-amber-100 mb-4">
+              <div className="flex items-center justify-between gap-4">
+                {/* Izquierda: desglose y precio */}
+                <div className="min-w-0 flex-1">
+                  <div className="text-xl font-bold text-gray-900 truncate">
+                    {desgloseLabel(tempVasosCount)}
+                  </div>
+                  <div className="text-base font-semibold text-amber-600 mt-0.5">
+                    S/ {precioTotal.toFixed(2)}
+                  </div>
+                  {/* Barra de stock mini */}
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden max-w-24">
+                      <div
+                        className="h-full bg-amber-400 rounded-full transition-all duration-200"
+                        style={{ width: `${maxVasos > 0 ? (tempVasosCount / maxVasos) * 100 : 0}%` }}
+                      />
+                    </div>
+                    <span className="text-[9px] text-gray-400 font-medium">{tempVasosCount}/{maxVasos}</span>
+                  </div>
+                </div>
+                {/* Derecha: controles + y - */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <button
+                    onClick={() => setTempVasosCount(prev => Math.max(0, prev - 1))}
+                    disabled={!puedeDecrementar}
+                    className="w-11 h-11 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center disabled:opacity-30 hover:border-red-300 hover:bg-red-50 transition-all active:scale-90 shadow-sm"
+                  >
+                    <Minus size={18} className="text-red-500" />
+                  </button>
+                  <div className="w-16 h-11 rounded-xl bg-white border-2 border-amber-200 flex items-center justify-center shadow-sm">
+                    <span className="text-xl font-extrabold text-gray-900">{tempVasosCount}</span>
+                  </div>
+                  <button
+                    onClick={() => setTempVasosCount(prev => Math.min(maxVasos, prev + 1))}
+                    disabled={!puedeIncrementar}
+                    className="w-11 h-11 rounded-full bg-white border-2 border-gray-200 flex items-center justify-center disabled:opacity-30 hover:border-emerald-300 hover:bg-emerald-50 transition-all active:scale-90 shadow-sm"
+                  >
+                    <Plus size={18} className="text-emerald-500" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Resumen de lo que se agregará */}
+            <div className="bg-gray-50 rounded-xl p-4 border border-gray-100 mb-4">
+              <p className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider mb-2">Se agregará al carrito</p>
+              <div className="space-y-1.5">
+                {jarras > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-700">🍶 {jarras} Jarra{jarras !== 1 ? 's' : ''}</span>
+                    <span className="font-medium text-gray-900">S/ {(jarras * fractionableSelector.bebidaPrecio).toFixed(2)}</span>
+                  </div>
+                )}
+                {vasosSueltos > 0 && (
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="text-gray-700">🥤 {vasosSueltos} Vaso{vasosSueltos !== 1 ? 's' : ''}</span>
+                    <span className="font-medium text-gray-900">S/ {(vasosSueltos * fractionableSelector.bebidaPrecio / 3).toFixed(2)}</span>
+                  </div>
+                )}
+                {tempVasosCount === 0 && (
+                  <p className="text-xs text-gray-400 italic">Ninguno — ajusta el contador</p>
+                )}
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setFractionableSelector(null);
+                  setTempVasosCount(0);
+                }}
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={() => {
+                  agregarFraccionableAlCarrito(fractionableSelector.bebidaNombre, fractionableSelector.bebidaPrecio, tempVasosCount);
+                  setFractionableSelector(null);
+                  setTempVasosCount(0);
+                }}
+                disabled={tempVasosCount === 0}
+                className="flex-1 px-4 py-3 rounded-xl bg-amber-500 text-white text-sm font-bold hover:bg-amber-600 active:scale-[0.98] transition-all shadow-md shadow-amber-200/50 disabled:opacity-30 flex items-center justify-center gap-2"
+              >
+                <CheckCircle size={18} strokeWidth={1.5} />
+                Agregar al Pedido
+              </button>
+            </div>
+          </div>
+        </div>
+        );
+      })()}
+
+      {/* Modal de preview del pedido — resumen por persona */}
+      {showPreview && activeMesa && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/30 animate-in fade-in duration-200 p-4">
+          <div className="bg-white rounded-2xl shadow-lg w-full max-w-md mx-auto max-h-[90vh] flex flex-col animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="px-6 pt-6 pb-3 border-b border-gray-100 shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <h3 className="text-lg font-medium text-gray-900">Resumen del Pedido</h3>
+              </div>
+              <p className="text-xs text-gray-400">{getDisplayName(activeMesa)}</p>
+            </div>
+            {/* Body: resumen por persona */}
+            <div className="flex-1 overflow-y-auto px-6 py-4 space-y-4">
+              {Array.from({ length: maxPersonas }, (_, i) => i + 1).map(p => {
+                const personaItems = cart.filter(c => c.persona === p);
+                if (personaItems.length === 0) return null;
+                const personaTotal = personaItems.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0);
+                const personaItemsCount = personaItems.reduce((s, c) => s + c.qty, 0);
+                return (
+                  <div key={p} className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2.5 py-1 rounded-full">
+                        👤 Persona {p} · {personaItemsCount} producto{personaItemsCount !== 1 ? 's' : ''}
+                      </span>
+                      <span className="text-sm font-bold text-gray-900">S/ {personaTotal.toFixed(2)}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {personaItems.map(c => {
+                        const displayName = c.name.includes('||') 
+                          ? c.name.split('||')[0] + ' (' + c.name.split('||')[1].toLowerCase() + ')'
+                          : c.name;
+                        return (
+                          <div key={c.name} className="flex items-center justify-between text-xs">
+                            <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                              <span className="font-bold text-gray-500 shrink-0">x{c.qty}</span>
+                              <span className="text-gray-700 truncate">
+                                {c.esCortesia && <span className="mr-0.5">🎁</span>}
+                                {displayName}
+                              </span>
+                            </div>
+                            <span className={`font-medium shrink-0 ml-2 ${c.esCortesia ? 'text-amber-500' : 'text-gray-900'}`}>
+                              {c.esCortesia ? '🎁 Cortesía' : `S/ ${(c.price * c.qty).toFixed(2)}`}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                    {categoriaBebidasFraccionables(personaItems) && (
+                      <div className="mt-2 pt-2 border-t border-gray-200 text-[10px] text-amber-600 flex items-center gap-1">
+                        <span>⚠️</span>
+                        <span>Verificar stock disponible antes de enviar</span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {cart.length === 0 && (
+                <div className="text-center py-8">
+                  <p className="text-sm text-gray-400">No hay productos en el pedido</p>
+                </div>
+              )}
+            </div>
+            {/* Footer */}
+            <div className="px-6 py-4 border-t border-gray-100 bg-gray-50/50 rounded-b-2xl shrink-0">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-gray-400">
+                  {cart.reduce((s, c) => s + c.qty, 0)} productos
+                  {cart.some(c => c.esCortesia) && (
+                    <span className="ml-2 text-amber-600">(🎁 {cart.filter(c => c.esCortesia).reduce((s, c) => s + c.qty, 0)} cortesía)</span>
+                  )}
+                </span>
+              </div>
+              <div className="flex items-center justify-between mb-4">
+                <span className="text-xs font-medium text-gray-500">Total</span>
+                <span className="text-xl font-bold text-gray-900">S/ {total.toFixed(2)}</span>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowPreview(false)}
+                  className="flex-1 px-4 py-3 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-100 transition-all"
+                >
+                  Seguir Editando
+                </button>
+                <button
+                  onClick={() => {
+                    setShowPreview(false);
+                    handleEnviar();
+                  }}
+                  className="flex-1 px-4 py-3 rounded-xl bg-blue-600 text-white text-sm font-medium hover:bg-blue-700 active:scale-[0.98] transition-all shadow-md shadow-blue-200/50 flex items-center justify-center gap-2"
+                >
+                  <CheckCircle size={18} strokeWidth={1.5} />
+                  Confirmar y Enviar
+                </button>
+              </div>
+            </div>
           </div>
         </div>
       )}

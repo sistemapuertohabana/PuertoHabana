@@ -100,6 +100,11 @@ export default function InventarioPage() {
   const [movimientos, setMovimientos] = useState<InventarioMovimiento[]>([]);
   const [itemsConBajoStock, setItemsConBajoStock] = useState<any[]>([]);
 
+  // Historial de adiciones para Bebidas
+  const [showAdditionsHistory, setShowAdditionsHistory] = useState(false);
+  const [adiciones, setAdiciones] = useState<any[]>([]);
+  const [loadingAdditions, setLoadingAdditions] = useState(false);
+
   // Cargar movimientos y alertas
   useEffect(() => {
     const loadMovimientos = async () => {
@@ -203,6 +208,17 @@ export default function InventarioPage() {
       setFormData(baseForm);
     }
     setShowModal(true);
+  };
+
+  const loadAdditionsHistory = async () => {
+    setLoadingAdditions(true);
+    try {
+      const res = await fetch('/api/inventario/stock?seccion=bebidas&tipo=entrada&limit=100');
+      if (res.ok) {
+        setAdiciones(await res.json());
+      }
+    } catch {}
+    setLoadingAdditions(false);
   };
 
   const handleDelete = async (id: string) => {
@@ -480,7 +496,7 @@ export default function InventarioPage() {
       </div>
 
       {/* Filtro por Turno */}
-      {activeSection !== 'nuevo-plato' && activeSection !== 'historial' && activeSection !== 'alertas' && (
+      {activeSection !== 'nuevo-plato' && activeSection !== 'historial' && activeSection !== 'alertas' && !(activeSection === 'bebidas' && showAdditionsHistory) && (
         <div className="flex items-center gap-3 mb-6">
           <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Turno:</span>
           <div className="flex gap-1.5">
@@ -508,7 +524,28 @@ export default function InventarioPage() {
 
       {/* Contenido dinámico según la sección activa */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">{getSectionTitle()}</h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-medium text-gray-900">{getSectionTitle()}</h3>
+          {activeSection === 'bebidas' && (
+            <button
+              onClick={() => {
+                if (!showAdditionsHistory) loadAdditionsHistory();
+                setShowAdditionsHistory(!showAdditionsHistory);
+              }}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${
+                showAdditionsHistory
+                  ? 'bg-gray-900 text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {showAdditionsHistory ? (
+                <><Wine size={14} /> Ver Stock</>
+              ) : (
+                <><History size={14} /> Ver Adiciones</>
+              )}
+            </button>
+          )}
+        </div>
         
         {activeSection === 'nuevo-plato' ? (
           <div className="space-y-6">
@@ -885,6 +922,107 @@ export default function InventarioPage() {
                   );
                 })}
               </div>
+            )}
+          </div>
+        ) : activeSection === 'bebidas' && showAdditionsHistory ? (
+          /* Vista de historial de adiciones para Bebidas */
+          <div>
+            {loadingAdditions ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                <p className="text-sm text-gray-400">Cargando historial de adiciones...</p>
+              </div>
+            ) : adiciones.length === 0 ? (
+              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+                <Wine size={40} className="mx-auto text-gray-300 mb-3" />
+                <p className="text-sm text-gray-500">No hay adiciones registradas</p>
+                <p className="text-xs text-gray-400 mt-1">Las adiciones se registran automáticamente cuando el mozo agrega bebidas al inventario.</p>
+              </div>
+            ) : (
+              <>
+                {/* Resumen por bebida */}
+                <div className="mb-6">
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3">
+                    📊 Resumen por Bebida
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {(() => {
+                      // Agrupar por nombre de bebida
+                      const grouped: Record<string, { total: number; count: number; precio: number; movimientos: any[] }> = {};
+                      for (const mov of adiciones) {
+                        const nombre = mov.inventario?.nombre || `Item #${mov.inventario_id}`;
+                        if (!grouped[nombre]) {
+                          grouped[nombre] = { total: 0, count: 0, precio: mov.inventario?.precio || 0, movimientos: [] };
+                        }
+                        grouped[nombre].total += mov.cantidad;
+                        grouped[nombre].count += 1;
+                        grouped[nombre].movimientos.push(mov);
+                      }
+                      return Object.entries(grouped).sort((a, b) => b[1].total - a[1].total).map(([nombre, data]) => (
+                        <div key={nombre} className="bg-gradient-to-br from-green-50 to-emerald-50 border border-green-200 rounded-xl p-4">
+                          <div className="flex items-start justify-between mb-2">
+                            <h5 className="text-sm font-bold text-gray-900 truncate flex-1">{nombre}</h5>
+                            <span className="text-xs font-semibold text-green-700 bg-green-100 px-2 py-0.5 rounded-full ml-2 shrink-0">
+                              {data.count}x
+                            </span>
+                          </div>
+                          <div className="flex items-end justify-between">
+                            <div>
+                              <p className="text-xs text-gray-500">Total agregado</p>
+                              <p className="text-xl font-bold text-green-700">{data.total} <span className="text-sm font-medium">unid</span></p>
+                            </div>
+                            <div className="text-right">
+                              <p className="text-xs text-gray-500">Precio</p>
+                              <p className="text-sm font-bold text-gray-900">S/ {Number(data.precio).toFixed(2)}</p>
+                            </div>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-2">
+                            Valor total: S/ {(data.total * data.precio).toFixed(2)}
+                          </p>
+                        </div>
+                      ));
+                    })()}
+                  </div>
+                </div>
+
+                {/* Detalle de adiciones */}
+                <div>
+                  <h4 className="text-sm font-semibold text-gray-700 mb-3 flex items-center gap-2">
+                    <History size={14} />
+                    Detalle de Adiciones
+                  </h4>
+                  <div className="space-y-2">
+                    {adiciones.map((mov: any) => (
+                      <div key={mov.id} className="flex items-center gap-3 p-3 bg-white border border-gray-100 rounded-lg hover:border-green-200 transition-colors">
+                        <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
+                          <Plus size={14} className="text-green-600" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm font-medium text-gray-900">
+                              {mov.inventario?.nombre || `Item #${mov.inventario_id}`}
+                            </span>
+                            <span className="text-xs font-bold text-green-600">+{mov.cantidad}</span>
+                          </div>
+                          <p className="text-[10px] text-gray-400 mt-0.5">
+                            Stock: {mov.stock_anterior} → {mov.stock_nuevo}
+                            {mov.notas && <span className="ml-1">• {mov.notas}</span>}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[10px] text-gray-400">
+                            {new Date(mov.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                          {mov.inventario?.precio && (
+                            <p className="text-[10px] text-gray-500 font-medium">
+                              S/ {Number(mov.inventario.precio).toFixed(2)} c/u
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </div>
         ) : (

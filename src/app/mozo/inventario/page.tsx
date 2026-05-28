@@ -142,6 +142,7 @@ export default function MozoInventarioPage() {
         cantidad: formData.cantidad || 0,
         categoria: formData.categoria || (tab === 'bebidas' ? 'Refrescos' : 'Envase'),
         unidad: formData.unidad || 'unidad',
+        creado_por_nombre: profile?.nombre || 'Mozo',
       });
       setSuccessMsg(`✅ "${formData.nombre}" agregado a ${tab}`);
       setFormData({ nombre: '', precio: 0, cantidad: 0, categoria: '', unidad: 'unidad', codigo_barras: '', turno: 'ambos' });

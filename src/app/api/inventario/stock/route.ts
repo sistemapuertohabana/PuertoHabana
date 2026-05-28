@@ -76,23 +76,25 @@ export async function PATCH(request: Request) {
   });
 }
 
-// GET /api/inventario/stock?inventario_id=123
-// Obtiene el historial de movimientos de un item
+// GET /api/inventario/stock?inventario_id=123&tipo=entrada&seccion=bebidas&limit=50
+// Obtiene el historial de movimientos de inventario
 export async function GET(request: Request) {
   const sb = getServiceSupabase();
   const { searchParams } = new URL(request.url);
   const inventarioId = searchParams.get('inventario_id');
   const tipo = searchParams.get('tipo');
+  const seccion = searchParams.get('seccion');
   const limit = parseInt(searchParams.get('limit') || '50');
 
   let query = sb
     .from('inventario_movimientos')
-    .select('*, inventario:inventario_id(nombre, seccion)')
+    .select('*, inventario:inventario_id!inner(nombre, seccion, precio, unidad)')
     .order('created_at', { ascending: false })
     .limit(limit);
 
   if (inventarioId) query = query.eq('inventario_id', inventarioId);
   if (tipo) query = query.eq('tipo', tipo);
+  if (seccion) query = query.eq('inventario.seccion', seccion);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
