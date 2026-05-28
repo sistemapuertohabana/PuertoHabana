@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 
-// GET /api/inventario?seccion=comida&codigo_barras=123
+// GET /api/inventario?seccion=comida&codigo_barras=123&turno=manana
 export async function GET(request: Request) {
   const sb = getServiceSupabase();
   const { searchParams } = new URL(request.url);
   const seccion = searchParams.get('seccion');
   const codigoBarras = searchParams.get('codigo_barras');
+  const turno = searchParams.get('turno');
 
   let query = sb
     .from('inventario')
-    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos')
+    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos, turno')
     .order('nombre');
 
   if (seccion) query = query.eq('seccion', seccion);
   if (codigoBarras) query = query.eq('codigo_barras', codigoBarras);
+  if (turno) query = query.in('turno', [turno, 'ambos']);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
@@ -24,7 +26,7 @@ export async function GET(request: Request) {
 // POST /api/inventario
 export async function POST(request: Request) {
   const sb = getServiceSupabase();
-  const { seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos } = await request.json();
+  const { seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos, turno } = await request.json();
   if (!seccion || !nombre) {
     return NextResponse.json({ error: 'seccion y nombre requeridos' }, { status: 400 });
   }
@@ -43,6 +45,7 @@ export async function POST(request: Request) {
       imagen_url: imagen_url || null,
       costo: costo || 0,
       tamanos: tamanos || null,
+      turno: turno || 'ambos',
     }])
     .select()
     .single();

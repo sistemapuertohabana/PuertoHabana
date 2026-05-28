@@ -73,6 +73,9 @@ export default function InventarioPage() {
   // Estados para Insumos
   const [insumos, setInsumos] = useState<any[]>([]);
 
+  // Filtro por turno
+  const [turnoFilter, setTurnoFilter] = useState<string>('todos');
+
   // Suscripciones en tiempo real a Firebase
   useEffect(() => {
     const unsubComida = subscribeInventario('comida', (data) => setComida(data));
@@ -154,13 +157,13 @@ export default function InventarioPage() {
   const handleAdd = () => {
     setEditingItem(null);
     if (activeSection === 'tapers') {
-      setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0, unidad: 'unidad', codigo_barras: '', imagen_url: '', costo: 0 });
+      setFormData({ nombre: '', tipo: '', precio: 0, cantidad: 0, unidad: 'unidad', codigo_barras: '', imagen_url: '', costo: 0, turno: 'ambos' });
     } else if (activeSection === 'insumos') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 3, codigo_barras: '', imagen_url: '', costo: 0 });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, unidad: 'unidad', minimo: 3, codigo_barras: '', imagen_url: '', costo: 0, turno: 'ambos' });
     } else if (activeSection === 'bebidas') {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [] });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, tamanos: [], turno: 'ambos' });
     } else {
-      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0 });
+      setFormData({ nombre: '', categoria: '', precio: 0, cantidad: 0, codigo_barras: '', imagen_url: '', costo: 0, turno: 'ambos' });
     }
     setShowModal(true);
   };
@@ -190,6 +193,7 @@ export default function InventarioPage() {
       imagen_url: item.imagen_url || '',
       costo: item.costo || 0,
       tamanos: item.tamanos || [],
+      turno: item.turno || 'ambos',
     };
     if (activeSection === 'tapers') {
       setFormData({ ...baseForm, tipo: item.tipo, unidad: item.unidad || 'unidad' });
@@ -266,13 +270,19 @@ export default function InventarioPage() {
 
   // Función para obtener los datos actuales según la sección activa
   const getCurrentData = () => {
+    let data: any[] = [];
     switch (activeSection) {
-      case 'comida': return comida;
-      case 'bebidas': return bebidas;
-      case 'tapers': return tapers;
-      case 'insumos': return insumos;
+      case 'comida': data = comida; break;
+      case 'bebidas': data = bebidas; break;
+      case 'tapers': data = tapers; break;
+      case 'insumos': data = insumos; break;
       default: return [];
     }
+    // Filtrar por turno
+    if (turnoFilter !== 'todos') {
+      data = data.filter(item => !item.turno || item.turno === 'ambos' || item.turno === turnoFilter);
+    }
+    return data;
   };
 
   const getSectionTitle = () => {
@@ -468,6 +478,33 @@ export default function InventarioPage() {
           Alertas
         </button>
       </div>
+
+      {/* Filtro por Turno */}
+      {activeSection !== 'nuevo-plato' && activeSection !== 'historial' && activeSection !== 'alertas' && (
+        <div className="flex items-center gap-3 mb-6">
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Turno:</span>
+          <div className="flex gap-1.5">
+            {[
+              { value: 'todos', label: 'Todos' },
+              { value: 'maniana', label: '🌅 Mañana' },
+              { value: 'tarde', label: '☀️ Tarde' },
+              { value: 'ambos', label: '🔄 Ambos' },
+            ].map(t => (
+              <button
+                key={t.value}
+                onClick={() => setTurnoFilter(t.value)}
+                className={`px-3.5 py-2 rounded-lg text-xs font-semibold transition-all duration-200 ${
+                  turnoFilter === t.value
+                    ? 'bg-emerald-600 text-white shadow-md'
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                }`}
+              >
+                {t.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Contenido dinámico según la sección activa */}
       <div className="bg-white border border-gray-200 rounded-lg p-6">
@@ -900,6 +937,17 @@ export default function InventarioPage() {
                       {formatStock(item.cantidad, item.unidad || 'unid', item.nombre)}
                     </p>
                   </div>
+                  {item.turno && (
+                    <div className="col-span-2">
+                      <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                        item.turno === 'maniana' ? 'bg-amber-100 text-amber-700' :
+                        item.turno === 'tarde' ? 'bg-blue-100 text-blue-700' :
+                        'bg-gray-100 text-gray-600'
+                      }`}>
+                        {item.turno === 'maniana' ? '🌅 Mañana' : item.turno === 'tarde' ? '☀️ Tarde' : '🔄 Ambos'}
+                      </span>
+                    </div>
+                  )}
                   {item.costo > 0 && (
                     <>
                       <div>
@@ -1125,6 +1173,33 @@ export default function InventarioPage() {
                     </select>
                   </div>
                 )}
+
+                {/* Turno */}
+                <div>
+                  <label className="block text-sm font-semibold text-gray-700 mb-2 sm:mb-3 flex items-center gap-2">
+                    <span>🕐</span> Turno
+                  </label>
+                  <div className="flex gap-2">
+                    {[
+                      { value: 'ambos', label: 'Ambos' },
+                      { value: 'maniana', label: '🌅 Mañana' },
+                      { value: 'tarde', label: '☀️ Tarde' },
+                    ].map(t => (
+                      <button
+                        key={t.value}
+                        type="button"
+                        onClick={() => setFormData({ ...formData, turno: t.value })}
+                        className={`flex-1 py-2.5 sm:py-3 rounded-xl text-xs sm:text-sm font-semibold transition-all duration-200 ${
+                          formData.turno === t.value
+                            ? 'bg-emerald-600 text-white shadow-md'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                        }`}
+                      >
+                        {t.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
                 <div className="grid grid-cols-2 gap-3 sm:gap-4">
                   <div>

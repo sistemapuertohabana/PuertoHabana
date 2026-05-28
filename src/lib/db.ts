@@ -24,6 +24,7 @@ export interface InventarioItem {
   imagen_url?: string;
   costo?: number;
   tamanos?: TamanoOption[];
+  turno?: string; // 'manana' | 'tarde' | 'ambos'
   [key: string]: any;
 }
 

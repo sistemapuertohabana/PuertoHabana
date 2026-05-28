@@ -13,8 +13,9 @@ export default function MozoInventarioPage() {
   const [bebidas, setBebidas] = useState<InventarioItem[]>([]);
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
   const [search, setSearch] = useState('');
+  const [turnoFilter, setTurnoFilter] = useState<string>('todos');
   const [showAddModal, setShowAddModal] = useState(false);
-  const [formData, setFormData] = useState({ nombre: '', precio: 0, cantidad: 0, categoria: '', unidad: 'unidad', codigo_barras: '' });
+  const [formData, setFormData] = useState({ nombre: '', precio: 0, cantidad: 0, categoria: '', unidad: 'unidad', codigo_barras: '', turno: 'ambos' });
   const [adding, setAdding] = useState(false);
   const [successMsg, setSuccessMsg] = useState('');
 
@@ -104,10 +105,13 @@ export default function MozoInventarioPage() {
 
   const currentData = tab === 'bebidas' ? bebidas : tapers;
 
-  const filtered = search
-    ? currentData.filter(item =>
-        item.nombre.toLowerCase().includes(search.toLowerCase())
-      )
+  // Filtrar por búsqueda y turno
+  const filtered = search || turnoFilter !== 'todos'
+    ? currentData.filter(item => {
+        const matchesSearch = !search || item.nombre.toLowerCase().includes(search.toLowerCase());
+        const matchesTurno = turnoFilter === 'todos' || !item.turno || item.turno === 'ambos' || item.turno === turnoFilter;
+        return matchesSearch && matchesTurno;
+      })
     : currentData;
 
   // Handle barcode scan result
@@ -119,6 +123,7 @@ export default function MozoInventarioPage() {
       categoria: formData.categoria || '',
       unidad: formData.unidad || 'unidad',
       codigo_barras: result.barcode || formData.codigo_barras || '',
+      turno: formData.turno
     });
     setShowScanner(false);
     setShowAddModal(true);
@@ -139,7 +144,7 @@ export default function MozoInventarioPage() {
         unidad: formData.unidad || 'unidad',
       });
       setSuccessMsg(`✅ "${formData.nombre}" agregado a ${tab}`);
-      setFormData({ nombre: '', precio: 0, cantidad: 0, categoria: '', unidad: 'unidad', codigo_barras: '' });
+      setFormData({ nombre: '', precio: 0, cantidad: 0, categoria: '', unidad: 'unidad', codigo_barras: '', turno: 'ambos' });
       setShowAddModal(false);
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch {
@@ -171,6 +176,31 @@ export default function MozoInventarioPage() {
             <Plus size={16} />
             Agregar {tab === 'bebidas' ? 'Bebida' : 'Taper'}
           </button>
+        </div>
+      </div>
+
+      {/* Filtro por Turno */}
+      <div className="flex items-center gap-3 mb-4">
+        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider shrink-0">Turno:</span>
+        <div className="flex gap-1.5 overflow-x-auto pb-0.5" style={{ scrollbarWidth: 'none' }}>
+          {[
+            { value: 'todos', label: 'Todos' },
+            { value: 'maniana', label: '🌅 Mañana' },
+            { value: 'tarde', label: '☀️ Tarde' },
+            { value: 'ambos', label: '🔄 Ambos' },
+          ].map(t => (
+            <button
+              key={t.value}
+              onClick={() => setTurnoFilter(t.value)}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all duration-200 whitespace-nowrap ${
+                turnoFilter === t.value
+                  ? 'bg-emerald-600 text-white shadow-md'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -268,6 +298,14 @@ export default function MozoInventarioPage() {
               + Agregar {tab === 'bebidas' ? 'bebida' : 'taper'}
             </button>
           )}
+          {(turnoFilter !== 'todos' || search) && (
+            <button
+              onClick={() => { setSearch(''); setTurnoFilter('todos'); }}
+              className="mt-2 text-xs text-gray-400 hover:text-gray-600 font-medium"
+            >
+              Limpiar filtros
+            </button>
+          )}
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
@@ -283,6 +321,15 @@ export default function MozoInventarioPage() {
                   <p className="text-xs text-gray-400">
                     {item.categoria || item.tipo || tab}
                   </p>
+                  {item.turno && (
+                    <span className={`inline-flex items-center gap-1 mt-0.5 px-1.5 py-0.5 rounded-full text-[9px] font-semibold ${
+                      item.turno === 'maniana' ? 'bg-amber-100 text-amber-700' :
+                      item.turno === 'tarde' ? 'bg-blue-100 text-blue-700' :
+                      'bg-gray-100 text-gray-500'
+                    }`}>
+                      {item.turno === 'maniana' ? '🌅 Mañana' : item.turno === 'tarde' ? '☀️ Tarde' : '🔄 Ambos'}
+                    </span>
+                  )}
                 </div>
                 <span className="text-sm font-bold text-blue-600 shrink-0 ml-2">
                   S/ {Number(item.precio).toFixed(2)}
@@ -618,6 +665,7 @@ export default function MozoInventarioPage() {
                               categoria: p.categoria || formData.categoria,
                               unidad: p.unidad || formData.unidad,
                               codigo_barras: p.codigo_barras || formData.codigo_barras || '',
+                              turno: p.turno || formData.turno,
                             });
                             alert(`✅ Producto encontrado: ${p.nombre}`);
                           } else {
@@ -719,6 +767,33 @@ export default function MozoInventarioPage() {
                   <option value="L">Litro</option>
                   <option value="ml">Mililitro</option>
                 </select>
+              </div>
+
+              {/* Turno */}
+              <div>
+                <label className="block text-sm font-semibold text-gray-700 mb-1.5">
+                  <span className="mr-1">🕐</span> Turno
+                </label>
+                <div className="flex gap-2">
+                  {[
+                    { value: 'ambos', label: 'Ambos' },
+                    { value: 'maniana', label: '🌅 Mañana' },
+                    { value: 'tarde', label: '☀️ Tarde' },
+                  ].map(t => (
+                    <button
+                      key={t.value}
+                      type="button"
+                      onClick={() => setFormData({ ...formData, turno: t.value })}
+                      className={`flex-1 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                        formData.turno === t.value
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'bg-gray-100 text-gray-600 hover:bg-gray-200 border border-gray-200'
+                      }`}
+                    >
+                      {t.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
 

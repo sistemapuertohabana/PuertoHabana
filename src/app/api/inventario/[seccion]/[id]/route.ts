@@ -5,7 +5,7 @@ import { getServiceSupabase } from '@/lib/supabase';
 export async function PUT(request: Request, { params }: { params: Promise<{ seccion: string; id: string }> }) {
   const sb = getServiceSupabase();
   const { id } = await params;
-  const { nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos } = await request.json();
+  const { nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos, turno } = await request.json();
 
   const { error } = await sb
     .from('inventario')
@@ -21,6 +21,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ secc
       imagen_url: imagen_url || null,
       costo: costo || 0,
       tamanos: tamanos || null,
+      turno: turno || 'ambos',
     })
     .eq('id', id);
 

@@ -41,13 +41,8 @@ export default function ComandaTicket({
   };
 
   const handlePrintBrowser = () => {
-    const ventana = window.open('', '_blank', 'width=280,height=500');
-    if (!ventana) {
-      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir.');
-      return;
-    }
-
     const foodItems = items.filter(item => item.categoria !== 'bebidas');
+    const totalItems = foodItems.reduce((s, i) => s + i.cantidad, 0);
     let itemsHtml = '';
     foodItems.forEach(item => {
       itemsHtml += `
@@ -97,16 +92,30 @@ export default function ComandaTicket({
           ${itemsHtml}
           <div class="line"></div>
           <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">¡Buen provecho!</div>
-          <script>
-            setTimeout(() => { window.print(); }, 500);
-          </script>
         </body>
       </html>
     `;
 
-    ventana.document.open();
-    ventana.document.write(html);
-    ventana.document.close();
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    iframe.contentWindow?.document.open();
+    iframe.contentWindow?.document.write(html);
+    iframe.contentWindow?.document.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
   };
 
   const handlePrintNetwork = async () => {

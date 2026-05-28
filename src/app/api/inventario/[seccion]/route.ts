@@ -2,19 +2,27 @@ import { NextResponse } from 'next/server';
 import { getServiceSupabase } from '@/lib/supabase';
 import { checkAndNotifyLowStock } from '@/lib/push';
 
-// GET /api/inventario/:seccion
+// GET /api/inventario/:seccion?turno=manana
 export async function GET(
-  _: Request,
+  request: Request,
   { params }: { params: Promise<{ seccion: string }> }
 ) {
   const { seccion } = await params;
+  const { searchParams } = new URL(request.url);
+  const turno = searchParams.get('turno');
+  
   const sb = getServiceSupabase();
-  const { data, error } = await sb
+  let query = sb
     .from('inventario')
-    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos')
+    .select('id, seccion, nombre, categoria, tipo, precio, cantidad, unidad, minimo, codigo_barras, imagen_url, costo, tamanos, turno')
     .eq('seccion', seccion)
     .order('nombre');
 
+  if (turno) {
+    query = query.in('turno', [turno, 'ambos']);
+  }
+
+  const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   return NextResponse.json(data);
 }

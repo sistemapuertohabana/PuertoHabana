@@ -1095,123 +1095,207 @@ export default function MozoHistorialPage() {
                 )}
 
                 {pagoModalData?.id === c.id && (
-                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                      <h3 className="text-xl font-bold mb-1 text-center text-gray-900">Cobrar Mesa {c.mesa}{(() => { const total = (c.items || []).filter(i => i.id).length; const sel = selectedItemIds.size; if (total > 0 && sel > 0 && sel < total) return <span className="ml-2 text-sm font-bold text-amber-500">(Parcial)</span>; return null; })()}</h3>
-                      <p className="text-center text-3xl font-black text-blue-600 mb-6">S/ {(() => {
-                        const itemsConId = (c.items || []).filter(i => i.id);
-                        const selected = itemsConId.length > 0
-                          ? itemsConId.filter(i => selectedItemIds.has(i.id!))
-                          : (c.items || []);
-                        return selected.reduce((s, i) => s + i.precio * i.cantidad, 0);
-                      })().toFixed(2)}</p>
+                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={(e) => { if (e.target === e.currentTarget) { setPagoModalData(null); setClienteHist(null); } }}>
+                    <div className="bg-white w-full sm:max-w-md rounded-t-2xl sm:rounded-3xl shadow-2xl animate-in zoom-in-95 slide-in-from-bottom-4 duration-200 max-h-[92dvh] sm:max-h-[90vh] flex flex-col" onClick={e => e.stopPropagation()}>
+                      {/* Header fijo */}
+                      <div className="px-5 sm:px-6 py-4 border-b border-gray-100 shrink-0">
+                        <div className="flex items-center justify-between mb-1">
+                          <h3 className="text-lg sm:text-xl font-bold text-gray-900">Cobrar {c.mesa}</h3>
+                          <button onClick={() => { setPagoModalData(null); setClienteHist(null); }} className="p-1.5 hover:bg-gray-100 rounded-full transition-colors -mr-1">
+                            <X size={18} className="text-gray-400" />
+                          </button>
+                        </div>
+                        {(() => { const total = (c.items || []).filter(i => i.id).length; const sel = selectedItemIds.size; if (total > 0 && sel > 0 && sel < total) return <span className="inline-block text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded-full">Pago Parcial ({sel}/{total})</span>; return null; })()}
+                        <p className="text-2xl sm:text-3xl font-black text-blue-600 mt-1">S/ {(() => {
+                          const itemsConId = (c.items || []).filter(i => i.id);
+                          const selected = itemsConId.length > 0
+                            ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                            : (c.items || []);
+                          return selected.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                        })().toFixed(2)}</p>
+                      </div>
 
-                      {/* ─── Selección de items (pago parcial) ─── */}
-                      {c.items && c.items.length > 0 && c.items.some(i => i.id) && (
-                        <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
-                          {(() => {
-                            const unpaidItems = (c.items || []).filter(i => i.id && i.estado !== 'Entregado');
-                            const hasUnpaid = unpaidItems.length > 0;
-                            return (
-                              <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center">
-                                <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">
-                                  {hasUnpaid ? 'Items del Pedido' : 'Items (todos pagados)'}
-                                </span>
-                                {hasUnpaid && (
-                                  <div className="flex items-center gap-2">
-                                    <span className="text-[10px] text-gray-400">
-                                      {selectedItemIds.size} de {unpaidItems.length} seleccionados
-                                    </span>
-                                    <button
-                                      onClick={() => {
-                                        const unpaidIds = new Set(unpaidItems.map(i => i.id!).filter(Boolean));
-                                        if (selectedItemIds.size === unpaidItems.length) {
-                                          setSelectedItemIds(new Set());
-                                        } else {
-                                          setSelectedItemIds(unpaidIds);
-                                        }
-                                      }}
-                                      className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
-                                    >
-                                      {selectedItemIds.size === unpaidItems.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })()}
-                          <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
-                            {c.items.map((item) => {
-                              const isPaid = item.estado === 'Entregado';
-                              const itemId = item.id!;
-                              const isSelected = selectedItemIds.has(itemId);
+                      {/* Body scrollable */}
+                      <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-4 space-y-4 overscroll-contain">
+                        {/* ─── Selección de items (pago parcial) ─── */}
+                        {c.items && c.items.length > 0 && c.items.some(i => i.id) && (
+                          <div className="border border-gray-200 rounded-xl overflow-hidden">
+                            {(() => {
+                              const unpaidItems = (c.items || []).filter(i => i.id && i.estado !== 'Entregado');
+                              const hasUnpaid = unpaidItems.length > 0;
                               return (
-                                <div
-                                  key={itemId}
-                                  onClick={() => !isPaid && toggleItemSelection(itemId)}
-                                  className={`flex items-center justify-between px-3 py-2.5 transition-colors ${
-                                    isPaid
-                                      ? 'bg-gray-50 cursor-default'
-                                      : isSelected ? 'bg-blue-50 cursor-pointer' : 'bg-white cursor-pointer hover:bg-gray-50'
-                                  }`}
-                                >
-                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                                    {isPaid ? (
-                                      <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
-                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                          <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                      </div>
-                                    ) : (
-                                      <div onClick={(e) => { e.stopPropagation(); !isPaid && toggleItemSelection(itemId); }} className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
-                                        isSelected
-                                          ? 'bg-blue-600 border-blue-600'
-                                          : 'border-gray-300'
-                                      }`}>
-                                        {isSelected && (
-                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
-                                            <polyline points="20 6 9 17 4 12"/>
-                                          </svg>
-                                        )}
-                                      </div>
-                                    )}
-                                    <div className="min-w-0">
-                                      <span className={`text-sm font-medium truncate block ${isPaid ? 'text-green-600/60 line-through' : 'text-gray-900'}`}>
-                                        {item.cantidad}× {item.nombre}
-                                      </span>
-                                      {isPaid && (
-                                        <span className="text-[9px] font-bold text-green-600">✓ Pagado</span>
-                                      )}
-                                      {!isPaid && item.notas && (
-                                        <span className="text-[10px] text-amber-600 truncate block">📝 {item.notas}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <span className={`text-sm font-semibold ml-2 shrink-0 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
-                                    S/ {(item.precio * item.cantidad).toFixed(2)}
+                                <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex flex-wrap justify-between items-center gap-1">
+                                  <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+                                    {hasUnpaid ? 'Items' : 'Items (todos pagados)'}
                                   </span>
+                                  {hasUnpaid && (
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-[10px] text-gray-400">
+                                        {selectedItemIds.size}/{unpaidItems.length}
+                                      </span>
+                                      <button
+                                        onClick={() => {
+                                          const unpaidIds = new Set(unpaidItems.map(i => i.id!).filter(Boolean));
+                                          if (selectedItemIds.size === unpaidItems.length) {
+                                            setSelectedItemIds(new Set());
+                                          } else {
+                                            setSelectedItemIds(unpaidIds);
+                                          }
+                                        }}
+                                        className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                                      >
+                                        {selectedItemIds.size === unpaidItems.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                                      </button>
+                                    </div>
+                                  )}
                                 </div>
                               );
-                            })}
+                            })()}
+                            <div className="divide-y divide-gray-100 max-h-36 sm:max-h-48 overflow-y-auto">
+                              {c.items.map((item) => {
+                                const isPaid = item.estado === 'Entregado';
+                                const itemId = item.id!;
+                                const isSelected = selectedItemIds.has(itemId);
+                                return (
+                                  <div
+                                    key={itemId}
+                                    onClick={() => !isPaid && toggleItemSelection(itemId)}
+                                    className={`flex items-center justify-between px-3 py-2 transition-colors ${
+                                      isPaid
+                                        ? 'bg-gray-50 cursor-default'
+                                        : isSelected ? 'bg-blue-50 cursor-pointer' : 'bg-white cursor-pointer hover:bg-gray-50'
+                                    }`}
+                                  >
+                                    <div className="flex items-center gap-2 min-w-0 flex-1">
+                                      {isPaid ? (
+                                        <div className="w-3.5 h-3.5 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
+                                          <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                          </svg>
+                                        </div>
+                                      ) : (
+                                        <div className={`w-3.5 h-3.5 rounded border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                                          isSelected
+                                            ? 'bg-blue-600 border-blue-600'
+                                            : 'border-gray-300'
+                                        }`}>
+                                          {isSelected && (
+                                            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                              <polyline points="20 6 9 17 4 12"/>
+                                            </svg>
+                                          )}
+                                        </div>
+                                      )}
+                                      <div className="min-w-0">
+                                        <span className={`text-xs sm:text-sm font-medium truncate block ${isPaid ? 'text-green-600/60 line-through' : 'text-gray-900'}`}>
+                                          {item.cantidad}× {item.nombre}
+                                        </span>
+                                      </div>
+                                    </div>
+                                    <span className={`text-xs sm:text-sm font-semibold ml-2 shrink-0 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
+                                      S/ {(item.precio * item.cantidad).toFixed(2)}
+                                    </span>
+                                  </div>
+                                );
+                              })}
+                            </div>
                           </div>
-                        </div>
-                      )}
+                        )}
 
-                      {/* Sección Cliente (boleta electrónica) */}
-                      <div className="mb-4">
-                        <button
-                          onClick={() => { setShowClienteSearchHist(true); setClienteSearchHist(''); setClientesHist([]); }}
-                          className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-dashed border-gray-300 px-3 py-2 rounded-lg transition-colors"
-                        >
-                          <Search size={13} />
-                          {clienteHist
-                            ? `🧑 ${clienteHist.nombre}${clienteHist.dni ? ` · ${clienteHist.dni}` : ''}`
-                            : 'Buscar o registrar cliente (opcional para boleta)'}
-                        </button>
-                        {clienteHist && (
-                          <div className="flex gap-2 mt-2">
-                            <button
-                              onClick={async () => {
+                        {/* ─── Botones de pago rápido ─── */}
+                        {(() => {
+                          const itemsConId = (c.items || []).filter(i => i.id);
+                          const selectedItems = itemsConId.length > 0
+                            ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                            : (c.items || []);
+                          const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                          const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
+                          const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
+                          const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
+                          return (
+                            <div className="grid grid-cols-3 gap-2">
+                              <button onClick={() => setYapeQRData({ comandaId: c.id, total: selectedTotal, yapeMonto: selectedTotal, efectivoMonto: 0, metodo: 'Yape' })} disabled={noSelection} className={'py-2.5 sm:py-3 rounded-xl font-bold transition-all duration-200 text-xs sm:text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#7408B6] text-white hover:bg-[#5C0691] active:scale-95 shadow-sm')}>Yape</button>
+                              <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Efectivo', selectedIds) : confirmarCobro(c.id, 'Efectivo'); }} disabled={noSelection} className={'py-2.5 sm:py-3 rounded-xl font-bold transition-all duration-200 text-xs sm:text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700 active:scale-95 shadow-sm')}>Efectivo</button>
+                              <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Tarjeta', selectedIds) : confirmarCobro(c.id, 'Tarjeta'); }} disabled={noSelection} className={'py-2.5 sm:py-3 rounded-xl font-bold transition-all duration-200 text-xs sm:text-sm flex items-center justify-center gap-1 ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700 active:scale-95 shadow-sm')}><CreditCard size={14} />{noSelection ? '—' : 'Tarjeta'}</button>
+                            </div>
+                          );
+                        })()}
+
+                        {/* ─── Pago Mixto / Vuelto ─── */}
+                        <div>
+                          <details className="group">
+                            <summary className="flex items-center gap-2 text-xs font-semibold text-gray-500 cursor-pointer hover:text-gray-700 transition-colors py-1">
+                              <svg className="w-3.5 h-3.5 transition-transform group-open:rotate-90" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7"/></svg>
+                              Pago mixto / calcular vuelto
+                            </summary>
+                            <div className="mt-3 space-y-3 pl-4 border-l-2 border-gray-100">
+                              <div>
+                                <div className="flex items-center justify-between mb-1">
+                                  <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
+                                  {Number(pagoInputs.yape) > 0 && (
+                                    <button
+                                      onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(pagoInputs.yape), efectivoMonto: Number(pagoInputs.efectivo) || 0, metodo: '' })}
+                                      className="text-[10px] text-[#7408B6] font-semibold hover:text-[#5C0691] transition-colors"
+                                    >
+                                      Ver QR
+                                    </button>
+                                  )}
+                                </div>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">S/</span>
+                                  <input type="text" inputMode="decimal" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-8 pr-3 font-bold text-base focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
+                                </div>
+                              </div>
+                              <div>
+                                <label className="text-xs font-bold text-gray-600 uppercase block mb-1">Efectivo Recibido</label>
+                                <div className="relative">
+                                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold text-sm">S/</span>
+                                  <input type="text" inputMode="decimal" value={pagoInputs.efectivo} onChange={e => setPagoInputs({...pagoInputs, efectivo: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2.5 pl-8 pr-3 font-bold text-base focus:ring-2 focus:ring-green-600 focus:outline-none" placeholder="0.00" />
+                                </div>
+                              </div>
+
+                              {/* Cálculo */}
+                              {(() => {
+                                const itemsConId = (c.items || []).filter(i => i.id);
+                                const selectedItems = itemsConId.length > 0
+                                  ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                                  : (c.items || []);
+                                const t = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                                const y = Number(pagoInputs.yape) || 0;
+                                const e = Number(pagoInputs.efectivo) || 0;
+                                const abonado = y + e;
+                                const faltante = t - abonado;
+                                const vuelto = abonado > t ? abonado - t : 0;
+                                if (y === 0 && e === 0) return null;
+                                return (
+                                  <div className={`p-3 rounded-xl border ${faltante > 0 ? 'bg-orange-50 border-orange-100' : 'bg-green-50 border-green-100'}`}>
+                                    {faltante > 0 ? (
+                                      <p className="text-orange-700 font-bold text-center text-xs sm:text-sm">Falta: S/ {faltante.toFixed(2)}</p>
+                                    ) : (
+                                      <p className="text-green-700 font-black text-center text-sm sm:text-base">Vuelto: S/ {vuelto.toFixed(2)}</p>
+                                    )}
+                                  </div>
+                                );
+                              })()}
+                            </div>
+                          </details>
+                        </div>
+
+                        {/* ─── Cliente ─── */}
+                        <div>
+                          <hr className="border-gray-100 mb-3" />
+                          <button
+                            onClick={() => { setShowClienteSearchHist(true); setClienteSearchHist(''); setClientesHist([]); }}
+                            className="w-full flex items-center justify-center gap-2 text-xs text-gray-500 hover:text-gray-700 hover:bg-gray-50 border border-dashed border-gray-300 px-3 py-2 rounded-lg transition-colors"
+                          >
+                            <Search size={13} />
+                            {clienteHist
+                              ? `🧑 ${clienteHist.nombre}${clienteHist.dni ? ` · ${clienteHist.dni}` : ''}`
+                              : 'Cliente (opcional para boleta)'}
+                          </button>
+                          {clienteHist && (
+                            <div className="flex flex-wrap gap-1.5 mt-2">
+                              <button onClick={async () => {
                                 setSendingSunatHist(true);
                                 try {
                                   const res = await fetch('/api/sunat/enviar', {
@@ -1226,222 +1310,82 @@ export default function MozoHistorialPage() {
                                         numero_doc: clienteHist.ruc || clienteHist.dni || '00000000',
                                         razon_social: clienteHist.nombre,
                                       },
-                                      items: (c.items || []).map(i => ({
-                                        nombre: i.nombre,
-                                        cantidad: i.cantidad,
-                                        precio: i.precio,
-                                      })),
+                                      items: (c.items || []).map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
                                       observaciones: `Mesa: ${c.mesa}`,
                                     }),
                                   });
                                   const data = await res.json();
-                                  setToastHist(data.success
-                                    ? `✅ Boleta ${data.boleta?.numero_doc || ''} emitida`
-                                    : `❌ Error: ${data.mensaje || data.error}`);
-                                } catch {
-                                  setToastHist('❌ Error al emitir boleta');
-                                } finally { setSendingSunatHist(false); }
-                              }}
-                              disabled={sendingSunatHist}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-3 py-2.5 rounded-xl text-xs font-bold hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none shadow-md"
-                            >
-                              {sendingSunatHist ? (
-                                <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                              ) : (
-                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                                  <polyline points="14 2 14 8 20 8"/>
-                                  <line x1="16" y1="13" x2="8" y2="13"/>
-                                  <line x1="16" y1="17" x2="8" y2="17"/>
-                                </svg>
-                              )}
-                              {sendingSunatHist ? 'Enviando...' : 'Boleta Electrónica'}
-                            </button>
-                            <button
-                              onClick={() => {
+                                  setToastHist(data.success ? `✅ Boleta ${data.boleta?.numero_doc || ''} emitida` : `❌ Error: ${data.mensaje || data.error}`);
+                                } catch { setToastHist('❌ Error al emitir boleta'); }
+                                finally { setSendingSunatHist(false); }
+                              }} disabled={sendingSunatHist}
+                                className="flex-1 flex items-center justify-center gap-1 bg-gradient-to-r from-amber-500 to-orange-500 text-white px-2.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold hover:from-amber-600 hover:to-orange-600 transition-all disabled:opacity-50 shadow-sm">
+                                {sendingSunatHist ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '🧾 Boleta'}
+                              </button>
+                              <button onClick={() => {
                                 setPagoModalData(null);
-                                setBoletaData({
-                                  mesa: c.mesa,
-                                  mozoNombre: c.mozo_nombre || 'Mozo',
-                                  fecha: c.fecha,
-                                  hora: c.hora,
-                                  items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })),
-                                  clienteNombre: clienteHist.nombre,
-                                  clienteDocumento: clienteHist.ruc || clienteHist.dni
-                                });
-                              }}
-                              className="flex-1 flex items-center justify-center gap-1.5 bg-gray-100 text-gray-700 px-3 py-2.5 rounded-xl text-xs font-bold hover:bg-gray-200 transition-colors shadow-sm"
-                            >
-                              🖨️ Ticket
-                            </button>
-                            {clienteHist.telefono && (
-                              <button
-                                onClick={async () => {
+                                setBoletaData({ mesa: c.mesa, mozoNombre: c.mozo_nombre || 'Mozo', fecha: c.fecha, hora: c.hora, items: (c.items || []).map((i: any) => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio })), clienteNombre: clienteHist.nombre, clienteDocumento: clienteHist.ruc || clienteHist.dni });
+                              }} className="flex-1 flex items-center justify-center gap-1 bg-gray-100 text-gray-700 px-2.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold hover:bg-gray-200 transition-colors shadow-sm">🖨️ Ticket</button>
+                              {clienteHist.telefono && (
+                                <button onClick={async () => {
                                   setSendingWhatsAppHist(true);
-                                  const items = (c.items || []).map(i => ({
-                                    nombre: i.nombre,
-                                    cantidad: i.cantidad,
-                                    precio: i.precio,
-                                  }));
                                   try {
                                     const res = await fetch('/api/whatsapp/enviar', {
                                       method: 'POST',
                                       headers: { 'Content-Type': 'application/json' },
                                       body: JSON.stringify({
-                                        tipo: 'boleta',
-                                        telefono: clienteHist.telefono,
-                                        cliente_nombre: clienteHist.nombre,
-                                        mesa: c.mesa,
-                                        items,
-                                        total: Number(c.total),
-                                        metodo_pago: pagoInputs.yape ? 'Yape/Mixto' : 'Efectivo',
+                                        tipo: 'boleta', telefono: clienteHist.telefono, cliente_nombre: clienteHist.nombre, mesa: c.mesa,
+                                        items: (c.items || []).map(i => ({ nombre: i.nombre, cantidad: i.cantidad, precio: i.precio })),
+                                        total: Number(c.total), metodo_pago: pagoInputs.yape ? 'Yape/Mixto' : 'Efectivo',
                                       }),
                                     });
                                     const data = await res.json();
                                     setToastHist(data.success ? '✅ Voucher enviado por WhatsApp' : '❌ Error al enviar');
-                                  } catch {
-                                    setToastHist('❌ Error de conexión');
-                                  } finally { setSendingWhatsAppHist(false); }
-                                }}
-                                disabled={sendingWhatsAppHist}
-                                className="flex-1 flex items-center justify-center gap-1.5 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-3 py-2.5 rounded-xl text-xs font-bold hover:from-green-600 hover:to-emerald-600 hover:shadow-lg hover:-translate-y-0.5 active:translate-y-0 transition-all duration-200 disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none shadow-md"
-                              >
-                                {sendingWhatsAppHist ? (
-                                  <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                                ) : (
-                                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                                    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
-                                  </svg>
-                                )}
-                                {sendingWhatsAppHist ? 'Enviando...' : 'WhatsApp'}
-                              </button>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="space-y-4 mb-6">
-                        {/* Pago Rápido Completo */}
-                        <div className="flex gap-2">
-                          {(() => {
-                            const itemsConId = (c.items || []).filter(i => i.id);
-                            const selectedItems = itemsConId.length > 0
-                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
-                              : (c.items || []);
-                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
-                            const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
-                            const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
-                            const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
-                            return (
-                              <>
-                                <button onClick={() => setYapeQRData({ comandaId: c.id, total: selectedTotal, yapeMonto: selectedTotal, efectivoMonto: 0, metodo: 'Yape' })} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#7408B6] text-white hover:bg-[#5C0691]')}>Yape</button>
-                                <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Efectivo', selectedIds) : confirmarCobro(c.id, 'Efectivo'); }} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700')}>Efectivo</button>
-                                <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Tarjeta', selectedIds) : confirmarCobro(c.id, 'Tarjeta'); }} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm flex items-center justify-center gap-1 ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700')}>{noSelection ? '' : <CreditCard size={16} />}{noSelection ? '—' : 'Tarjeta'}</button>
-                              </>
-                            );
-                          })()}
-                        </div>
-
-                        <div className="relative flex items-center py-2">
-                          <div className="flex-grow border-t border-gray-200"></div>
-                          <span className="flex-shrink-0 mx-4 text-gray-400 text-xs font-semibold uppercase">O pago mixto / calcular vuelto</span>
-                          <div className="flex-grow border-t border-gray-200"></div>
-                        </div>
-
-                        {/* Entradas Mixtas */}
-                        <div className="space-y-3">
-                          <div>
-                            <div className="flex items-center justify-between mb-1">
-                              <label className="text-xs font-bold text-gray-600 uppercase">Monto Yape</label>
-                              {Number(pagoInputs.yape) > 0 && (
-                                <button
-                                  onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(pagoInputs.yape), efectivoMonto: Number(pagoInputs.efectivo) || 0, metodo: '' })}
-                                  className="text-[10px] text-[#7408B6] font-semibold flex items-center gap-1 hover:text-[#5C0691] transition-colors"
-                                >
-                                  <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M8 12h8M12 8v8"/></svg>
-                                  Ver QR
+                                  } catch { setToastHist('❌ Error de conexión'); }
+                                  finally { setSendingWhatsAppHist(false); }
+                                }} disabled={sendingWhatsAppHist}
+                                  className="flex-1 flex items-center justify-center gap-1 bg-gradient-to-r from-green-500 to-emerald-500 text-white px-2.5 py-2 rounded-lg text-[10px] sm:text-xs font-bold hover:from-green-600 hover:to-emerald-600 transition-all disabled:opacity-50 shadow-sm">
+                                  {sendingWhatsAppHist ? <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" /> : '💬 WhatsApp'}
                                 </button>
                               )}
                             </div>
-                            <div className="relative mt-1">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
-                              <input type="text" inputMode="decimal" value={pagoInputs.yape} onChange={e => setPagoInputs({...pagoInputs, yape: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-[#7408B6] focus:outline-none" placeholder="0.00" />
-                            </div>
-                          </div>
-                          <div>
-                            <label className="text-xs font-bold text-gray-600 uppercase">Efectivo Recibido</label>
-                            <div className="relative mt-1">
-                              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500 font-bold">S/</span>
-                              <input type="text" inputMode="decimal" value={pagoInputs.efectivo} onChange={e => setPagoInputs({...pagoInputs, efectivo: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 pl-9 pr-4 font-bold text-lg focus:ring-2 focus:ring-green-600 focus:outline-none" placeholder="0.00" />
-                            </div>
-                          </div>
+                          )}
                         </div>
-
-                        {/* Cálculo */}
-                        {(() => {
-                          const itemsConId = (c.items || []).filter(i => i.id);
-                          const selectedItems = itemsConId.length > 0
-                            ? itemsConId.filter(i => selectedItemIds.has(i.id!))
-                            : (c.items || []);
-                          const t = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
-                          const y = Number(pagoInputs.yape) || 0;
-                          const e = Number(pagoInputs.efectivo) || 0;
-                          const abonado = y + e;
-                          const faltante = t - abonado;
-                          const vuelto = abonado > t ? abonado - t : 0;
-
-                          return (
-                            <div className={`p-4 rounded-xl border ${faltante > 0 ? 'bg-orange-50 border-orange-100' : 'bg-green-50 border-green-100'}`}>
-                              {faltante > 0 ? (
-                                <p className="text-orange-700 font-bold text-center">Falta cobrar: S/ {faltante.toFixed(2)}</p>
-                              ) : (
-                                <p className="text-green-700 font-black text-center text-lg">Vuelto: S/ {vuelto.toFixed(2)}</p>
-                              )}
-                            </div>
-                          );
-                        })()}
                       </div>
 
-                      <div className="flex gap-3 mt-6">
-                        <button onClick={() => { setPagoModalData(null); setClienteHist(null); }} className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">Cancelar</button>
-                        <button
-                          disabled={(() => {
-                            const itemsConId = (c.items || []).filter(i => i.id);
-                            if (itemsConId.length > 0 && selectedItemIds.size === 0) return true;
-                            const selectedItems = itemsConId.length > 0
-                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
-                              : (c.items || []);
-                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
-                            return ((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < selectedTotal;
-                          })()}
-                          onClick={() => {
-                            const itemsConId = (c.items || []).filter(i => i.id);
-                            const selectedItems = itemsConId.length > 0
-                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
-                              : (c.items || []);
-                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
-                            const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
-                            const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
-                            if (noSelection) return;
-                            const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
-                            const y = Number(pagoInputs.yape) || 0;
-                            const e = Number(pagoInputs.efectivo) || 0;
-                            const efectivoCobrado = Math.max(0, selectedTotal - y);
-                            let metodo: any = 'Efectivo';
-                            if (y > 0 && e > 0) {
-                              metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
-                            } else if (y > 0) {
-                              metodo = 'Yape';
-                            }
-                            if (isPartial) {
-                              confirmarCobro(c.id, metodo, selectedIds);
-                            } else {
-                              confirmarCobro(c.id, metodo);
-                            }
-                          }}
-                          className="flex-1 py-3.5 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
-                          Confirmar
-                        </button>
+                      {/* Footer fijo */}
+                      <div className="px-5 sm:px-6 py-3 sm:py-4 bg-gray-50 rounded-b-2xl sm:rounded-b-3xl border-t border-gray-100 shrink-0">
+                        <div className="flex gap-2 sm:gap-3">
+                          <button onClick={() => { setPagoModalData(null); setClienteHist(null); }} className="flex-1 py-2.5 sm:py-3 bg-white border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 rounded-xl sm:rounded-2xl transition-colors text-xs sm:text-sm">Cancelar</button>
+                          <button
+                            disabled={(() => {
+                              const itemsConId = (c.items || []).filter(i => i.id);
+                              if (itemsConId.length > 0 && selectedItemIds.size === 0) return true;
+                              const selectedItems = itemsConId.length > 0 ? itemsConId.filter(i => selectedItemIds.has(i.id!)) : (c.items || []);
+                              const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                              return ((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < selectedTotal;
+                            })()}
+                            onClick={() => {
+                              const itemsConId = (c.items || []).filter(i => i.id);
+                              const selectedItems = itemsConId.length > 0 ? itemsConId.filter(i => selectedItemIds.has(i.id!)) : (c.items || []);
+                              const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                              const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
+                              const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
+                              if (noSelection) return;
+                              const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
+                              const y = Number(pagoInputs.yape) || 0;
+                              const e = Number(pagoInputs.efectivo) || 0;
+                              const efectivoCobrado = Math.max(0, selectedTotal - y);
+                              let metodo: any = 'Efectivo';
+                              if (y > 0 && e > 0) metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
+                              else if (y > 0) metodo = 'Yape';
+                              if (isPartial) confirmarCobro(c.id, metodo, selectedIds);
+                              else confirmarCobro(c.id, metodo);
+                            }}
+                            className="flex-1 py-2.5 sm:py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-xl sm:rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md text-xs sm:text-sm">
+                            Confirmar
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
