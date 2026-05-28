@@ -157,6 +157,7 @@ export default function MozoPage() {
   const [showHistorialAsist, setShowHistorialAsist] = useState(false);
   const [errorAsistencia, setErrorAsistencia] = useState('');
   const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
+  const [activeBebidaCat, setActiveBebidaCat] = useState<string>('Todos');
   const [comandaPrintData, setComandaPrintData] = useState<{
     mesa: string;
     mozoNombre: string;
@@ -842,119 +843,133 @@ export default function MozoPage() {
               // Bebidas — con categorías, tamaños y stock
               if (cat === 'bebidas') {
                 if (bebidasDinamica.length === 0) return null;
-                // Agrupar por categoría
-                const grouped = bebidasDinamica.reduce((acc: Record<string, typeof bebidasDinamica>, b) => {
-                  const catName = b.categoria || 'Otras';
-                  if (!acc[catName]) acc[catName] = [];
-                  acc[catName].push(b);
-                  return acc;
-                }, {});
+                const categories = ['Todos', ...Array.from(new Set(bebidasDinamica.map(b => b.categoria || 'Otras').filter(Boolean)))];
+                const filtered = activeBebidaCat === 'Todos' ? bebidasDinamica : bebidasDinamica.filter(b => (b.categoria || 'Otras') === activeBebidaCat);
+                
                 return (
                   <div key={cat}>
                     <div className="flex items-center gap-2 mb-3">
                       <Wine size={14} className="text-gray-400" />
                       <h3 className="text-[10px] font-semibold uppercase text-gray-500 tracking-wider">Bebidas</h3>
-                      <span className="text-[10px] text-gray-300">({bebidasDinamica.length})</span>
                     </div>
-                    <div className="space-y-4">
-                      {Object.entries(grouped).map(([catName, items]) => (
-                        <div key={catName}>
-                          <div className="flex items-center gap-2 mb-2">
-                            <span className="text-[11px] font-semibold text-gray-600">{catName}</span>
-                            <span className="text-[10px] text-gray-300">({items.length})</span>
-                          </div>
-                          <div className="space-y-1.5">
-                            {items.map(bebida => {
-                              // Si tiene tamaños, mostrar cada tamaño como item separado
-                              if (bebida.tamanos && bebida.tamanos.length > 0) {
-                                return bebida.tamanos.map((t: any, ti: number) => {
-                                  const itemKey = `${bebida.nombre}||${t.nombre}`;
-                                  const cartItem = cart.find(c => c.name === itemKey);
-                                  const qty = cartItem?.qty || 0;
-                                  return (
-                                    <div key={itemKey} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
-                                      <div className="min-w-0 flex-1">
-                                        <p className="text-sm text-gray-900 truncate">
-                                          {qty > 0 && cartItem?.esCortesia && <span className="mr-1">🎁</span>}
-                                          {bebida.nombre} <span className="text-gray-500 font-medium">{t.nombre}</span>
-                                        </p>
-                                        <div className="flex items-center gap-2 mt-0.5">
-                                          <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
-                                            {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
-                                          </p>
-                                          <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
-                                            Stock: {bebida.cantidad}
-                                          </span>
-                                        </div>
-                                      </div>
-                                      <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                        {qty > 0 && (
-                                          <button
-                                            onClick={() => {
-                                              const cartItemName = cart.find(c => c.name === itemKey);
-                                              if (cartItemName) toggleCortesia(cartItemName.name);
-                                            }}
-                                            className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
-                                              cartItem?.esCortesia
-                                                ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
-                                                : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
-                                            }`}
-                                            title="Marcar como Cortesía"
-                                          >
-                                            🎁
-                                          </button>
-                                        )}
-                                        <RenderQtyControls
-                                          itemKey={itemKey}
-                                          itemName={`${bebida.nombre} ${t.nombre}`}
-                                          itemPrice={t.precio}
-                                          qty={qty}
-                                          category="bebidas"
-                                          cart={cart}
-                                          updateCart={updateCart}
-                                          toggleCortesia={toggleCortesia}
-                                        />
-                                      </div>
-                                    </div>
-                                  );
-                                });
-                              }
-                              // Sin tamaños, mostrar item normal
-                              const qty = cart.find(c => c.name === bebida.nombre)?.qty || 0;
-                              return (
-                                <div key={bebida.id} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
-                                  <div className="min-w-0 flex-1">
-                                    <p className="text-sm text-gray-900 truncate">
-                                      {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia && <span className="mr-1">🎁</span>}
-                                      {bebida.nombre}
+                    {/* Filtros por botones */}
+                    <div className="flex gap-2 overflow-x-auto pb-2 mb-3 scrollbar-hide" style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}>
+                      {categories.map(c => (
+                        <button
+                          key={c}
+                          onClick={() => setActiveBebidaCat(c)}
+                          className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors flex-shrink-0 ${
+                            activeBebidaCat === c
+                              ? 'bg-amber-500 text-white shadow-md'
+                              : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                          }`}
+                        >
+                          {c}
+                        </button>
+                      ))}
+                    </div>
+                    <div className="space-y-1.5">
+                      {filtered.map(bebida => {
+                        // Si tiene tamaños, mostrar cada tamaño como item separado
+                        if (bebida.tamanos && bebida.tamanos.length > 0) {
+                          return bebida.tamanos.map((t: any, ti: number) => {
+                            const itemKey = `${bebida.nombre}||${t.nombre}`;
+                            const cartItem = cart.find(c => c.name === itemKey);
+                            const qty = cartItem?.qty || 0;
+                            return (
+                              <div key={itemKey} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-sm text-gray-900 truncate">
+                                    {qty > 0 && cartItem?.esCortesia && <span className="mr-1">🎁</span>}
+                                    {bebida.nombre} <span className="text-gray-500 font-medium">{t.nombre}</span>
+                                  </p>
+                                  <div className="flex items-center gap-2 mt-0.5">
+                                    <p className={`text-[11px] ${qty > 0 && cartItem?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                      {qty > 0 && cartItem?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(t.precio).toFixed(2)}`}
                                     </p>
-                                    <div className="flex items-center gap-2 mt-0.5">
-                                      <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
-                                        {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
-                                      </p>
-                                      <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
-                                        Stock: {bebida.cantidad}
-                                      </span>
-                                    </div>
-                                  </div>
-                                  <div className="flex items-center gap-1.5 shrink-0 ml-2">
-                                    <RenderQtyControls
-                                      itemKey={bebida.nombre}
-                                      itemName={bebida.nombre}
-                                      itemPrice={bebida.precio}
-                                      qty={qty}
-                                      category="bebidas"
-                                      cart={cart}
-                                      updateCart={updateCart}
-                                      toggleCortesia={toggleCortesia}
-                                    />
+                                    <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
+                                      Stock: {bebida.cantidad}
+                                    </span>
                                   </div>
                                 </div>
-                              );
-                            })}
+                                <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                  {qty > 0 && (
+                                    <button
+                                      onClick={() => {
+                                        const cartItemName = cart.find(c => c.name === itemKey);
+                                        if (cartItemName) toggleCortesia(cartItemName.name);
+                                      }}
+                                      className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                                        cartItem?.esCortesia
+                                          ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                                          : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+                                      }`}
+                                      title="Marcar como Cortesía"
+                                    >
+                                      🎁
+                                    </button>
+                                  )}
+                                  <RenderQtyControls
+                                    itemKey={itemKey}
+                                    itemName={`${bebida.nombre} ${t.nombre}`}
+                                    itemPrice={t.precio}
+                                    qty={qty}
+                                    category="bebidas"
+                                    cart={cart}
+                                    updateCart={updateCart}
+                                    toggleCortesia={toggleCortesia}
+                                  />
+                                </div>
+                              </div>
+                            );
+                          });
+                        }
+                        // Sin tamaños, mostrar item normal
+                        const qty = cart.find(c => c.name === bebida.nombre)?.qty || 0;
+                        return (
+                          <div key={bebida.id} className="flex justify-between items-center rounded-xl px-4 py-3 border border-gray-100 bg-white hover:border-gray-200 hover:shadow-sm transition-all">
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm text-gray-900 truncate">
+                                {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia && <span className="mr-1">🎁</span>}
+                                {bebida.nombre}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <p className={`text-[11px] ${qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? 'text-amber-500' : 'text-gray-400'}`}>
+                                  {qty > 0 && cart.find(c => c.name === bebida.nombre)?.esCortesia ? '🎁 Cortesía' : `S/ ${Number(bebida.precio).toFixed(2)}`}
+                                </p>
+                                <span className={`text-[10px] ${bebida.cantidad <= (bebida.minimo || 3) ? 'text-red-500' : 'text-gray-400'}`}>
+                                  Stock: {bebida.cantidad}
+                                </span>
+                              </div>
+                            </div>
+                            <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                              {qty > 0 && (
+                                <button
+                                  onClick={() => toggleCortesia(bebida.nombre)}
+                                  className={`w-7 h-7 rounded-full border flex items-center justify-center transition-colors ${
+                                    cart.find(c => c.name === bebida.nombre)?.esCortesia
+                                      ? 'bg-amber-50 border-amber-200 text-amber-500 hover:bg-amber-100'
+                                      : 'bg-gray-50 border-gray-200 text-gray-300 hover:text-amber-400 hover:border-amber-200'
+                                  }`}
+                                  title="Marcar como Cortesía"
+                                >
+                                  🎁
+                                </button>
+                              )}
+                              <RenderQtyControls
+                                itemKey={bebida.nombre}
+                                itemName={bebida.nombre}
+                                itemPrice={bebida.precio}
+                                qty={qty}
+                                category="bebidas"
+                                cart={cart}
+                                updateCart={updateCart}
+                                toggleCortesia={toggleCortesia}
+                              />
+                            </div>
                           </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                     </div>
                   </div>
                 );

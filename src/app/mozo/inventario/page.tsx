@@ -516,11 +516,11 @@ export default function MozoInventarioPage() {
                   </option>
                   {tab === 'bebidas' ? (
                     <>
+                      <option value="Gaseosas">Gaseosas</option>
+                      <option value="Chichas">Chichas</option>
                       <option value="Cervezas">Cervezas</option>
-                      <option value="Refrescos">Refrescos</option>
-                      <option value="Cócteles">Cócteles</option>
-                      <option value="Jugos">Jugos</option>
-                      <option value="Vinos">Vinos</option>
+                      <option value="Sporade">Sporade</option>
+                      <option value="Aguas">Aguas</option>
                     </>
                   ) : (
                     <>

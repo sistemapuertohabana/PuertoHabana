@@ -66,7 +66,7 @@ interface Pedido {
   category: 'comida' | 'bebidas';
   comandaId?: string;
   mesaId?: number;
-  metodo_pago?: 'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro';
+  metodo_pago?: 'Efectivo' | 'Yape' | 'Yape/Mixto' | 'Tarjeta' | 'Otro';
 }
 
 interface InsumoWaste {
@@ -101,7 +101,7 @@ interface Comanda {
   estado: string;
   hora: string;
   fecha: string;
-  metodo_pago?: 'Efectivo' | 'Yape' | 'Tarjeta' | 'Otro';
+  metodo_pago?: 'Efectivo' | 'Yape' | 'Yape/Mixto' | 'Tarjeta' | 'Otro';
   items?: ComandaItem[];
 }
 
@@ -954,14 +954,16 @@ export default function DashboardPage() {
       const totalRev = filteredHistoryOrders.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const comidaVal = filteredHistoryOrders.filter(p => p.category === 'comida').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const bebidasVal = filteredHistoryOrders.filter(p => p.category === 'bebidas').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
-      const totalYape = filteredHistoryOrders.filter(p => p.metodo_pago === 'Yape').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+      const totalYape = filteredHistoryOrders.filter(p => p.metodo_pago === 'Yape' || p.metodo_pago === 'Yape/Mixto').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const totalEfectivo = filteredHistoryOrders.filter(p => p.metodo_pago === 'Efectivo').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+      const totalTarjeta = filteredHistoryOrders.filter(p => p.metodo_pago === 'Tarjeta').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const margenHist = getMargenHistorial(filteredHistoryOrders);
 
       return {
         ventasTotal: { title: 'Ventas Totales', value: `S/ ${totalRev.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         yape: { title: 'Total Yape', value: `S/ ${totalYape.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         efectivo: { title: 'Total Efectivo', value: `S/ ${totalEfectivo.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
+        tarjeta: { title: 'Total Tarjeta', value: `S/ ${totalTarjeta.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         comidaHist: { title: 'Ventas Comida', value: `S/ ${comidaVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Utensils },
         bebidasHist: { title: 'Ventas Bebidas', value: `S/ ${bebidasVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Wine },
         costoHist: { title: 'Costo de Ventas', value: `S/ ${margenHist.totalCosto.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: TrendingUp },

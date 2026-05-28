@@ -79,7 +79,7 @@ export default function CierreCajaTicket({
           <div style="font-size: 14px; margin-top: 5px;" class="font-bold">DESGLOSE DE PAGOS:</div>
           <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Efectivo:</span> <span>S/ ${totalEfectivo.toFixed(2)}</span></div>
           <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Yape:</span> <span>S/ ${totalYape.toFixed(2)}</span></div>
-          <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Tarjeta/Otros:</span> <span>S/ ${totalTarjeta.toFixed(2)}</span></div>
+          <div style="display: flex; justify-content: space-between; font-size: 14px;"><span>Tarjeta:</span> <span>S/ ${totalTarjeta.toFixed(2)}</span></div>
           <div class="line"></div>
           <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">PRODUCTOS VENDIDOS:</div>
           ${aggregatedItems.length > 0 ? aggregatedItems.map(([name, qty]) => `

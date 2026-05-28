@@ -652,7 +652,7 @@ export default function MozoHistorialPage() {
                         <div className="flex gap-2">
                           <button onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(c.total), efectivoMonto: 0, metodo: 'Yape' })} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md text-sm">Yape</button>
                           <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md text-sm">Efectivo</button>
-
+                          <button onClick={() => confirmarCobro(c.id, 'Tarjeta')} className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-md text-sm flex items-center justify-center gap-1"><CreditCard size={16} /> Tarjeta</button>
                         </div>
 
                         <div className="relative flex items-center py-2">
