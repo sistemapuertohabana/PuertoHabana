@@ -201,6 +201,24 @@ function DevDashboard() {
     setStatus({ msg: data.success ? data.message : data.error, type: data.success ? 'success' : 'error' });
   };
 
+  const handleAbrirCaja = async (turno: 'maniana' | 'noche') => {
+    const fechaHoy = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Lima' });
+    const turnoLabel = turno === 'maniana' ? 'Turno Mañana' : 'Turno Noche';
+    if (!confirm(`¿Reabrir caja de ${turnoLabel} del ${fechaHoy}?\nEsto revertirá las comandas cerradas a "Entregado" y borrará la nota de cierre.`)) return;
+    
+    try {
+      const res = await fetch('/api/dev/abrir-caja', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ fecha: fechaHoy, turno })
+      });
+      const data = await res.json();
+      setStatus({ msg: data.success ? data.message : data.error, type: data.success ? 'success' : 'error' });
+    } catch (e: any) {
+      setStatus({ msg: 'Error de conexión', type: 'error' });
+    }
+  };
+
   return (
     <div className="animate-in fade-in duration-300">
       {/* Header minimalista */}
@@ -279,6 +297,40 @@ function DevDashboard() {
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Abrir Caja */}
+      <div className="rounded-xl border border-amber-100 bg-white p-5 shadow-sm mb-4">
+        <h2 className="text-sm font-medium text-amber-700 mb-1 flex items-center gap-2">
+          🔓 Reabrir Caja de Turno
+        </h2>
+        <p className="text-[11px] text-gray-400 mb-4">Revierte el cierre de caja para que el mozo pueda volver a imprimir. Solo actúa sobre la fecha de hoy.</p>
+        <div className="flex flex-col gap-2.5">
+          <div className="flex items-center justify-between px-3 py-3 bg-amber-50 border border-amber-100 rounded-lg">
+            <div>
+              <p className="text-sm font-medium text-gray-900">🌅 Turno Mañana</p>
+              <p className="text-[11px] text-gray-400">Reabre la caja del turno mañana de hoy.</p>
+            </div>
+            <button
+              onClick={() => handleAbrirCaja('maniana')}
+              className="text-xs font-medium px-3.5 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors shrink-0 ml-3"
+            >
+              Reabrir
+            </button>
+          </div>
+          <div className="flex items-center justify-between px-3 py-3 bg-amber-50 border border-amber-100 rounded-lg">
+            <div>
+              <p className="text-sm font-medium text-gray-900">🌙 Turno Noche</p>
+              <p className="text-[11px] text-gray-400">Reabre la caja del turno noche de hoy.</p>
+            </div>
+            <button
+              onClick={() => handleAbrirCaja('noche')}
+              className="text-xs font-medium px-3.5 py-2 rounded-lg bg-amber-500 text-white hover:bg-amber-600 transition-colors shrink-0 ml-3"
+            >
+              Reabrir
+            </button>
+          </div>
         </div>
       </div>
 
