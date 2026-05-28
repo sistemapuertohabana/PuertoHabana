@@ -10,9 +10,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Faltan datos obligatorios' }, { status: 400 });
     }
 
-    // 1. Update pedidos to Cerrado
+    // 1. Update comandas to Cerrado
     const { error: updateErr } = await sb
-      .from('pedidos')
+      .from('comandas')
       .update({ estado: 'Cerrado' })
       .eq('mozo_id', mozo_id)
       .eq('fecha', fecha)
