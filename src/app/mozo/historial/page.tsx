@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, CreditCard } from 'lucide-react';
+import { FileText, CheckCircle2, Clock, Package, Plus, Minus, X, Search, CreditCard, Wine } from 'lucide-react';
 import Link from 'next/link';
 import { subscribeInventario, type InventarioItem } from '@/lib/db';
 import Boleta from '@/components/Boleta';
@@ -16,7 +16,8 @@ interface Comanda {
   hora: string;
   fecha: string;
   total: number;
-  items?: { nombre: string; cantidad: number; precio: number; categoria?: string; notas?: string }[];
+  created_at?: string;
+  items?: { id?: number; nombre: string; cantidad: number; precio: number; categoria?: string; notas?: string; estado?: string; created_at?: string }[];
 }
 
 function getLocalDateString() {
@@ -35,6 +36,35 @@ export default function MozoHistorialPage() {
   const [taperModalData, setTaperModalData] = useState<Comanda | null>(null);
   const [taperCart, setTaperCart] = useState<{ nombre: string; precio: number; qty: number }[]>([]);
   const [taperSuccess, setTaperSuccess] = useState(false);
+  const [selectedItemIds, setSelectedItemIds] = useState<Set<number>>(new Set());
+
+  // Estado para "Agregar items" a una comanda activa
+  const [addItemsModal, setAddItemsModal] = useState<Comanda | null>(null);
+  const [addItemsCart, setAddItemsCart] = useState<{ name: string; price: number; qty: number; category: string }[]>([]);
+  const [comidaDinamica, setComidaDinamica] = useState<InventarioItem[]>([]);
+  const [bebidasDinamica, setBebidasDinamica] = useState<InventarioItem[]>([]);
+  const [addItemsSuccess, setAddItemsSuccess] = useState(false);
+  const [addItemsSending, setAddItemsSending] = useState(false);
+  const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
+  const [activeBebidaCat, setActiveBebidaCat] = useState<string>('Todos');
+
+  // Split de cuenta (dividir items en nueva comanda)
+  const [splitModalData, setSplitModalData] = useState<Comanda | null>(null);
+  const [splitSelectedIds, setSplitSelectedIds] = useState<Set<number>>(new Set());
+  const [splitSending, setSplitSending] = useState(false);
+  const [splitSuccess, setSplitSuccess] = useState<{ originalId: number; newId: number; newTotal: number } | null>(null);
+
+  // Éxito de pago parcial — mostrar resumen y opción de imprimir solo items pagados
+  const [partialPaymentSuccess, setPartialPaymentSuccess] = useState<{
+    comandaId: number;
+    mesa: string;
+    mozoNombre: string;
+    fecha: string;
+    hora: string;
+    items: { item: string; cantidad: number; precio: number; notas?: string }[];
+    metodo: string;
+    total: number;
+  } | null>(null);
 
   // Cliente para boleta electrónica / WhatsApp
   const [clienteHist, setClienteHist] = useState<{ id: number; nombre: string; dni?: string; ruc?: string; telefono?: string } | null>(null);
@@ -54,10 +84,16 @@ export default function MozoHistorialPage() {
       : getLocalDateString()
   );
 
-  // Suscribirse a tapers del inventario
+  // Suscribirse a inventario
   useEffect(() => {
-    const unsub = subscribeInventario('tapers', (data) => setTapers(data));
-    return () => unsub();
+    const unsubTapers = subscribeInventario('tapers', (data) => setTapers(data));
+    const unsubComida = subscribeInventario('comida', (data) => setComidaDinamica(data));
+    const unsubBebidas = subscribeInventario('bebidas', (data) => setBebidasDinamica(data));
+    return () => {
+      unsubTapers();
+      unsubComida();
+      unsubBebidas();
+    };
   }, []);
 
   // ── Yape QR Modal ────────────────────────────────────────────────
@@ -156,47 +192,35 @@ export default function MozoHistorialPage() {
         hora: c.hora,
         fecha: c.fecha,
         total: Number(c.total) || 0,          items: (c.items || []).map((i: any) => ({
+          id: i.id,
           nombre: i.nombre,
           cantidad: i.cantidad,
           precio: Number(i.precio) || 0,
           categoria: i.categoria,
           notas: i.notas,
+          estado: i.estado,
         })),
       }));
       // Filtrar por mozo solo si no está activo "Todas las comandas"
       const mozoComandas = (mozoId && !showAllMozos) ? mapped.filter(c => c.mozo_id === mozoId) : mapped;
       
-      // Group by Mesa + Status (Entregado vs Activo)
-      const groupedMap = new Map<string, Comanda>();
-      mozoComandas.forEach(c => {
-        const isEntregado = c.estado === 'Entregado';
-        const key = `${c.mesa}-${isEntregado ? 'Entregado' : 'Activo'}`;
-        if (!groupedMap.has(key)) {
-          groupedMap.set(key, { ...c, items: [...(c.items || [])] });
-        } else {
-          const existing = groupedMap.get(key)!;
-          existing.items = [...(existing.items || []), ...(c.items || [])];
-          existing.total += c.total;
-          if (c.hora > existing.hora) existing.hora = c.hora; // update to latest time
-        }
-      });
-      setComandas(Array.from(groupedMap.values()).sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
+      // Cada comanda se muestra independientemente (sin fusionar por mesa+estado)
+      setComandas(mozoComandas.sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
     } catch {
       // Fallback localStorage
       try {
         const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
         const hoy = all.filter((p: any) => p.fecha === fecha);
-        // Agrupar por mesa+estado
+        // Agrupar por mesa+hora+mozo para mantener items del mismo pedido juntos,
+        // pero sin fusionar pedidos diferentes de la misma mesa
         const grouped: Record<string, Comanda> = {};
         hoy.forEach((p: any) => {
-          const isEntregado = p.estado === 'Entregado';
-          const key = `${p.mesa}-${isEntregado ? 'Entregado' : 'Activo'}`;
+          const key = `${p.mesa}-${p.hora}-${p.mozoNombre || 'Mozo'}`;
           if (!grouped[key]) {
             grouped[key] = { id: p.id, mesa: p.mesa, mozo_nombre: p.mozoNombre, mozo_id: p.mozoId, estado: p.estado, hora: p.hora, fecha: p.fecha, total: 0, items: [] };
           }
           grouped[key].total += p.precio * p.cantidad;
           grouped[key].items?.push({ nombre: p.item, cantidad: p.cantidad, precio: p.precio, notas: p.notas });
-          if (p.hora > grouped[key].hora) grouped[key].hora = p.hora;
         });
         const mozoComandasFallback = Object.values(grouped).filter(c => !mozoId || showAllMozos || c.mozo_id === mozoId);
         setComandas(mozoComandasFallback.sort((a, b) => new Date(`${b.fecha}T${b.hora}`).getTime() - new Date(`${a.fecha}T${a.hora}`).getTime()));
@@ -212,7 +236,7 @@ export default function MozoHistorialPage() {
     return () => { clearInterval(interval); window.removeEventListener('storage', loadComandas); };
   }, [loadComandas, showAllMozos]);
 
-  const confirmarCobro = async (id: number, metodo: string) => {
+  const confirmarCobro = async (id: number, metodo: string, paidItemIds?: number[]) => {
     // Save client info before closing modal
     if (clienteHist?.nombre && (clienteHist?.dni || clienteHist?.ruc)) {
       try {
@@ -223,17 +247,48 @@ export default function MozoHistorialPage() {
       } catch {}
     }
 
+    const isPartial = paidItemIds && paidItemIds.length > 0 && paidItemIds.length < (pagoModalData?.items?.length || 0);
+
+    // Guardar snapshot de items pagados ANTES de cerrar el modal
+    const paidItemsSnapshot = isPartial && pagoModalData?.items && paidItemIds
+      ? pagoModalData.items.filter(i => i.id && paidItemIds.includes(i.id))
+      : [];
+    const mesaSnapshot = pagoModalData?.mesa || '';
+    const mozoSnapshot = pagoModalData?.mozo_nombre || 'Mozo';
+    const fechaSnapshot = pagoModalData?.fecha || '';
+    const horaSnapshot = pagoModalData?.hora || '';
+
     // Cierra el modal de inmediato (optimistic UI)
     setPagoModalData(null);
     setPagoInputs({ yape: '', efectivo: '' });
+    setSelectedItemIds(new Set());
 
     try {
+      const body: any = { estado: 'Entregado', metodo_pago: metodo };
+      if (isPartial) {
+        body.paid_item_ids = paidItemIds;
+        delete body.estado; // no cambiar estado de la comanda si es parcial
+      }
       const res = await fetch(`/api/pedidos/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ estado: 'Entregado', metodo_pago: metodo }),
+        body: JSON.stringify(body),
       });
       if (!res.ok) throw new Error('API error');
+
+      // Mostrar resumen del pago parcial con opción de imprimir
+      if (isPartial && paidItemsSnapshot.length > 0) {
+        setPartialPaymentSuccess({
+          comandaId: id,
+          mesa: mesaSnapshot,
+          mozoNombre: mozoSnapshot,
+          fecha: fechaSnapshot,
+          hora: horaSnapshot,
+          items: paidItemsSnapshot.map(i => ({ item: i.nombre, cantidad: i.cantidad, precio: i.precio, notas: i.notas })),
+          metodo,
+          total: paidItemsSnapshot.reduce((s, i) => s + i.precio * i.cantidad, 0),
+        });
+      }
 
       // Notificar al admin
       fetch('/api/notificaciones', {
@@ -241,27 +296,43 @@ export default function MozoHistorialPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           rol_destino: 'admin',
-          titulo: 'Nuevo Pago Recibido',
-          mensaje: `La comanda fue cobrada con ${metodo}`
+          titulo: isPartial ? '💰 Pago Parcial' : 'Nuevo Pago Recibido',
+          mensaje: isPartial
+            ? `Se cobraron ${paidItemIds!.length} item(s) de comanda #${id} con ${metodo}`
+            : `La comanda fue cobrada con ${metodo}`
         })
       }).catch(() => {});
 
     } catch {
       // Fallback: marcar en localStorage
-      const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      localStorage.setItem('puerto_habana_pedidos', JSON.stringify(
-        all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)
-      ));
+      // Nota: pago parcial no soportado en localStorage fallback
+      if (!isPartial) {
+        const all = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+        localStorage.setItem('puerto_habana_pedidos', JSON.stringify(
+          all.map((p: any) => p.id === id ? { ...p, estado: 'Entregado', metodo_pago: metodo } : p)
+        ));
+      }
     } finally {
       // Recargar después de un pequeño delay para asegurar que la BD actualizó
       setTimeout(() => loadComandas(), 600);
     }
   };
 
+  const toggleItemSelection = (itemId: number) => {
+    setSelectedItemIds(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) next.delete(itemId);
+      else next.add(itemId);
+      return next;
+    });
+  };
+
   const handlePagoModalOpen = (c: Comanda) => {
     setPagoModalData(c);
     setPagoInputs({ yape: '', efectivo: '' });
     setClienteHist(null);
+    // Solo seleccionar items que NO estén ya pagados
+    setSelectedItemIds(new Set((c.items || []).filter(i => i.id && i.estado !== 'Entregado').map(i => i.id!).filter(Boolean)));
   };
 
   const total = comandas.reduce((s, c) => s + Number(c.total), 0);
@@ -343,13 +414,27 @@ export default function MozoHistorialPage() {
 
                   {c.items && c.items.length > 0 && (
                     <ul className="space-y-1 mb-3">
-                      {c.items.map((item, i) => (
-                        <li key={i} className="text-sm text-gray-700 flex items-center gap-2">
-                          <span className="font-bold text-gray-900">{item.cantidad}×</span>
-                          <span>{item.nombre}</span>
-                          <span className="text-gray-400 ml-auto">S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
-                        </li>
-                      ))}
+                      {c.items.map((item, i) => {
+                        const isPaid = item.estado === 'Entregado';
+                        return (
+                          <li key={i} className={`text-sm flex items-center gap-2 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
+                            {isPaid ? (
+                              <span className="w-3.5 h-3.5 rounded-full bg-green-500 flex items-center justify-center shrink-0">
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round">
+                                  <polyline points="20 6 9 17 4 12"/>
+                                </svg>
+                              </span>
+                            ) : (
+                              <span className="font-bold text-gray-900">{item.cantidad}×</span>
+                            )}
+                            <span className={isPaid ? 'line-through' : ''}>{item.nombre}</span>
+                            {isPaid && (
+                              <span className="text-[9px] font-bold text-green-600 bg-green-100 px-1.5 py-0.5 rounded-full ml-1 shrink-0">Pagado</span>
+                            )}
+                            <span className={`ml-auto ${isPaid ? 'text-green-600/60' : 'text-gray-400'}`}>S/ {(Number(item.precio) * Number(item.cantidad)).toFixed(2)}</span>
+                          </li>
+                        );
+                      })}
                     </ul>
                   )}
                 </div>
@@ -393,6 +478,26 @@ export default function MozoHistorialPage() {
                       <Package size={12} /> Tapers
                     </button>
                   )}
+                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && (
+                    <button onClick={() => {
+                      setAddItemsModal(c);
+                      setAddItemsCart([]);
+                      setAddItemsSuccess(false);
+                    }}
+                      className="flex-shrink-0 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px]">
+                      <Plus size={12} /> Agregar
+                    </button>
+                  )}
+                  {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').length > 1 && (
+                    <button onClick={() => {
+                      setSplitModalData(c);
+                      setSplitSelectedIds(new Set());
+                      setSplitSuccess(null);
+                    }}
+                      className="flex-shrink-0 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px]">
+                      ✂️ Dividir
+                    </button>
+                  )}
                   {c.estado !== 'Entregado' && c.estado !== 'Cerrado' && Number(c.total) > 0 && (
                     <button onClick={() => handlePagoModalOpen(c)}
                       className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px]">
@@ -408,6 +513,475 @@ export default function MozoHistorialPage() {
                 </div>
 
                 {/* Modal de Pago Mixto / Vuelto */}
+                {/* Modal: Agregar items a comanda activa */}
+                {addItemsModal?.id === c.id && (
+                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-lg shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+                      <div className="flex justify-between items-center mb-4 shrink-0">
+                        <h3 className="text-xl font-bold text-gray-900">Agregar productos a {c.mesa}</h3>
+                        <button onClick={() => setAddItemsModal(null)} className="p-1.5 hover:bg-gray-100 rounded-full">
+                          <X size={20} className="text-gray-400" />
+                        </button>
+                      </div>
+
+                      {addItemsSuccess && (
+                        <div className="mb-3 p-3 bg-green-50 border border-green-200 rounded-xl text-green-700 text-sm font-medium">
+                          ✓ Productos agregados correctamente a la comanda
+                        </div>
+                      )}
+
+                      {addItemsSending && (
+                        <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm font-medium flex items-center gap-2">
+                          <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                          Enviando productos...
+                        </div>
+                      )}
+
+                      <div className="flex-1 overflow-y-auto space-y-5">
+                        {/* Comida */}
+                        {comidaDinamica.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <h4 className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Platos</h4>
+                            </div>
+                            {(() => {
+                              const cats = ['Todos', ...Array.from(new Set(comidaDinamica.map(c => c.categoria || 'Otros').filter(Boolean)))];
+                              const filtered = activeComidaCat === 'Todos' ? comidaDinamica : comidaDinamica.filter(c => (c.categoria || 'Otros') === activeComidaCat);
+                              return (
+                                <>
+                                  <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                                    {cats.map(c => (
+                                      <button key={c} onClick={() => setActiveComidaCat(c)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
+                                          activeComidaCat === c ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >{c}</button>
+                                    ))}
+                                  </div>
+                                  <div className="space-y-1">
+                                    {filtered.map(item => {
+                                      const qty = addItemsCart.find(c => c.name === item.nombre)?.qty || 0;
+                                      return (
+                                        <div key={item.nombre} className="flex justify-between items-center rounded-lg px-3 py-2.5 border border-gray-100 bg-white hover:border-gray-200 transition-all">
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-sm text-gray-900 truncate">{item.nombre}</p>
+                                            <p className="text-[11px] text-gray-400">S/ {Number(item.precio).toFixed(2)}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                            <button onClick={() => setAddItemsCart(prev => {
+                                              const existing = prev.find(c => c.name === item.nombre);
+                                              if (existing) {
+                                                if (existing.qty <= 1) return prev.filter(c => c.name !== item.nombre);
+                                                return prev.map(c => c.name === item.nombre ? {...c, qty: c.qty - 1} : c);
+                                              }
+                                              return prev;
+                                            })} disabled={qty === 0}
+                                              className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-30 hover:bg-gray-200">
+                                              <Minus size={12} className="text-gray-500" />
+                                            </button>
+                                            <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                                            <button onClick={() => setAddItemsCart(prev => {
+                                              const existing = prev.find(c => c.name === item.nombre);
+                                              if (existing) return prev.map(c => c.name === item.nombre ? {...c, qty: c.qty + 1} : c);
+                                              return [...prev, { name: item.nombre, price: item.precio, qty: 1, category: 'comida' }];
+                                            })}
+                                              className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all">
+                                              <Plus size={12} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Bebidas */}
+                        {bebidasDinamica.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Wine size={14} className="text-gray-400" />
+                              <h4 className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Bebidas</h4>
+                            </div>
+                            {(() => {
+                              const cats = ['Todos', ...Array.from(new Set(bebidasDinamica.map(b => b.categoria || 'Otras').filter(Boolean)))];
+                              const filtered = activeBebidaCat === 'Todos' ? bebidasDinamica : bebidasDinamica.filter(b => (b.categoria || 'Otras') === activeBebidaCat);
+                              return (
+                                <>
+                                  <div className="flex gap-1.5 overflow-x-auto pb-2 mb-2 scrollbar-hide" style={{ scrollbarWidth: 'none' }}>
+                                    {cats.map(c => (
+                                      <button key={c} onClick={() => setActiveBebidaCat(c)}
+                                        className={`px-3 py-1.5 rounded-lg text-[10px] font-bold whitespace-nowrap transition-colors shrink-0 ${
+                                          activeBebidaCat === c ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                                        }`}
+                                      >{c}</button>
+                                    ))}
+                                  </div>
+                                  <div className="space-y-1">
+                                    {filtered.map(bebida => {
+                                      if (bebida.tamanos && bebida.tamanos.length > 0) {
+                                        return bebida.tamanos.map((t: any, ti: number) => {
+                                          const itemKey = `${bebida.nombre}||${t.nombre}`;
+                                          const qty = addItemsCart.find(c => c.name === itemKey)?.qty || 0;
+                                          return (
+                                            <div key={itemKey} className="flex justify-between items-center rounded-lg px-3 py-2.5 border border-gray-100 bg-white hover:border-gray-200 transition-all">
+                                              <div className="min-w-0 flex-1">
+                                                <p className="text-sm text-gray-900 truncate">{bebida.nombre} <span className="text-gray-500 font-medium">{t.nombre}</span></p>
+                                                <p className="text-[11px] text-gray-400">S/ {Number(t.precio).toFixed(2)}</p>
+                                              </div>
+                                              <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                                <button onClick={() => setAddItemsCart(prev => {
+                                                  const existing = prev.find(c => c.name === itemKey);
+                                                  if (existing) {
+                                                    if (existing.qty <= 1) return prev.filter(c => c.name !== itemKey);
+                                                    return prev.map(c => c.name === itemKey ? {...c, qty: c.qty - 1} : c);
+                                                  }
+                                                  return prev;
+                                                })} disabled={qty === 0}
+                                                  className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-30 hover:bg-gray-200">
+                                                  <Minus size={12} className="text-gray-500" />
+                                                </button>
+                                                <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                                                <button onClick={() => setAddItemsCart(prev => {
+                                                  const existing = prev.find(c => c.name === itemKey);
+                                                  if (existing) return prev.map(c => c.name === itemKey ? {...c, qty: c.qty + 1} : c);
+                                                  return [...prev, { name: itemKey, price: t.precio, qty: 1, category: 'bebidas' }];
+                                                })}
+                                                  className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all">
+                                                  <Plus size={12} />
+                                                </button>
+                                              </div>
+                                            </div>
+                                          );
+                                        });
+                                      }
+                                      const qty = addItemsCart.find(c => c.name === bebida.nombre)?.qty || 0;
+                                      return (
+                                        <div key={bebida.id} className="flex justify-between items-center rounded-lg px-3 py-2.5 border border-gray-100 bg-white hover:border-gray-200 transition-all">
+                                          <div className="min-w-0 flex-1">
+                                            <p className="text-sm text-gray-900 truncate">{bebida.nombre}</p>
+                                            <p className="text-[11px] text-gray-400">S/ {Number(bebida.precio).toFixed(2)}</p>
+                                          </div>
+                                          <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                            <button onClick={() => setAddItemsCart(prev => {
+                                              const existing = prev.find(c => c.name === bebida.nombre);
+                                              if (existing) {
+                                                if (existing.qty <= 1) return prev.filter(c => c.name !== bebida.nombre);
+                                                return prev.map(c => c.name === bebida.nombre ? {...c, qty: c.qty - 1} : c);
+                                              }
+                                              return prev;
+                                            })} disabled={qty === 0}
+                                              className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-30 hover:bg-gray-200">
+                                              <Minus size={12} className="text-gray-500" />
+                                            </button>
+                                            <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                                            <button onClick={() => setAddItemsCart(prev => {
+                                              const existing = prev.find(c => c.name === bebida.nombre);
+                                              if (existing) return prev.map(c => c.name === bebida.nombre ? {...c, qty: c.qty + 1} : c);
+                                              return [...prev, { name: bebida.nombre, price: bebida.precio, qty: 1, category: 'bebidas' }];
+                                            })}
+                                              className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all">
+                                              <Plus size={12} />
+                                            </button>
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </>
+                              );
+                            })()}
+                          </div>
+                        )}
+
+                        {/* Tapers */}
+                        {tapers.length > 0 && (
+                          <div>
+                            <div className="flex items-center gap-2 mb-2">
+                              <Package size={14} className="text-gray-400" />
+                              <h4 className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Envases / Tapers</h4>
+                            </div>
+                            <div className="space-y-1">
+                              {tapers.map(t => {
+                                const qty = addItemsCart.find(c => c.name === t.nombre)?.qty || 0;
+                                return (
+                                  <div key={t.nombre} className="flex justify-between items-center rounded-lg px-3 py-2.5 border border-gray-100 bg-white hover:border-gray-200 transition-all">
+                                    <div className="min-w-0 flex-1">
+                                      <p className="text-sm text-gray-900 truncate">{t.nombre}</p>
+                                      <p className="text-[11px] text-gray-400">S/ {Number(t.precio).toFixed(2)}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 shrink-0 ml-2">
+                                      <button onClick={() => setAddItemsCart(prev => {
+                                        const existing = prev.find(c => c.name === t.nombre);
+                                        if (existing) {
+                                          if (existing.qty <= 1) return prev.filter(c => c.name !== t.nombre);
+                                          return prev.map(c => c.name === t.nombre ? {...c, qty: c.qty - 1} : c);
+                                        }
+                                        return prev;
+                                      })} disabled={qty === 0}
+                                        className="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center disabled:opacity-30 hover:bg-gray-200">
+                                        <Minus size={12} className="text-gray-500" />
+                                      </button>
+                                      <span className="w-5 text-center font-semibold text-sm">{qty}</span>
+                                      <button onClick={() => setAddItemsCart(prev => {
+                                        const existing = prev.find(c => c.name === t.nombre);
+                                        if (existing) return prev.map(c => c.name === t.nombre ? {...c, qty: c.qty + 1} : c);
+                                        return [...prev, { name: t.nombre, price: t.precio, qty: 1, category: 'tapers' }];
+                                      })}
+                                        className="w-7 h-7 rounded-full bg-blue-600 text-white flex items-center justify-center hover:bg-blue-700 active:scale-95 transition-all">
+                                        <Plus size={12} />
+                                      </button>
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+
+                      {addItemsCart.length > 0 && (
+                        <div className="border-t border-gray-200 pt-3 mt-3 mb-2 shrink-0">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-xs text-gray-500">{addItemsCart.reduce((s, c) => s + c.qty, 0)} productos</span>
+                            <span className="text-base font-bold text-gray-900">S/ {addItemsCart.reduce((s, c) => s + c.price * c.qty, 0).toFixed(2)}</span>
+                          </div>
+                        </div>
+                      )}
+
+                      <div className="flex gap-3 mt-1 shrink-0">
+                        <button onClick={() => { setAddItemsModal(null); setAddItemsCart([]); setAddItemsSuccess(false); }}
+                          className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">
+                          Cancelar
+                        </button>
+                        <button
+                          disabled={addItemsCart.length === 0 || addItemsSending}
+                          onClick={async () => {
+                            if (addItemsSending) return;
+                            setAddItemsSending(true);
+                            try {
+                              const res = await fetch(`/api/pedidos/${c.id}`, {
+                                method: 'PATCH',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  items: addItemsCart.map(ci => ({
+                                    nombre: ci.name.includes('||')
+                                      ? `${ci.name.split('||')[0]} (${ci.name.split('||')[1]})`
+                                      : ci.name,
+                                    cantidad: ci.qty,
+                                    precio: ci.price,
+                                    categoria: ci.category,
+                                  }))
+                                }),
+                              });
+                              if (!res.ok) throw new Error('Error al agregar items');
+                              setAddItemsSuccess(true);
+                              setAddItemsCart([]);
+                              setTimeout(() => {
+                                setAddItemsModal(null);
+                                setAddItemsSuccess(false);
+                                loadComandas();
+                              }, 1200);
+                            } catch {
+                              alert('Error al agregar productos. Intente de nuevo.');
+                            } finally {
+                              setAddItemsSending(false);
+                            }
+                          }}
+                          className="flex-1 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50 shadow-md"
+                        >
+                          Agregar {addItemsCart.length > 0 ? `(${addItemsCart.reduce((s, c) => s + c.qty, 0)} items)` : 'Productos'}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                )}
+                {/* Modal de Dividir Cuenta */}
+                {splitModalData?.id === c.id && (
+                  <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
+                    <div className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl animate-in zoom-in-95 duration-200 max-h-[85vh] flex flex-col">
+                      <div className="flex justify-between items-center mb-4 shrink-0">
+                        <h3 className="text-xl font-bold text-gray-900">✂️ Dividir cuenta — {c.mesa}</h3>
+                        <button onClick={() => { setSplitModalData(null); setSplitSuccess(null); }} className="p-1.5 hover:bg-gray-100 rounded-full">
+                          <X size={20} className="text-gray-400" />
+                        </button>
+                      </div>
+
+                      <p className="text-xs text-gray-500 mb-4">
+                        Selecciona los items que quieres <b>mover a una nueva comanda separada</b>.
+                        Los items no seleccionados se quedarán en esta comanda.
+                      </p>
+
+                      {splitSuccess && splitSuccess.originalId === c.id ? (
+                        <div className="py-6 text-center">
+                          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center mx-auto mb-4">
+                            <span className="text-2xl">✂️</span>
+                          </div>
+                          <p className="text-lg font-bold text-gray-900 mb-1">¡Cuenta dividida!</p>
+                          <p className="text-sm text-gray-500 mb-2">
+                            Se creó una nueva comanda separada con los items seleccionados.
+                          </p>
+                          <div className="bg-gray-50 rounded-xl p-4 mb-4 space-y-2">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-gray-600">Comanda original ({c.mesa})</span>
+                              <span className="font-bold text-gray-900">S/ {(Number(c.total) - splitSuccess.newTotal).toFixed(2)}</span>
+                            </div>
+                            <div className="border-t border-gray-200 pt-2 flex justify-between text-sm">
+                              <span className="text-gray-600">Nueva comanda #{splitSuccess.newId}</span>
+                              <span className="font-bold text-violet-600">S/ {splitSuccess.newTotal.toFixed(2)}</span>
+                            </div>
+                          </div>
+                          <button
+                            onClick={() => { setSplitModalData(null); setSplitSuccess(null); loadComandas(); }}
+                            className="w-full py-3 bg-gray-900 text-white font-bold rounded-2xl hover:bg-gray-800 transition-colors"
+                          >
+                            Entendido
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          {/* Lista de items con checkboxes */}
+                          <div className="flex-1 overflow-y-auto mb-4 space-y-1">
+                            {c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').map((item) => {
+                              const itemId = item.id!;
+                              const isSelected = splitSelectedIds.has(itemId);
+                              return (
+                                <div
+                                  key={itemId}
+                                  onClick={() => {
+                                    setSplitSelectedIds(prev => {
+                                      const next = new Set(prev);
+                                      if (next.has(itemId)) next.delete(itemId);
+                                      else next.add(itemId);
+                                      return next;
+                                    });
+                                  }}
+                                  className={`flex items-center justify-between px-3 py-2.5 rounded-xl cursor-pointer transition-colors border ${
+                                    isSelected
+                                      ? 'bg-violet-50 border-violet-200'
+                                      : 'bg-white border-gray-100 hover:border-gray-200'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${
+                                      isSelected
+                                        ? 'bg-violet-600 border-violet-600'
+                                        : 'border-gray-300'
+                                    }`}>
+                                      {isSelected && (
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                      )}
+                                    </div>
+                                    <span className="text-sm text-gray-900 truncate">
+                                      {item.cantidad}× {item.nombre}
+                                    </span>
+                                  </div>
+                                  <span className="text-sm font-semibold text-gray-700 ml-2 shrink-0">
+                                    S/ {(item.precio * item.cantidad).toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+
+                          {/* Preview del split */}
+                          {(() => {
+                            const itemsConId = (c.items || []).filter(i => i.id);
+                            const selectedItems = itemsConId.filter(i => splitSelectedIds.has(i.id!));
+                            const remainingItems = itemsConId.filter(i => !splitSelectedIds.has(i.id!));
+                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                            const remainingTotal = remainingItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                            const canSplit = selectedItems.length > 0 && remainingItems.length > 0;
+
+                            return (
+                              <div className="bg-gray-50 rounded-xl p-3 border border-gray-200 mb-4 shrink-0">
+                                <p className="text-[10px] font-bold uppercase text-gray-500 tracking-wider mb-2">Vista previa</p>
+                                <div className="space-y-1.5">
+                                  <div className="flex justify-between text-sm">
+                                    <span className="text-gray-600">
+                                      {c.mesa} <span className="text-gray-400">({remainingItems.length} items)</span>
+                                    </span>
+                                    <span className="font-bold text-gray-900">S/ {remainingTotal.toFixed(2)}</span>
+                                  </div>
+                                  <div className="border-t border-gray-200 pt-1.5 flex justify-between text-sm">
+                                    <span className="text-violet-600 font-medium">
+                                      Nueva comanda <span className="text-violet-400">({selectedItems.length} items)</span>
+                                    </span>
+                                    <span className="font-bold text-violet-600">S/ {selectedTotal.toFixed(2)}</span>
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })()}
+
+                          {splitSending && (
+                            <div className="mb-3 p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-sm font-medium flex items-center gap-2 shrink-0">
+                              <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                              Dividiendo cuenta...
+                            </div>
+                          )}
+
+                          <div className="flex gap-3 shrink-0">
+                            <button onClick={() => { setSplitModalData(null); setSplitSuccess(null); }}
+                              className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">
+                              Cancelar
+                            </button>
+                            <button
+                              disabled={(() => {
+                                const itemsConId = (c.items || []).filter(i => i.id);
+                                const selectedItems = itemsConId.filter(i => splitSelectedIds.has(i.id!));
+                                const remainingItems = itemsConId.filter(i => !splitSelectedIds.has(i.id!));
+                                return !(selectedItems.length > 0 && remainingItems.length > 0) || splitSending;
+                              })()}
+                              onClick={async () => {
+                                if (splitSending) return;
+                                const itemsConId = (c.items || []).filter(i => i.id);
+                                const selectedItems = itemsConId.filter(i => splitSelectedIds.has(i.id!));
+                                const remainingItems = itemsConId.filter(i => !splitSelectedIds.has(i.id!));
+                                if (!(selectedItems.length > 0 && remainingItems.length > 0)) return;
+
+                                setSplitSending(true);
+                                try {
+                                  const res = await fetch('/api/pedidos/split', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({
+                                      comanda_id: c.id,
+                                      item_ids: selectedItems.map(i => i.id!),
+                                    }),
+                                  });
+                                  const data = await res.json();
+                                  if (!res.ok) {
+                                    throw new Error(data.error || 'Error al dividir');
+                                  }
+                                  setSplitSuccess({
+                                    originalId: c.id,
+                                    newId: data.new_comanda.id,
+                                    newTotal: data.new_comanda.total,
+                                  });
+                                  setSplitSelectedIds(new Set());
+                                } catch (err: any) {
+                                  alert('Error: ' + (err.message || 'No se pudo dividir la cuenta'));
+                                } finally {
+                                  setSplitSending(false);
+                                }
+                              }}
+                              className="flex-1 py-3 bg-violet-600 text-white font-bold hover:bg-violet-700 rounded-2xl transition-colors disabled:opacity-50 shadow-md"
+                            >
+                              Confirmar División
+                            </button>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+
                 {/* Modal de Tapers para comandas Entregado */}
                 {taperModalData?.id === c.id && (
                   <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
@@ -518,8 +1092,105 @@ export default function MozoHistorialPage() {
                 {pagoModalData?.id === c.id && (
                   <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm">
                     <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl animate-in zoom-in-95 duration-200">
-                      <h3 className="text-xl font-bold mb-1 text-center text-gray-900">Cobrar Mesa {c.mesa}</h3>
-                      <p className="text-center text-3xl font-black text-blue-600 mb-6">S/ {Number(c.total).toFixed(2)}</p>
+                      <h3 className="text-xl font-bold mb-1 text-center text-gray-900">Cobrar Mesa {c.mesa}{(() => { const total = (c.items || []).filter(i => i.id).length; const sel = selectedItemIds.size; if (total > 0 && sel > 0 && sel < total) return <span className="ml-2 text-sm font-bold text-amber-500">(Parcial)</span>; return null; })()}</h3>
+                      <p className="text-center text-3xl font-black text-blue-600 mb-6">S/ {(() => {
+                        const itemsConId = (c.items || []).filter(i => i.id);
+                        const selected = itemsConId.length > 0
+                          ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                          : (c.items || []);
+                        return selected.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                      })().toFixed(2)}</p>
+
+                      {/* ─── Selección de items (pago parcial) ─── */}
+                      {c.items && c.items.length > 0 && c.items.some(i => i.id) && (
+                        <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
+                          {(() => {
+                            const unpaidItems = (c.items || []).filter(i => i.id && i.estado !== 'Entregado');
+                            const hasUnpaid = unpaidItems.length > 0;
+                            return (
+                              <div className="bg-gray-50 px-3 py-2 border-b border-gray-200 flex justify-between items-center">
+                                <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+                                  {hasUnpaid ? 'Items del Pedido' : 'Items (todos pagados)'}
+                                </span>
+                                {hasUnpaid && (
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-[10px] text-gray-400">
+                                      {selectedItemIds.size} de {unpaidItems.length} seleccionados
+                                    </span>
+                                    <button
+                                      onClick={() => {
+                                        const unpaidIds = new Set(unpaidItems.map(i => i.id!).filter(Boolean));
+                                        if (selectedItemIds.size === unpaidItems.length) {
+                                          setSelectedItemIds(new Set());
+                                        } else {
+                                          setSelectedItemIds(unpaidIds);
+                                        }
+                                      }}
+                                      className="text-[10px] font-semibold text-blue-600 hover:text-blue-800 transition-colors"
+                                    >
+                                      {selectedItemIds.size === unpaidItems.length ? 'Deseleccionar todos' : 'Seleccionar todos'}
+                                    </button>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })()}
+                          <div className="divide-y divide-gray-100 max-h-48 overflow-y-auto">
+                            {c.items.map((item) => {
+                              const isPaid = item.estado === 'Entregado';
+                              const itemId = item.id!;
+                              const isSelected = selectedItemIds.has(itemId);
+                              return (
+                                <div
+                                  key={itemId}
+                                  onClick={() => !isPaid && toggleItemSelection(itemId)}
+                                  className={`flex items-center justify-between px-3 py-2.5 transition-colors ${
+                                    isPaid
+                                      ? 'bg-gray-50 cursor-default'
+                                      : isSelected ? 'bg-blue-50 cursor-pointer' : 'bg-white cursor-pointer hover:bg-gray-50'
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                                    {isPaid ? (
+                                      <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
+                                        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                          <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                      </div>
+                                    ) : (
+                                      <div onClick={(e) => { e.stopPropagation(); !isPaid && toggleItemSelection(itemId); }} className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 transition-colors cursor-pointer ${
+                                        isSelected
+                                          ? 'bg-blue-600 border-blue-600'
+                                          : 'border-gray-300'
+                                      }`}>
+                                        {isSelected && (
+                                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+                                            <polyline points="20 6 9 17 4 12"/>
+                                          </svg>
+                                        )}
+                                      </div>
+                                    )}
+                                    <div className="min-w-0">
+                                      <span className={`text-sm font-medium truncate block ${isPaid ? 'text-green-600/60 line-through' : 'text-gray-900'}`}>
+                                        {item.cantidad}× {item.nombre}
+                                      </span>
+                                      {isPaid && (
+                                        <span className="text-[9px] font-bold text-green-600">✓ Pagado</span>
+                                      )}
+                                      {!isPaid && item.notas && (
+                                        <span className="text-[10px] text-amber-600 truncate block">📝 {item.notas}</span>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <span className={`text-sm font-semibold ml-2 shrink-0 ${isPaid ? 'text-green-600/60' : 'text-gray-700'}`}>
+                                    S/ {(item.precio * item.cantidad).toFixed(2)}
+                                  </span>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )}
 
                       {/* Sección Cliente (boleta electrónica) */}
                       <div className="mb-4">
@@ -647,9 +1318,23 @@ export default function MozoHistorialPage() {
                       <div className="space-y-4 mb-6">
                         {/* Pago Rápido Completo */}
                         <div className="flex gap-2">
-                          <button onClick={() => setYapeQRData({ comandaId: c.id, total: Number(c.total), yapeMonto: Number(c.total), efectivoMonto: 0, metodo: 'Yape' })} className="flex-1 bg-[#7408B6] text-white py-3 rounded-2xl font-bold hover:bg-[#5C0691] transition-colors shadow-md text-sm">Yape</button>
-                          <button onClick={() => confirmarCobro(c.id, 'Efectivo')} className="flex-1 bg-green-600 text-white py-3 rounded-2xl font-bold hover:bg-green-700 transition-colors shadow-md text-sm">Efectivo</button>
-                          <button onClick={() => confirmarCobro(c.id, 'Tarjeta')} className="flex-1 bg-blue-600 text-white py-3 rounded-2xl font-bold hover:bg-blue-700 transition-colors shadow-md text-sm flex items-center justify-center gap-1"><CreditCard size={16} /> Tarjeta</button>
+                          {(() => {
+                            const itemsConId = (c.items || []).filter(i => i.id);
+                            const selectedItems = itemsConId.length > 0
+                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                              : (c.items || []);
+                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                            const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
+                            const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
+                            const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
+                            return (
+                              <>
+                                <button onClick={() => setYapeQRData({ comandaId: c.id, total: selectedTotal, yapeMonto: selectedTotal, efectivoMonto: 0, metodo: 'Yape' })} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-[#7408B6] text-white hover:bg-[#5C0691]')}>Yape</button>
+                                <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Efectivo', selectedIds) : confirmarCobro(c.id, 'Efectivo'); }} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-green-600 text-white hover:bg-green-700')}>Efectivo</button>
+                                <button onClick={() => { if (noSelection) return; isPartial ? confirmarCobro(c.id, 'Tarjeta', selectedIds) : confirmarCobro(c.id, 'Tarjeta'); }} disabled={noSelection} className={'flex-1 py-3 rounded-2xl font-bold transition-colors shadow-md text-sm flex items-center justify-center gap-1 ' + (noSelection ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700')}>{noSelection ? '' : <CreditCard size={16} />}{noSelection ? '—' : 'Tarjeta'}</button>
+                              </>
+                            );
+                          })()}
                         </div>
 
                         <div className="relative flex items-center py-2">
@@ -689,7 +1374,11 @@ export default function MozoHistorialPage() {
 
                         {/* Cálculo */}
                         {(() => {
-                          const t = Number(c.total);
+                          const itemsConId = (c.items || []).filter(i => i.id);
+                          const selectedItems = itemsConId.length > 0
+                            ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                            : (c.items || []);
+                          const t = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
                           const y = Number(pagoInputs.yape) || 0;
                           const e = Number(pagoInputs.efectivo) || 0;
                           const abonado = y + e;
@@ -711,19 +1400,39 @@ export default function MozoHistorialPage() {
                       <div className="flex gap-3 mt-6">
                         <button onClick={() => { setPagoModalData(null); setClienteHist(null); }} className="flex-1 py-3.5 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors">Cancelar</button>
                         <button
-                          disabled={((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < Number(c.total)}
+                          disabled={(() => {
+                            const itemsConId = (c.items || []).filter(i => i.id);
+                            if (itemsConId.length > 0 && selectedItemIds.size === 0) return true;
+                            const selectedItems = itemsConId.length > 0
+                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                              : (c.items || []);
+                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                            return ((Number(pagoInputs.yape)||0) + (Number(pagoInputs.efectivo)||0)) < selectedTotal;
+                          })()}
                           onClick={() => {
-                            const t = Number(c.total);
+                            const itemsConId = (c.items || []).filter(i => i.id);
+                            const selectedItems = itemsConId.length > 0
+                              ? itemsConId.filter(i => selectedItemIds.has(i.id!))
+                              : (c.items || []);
+                            const selectedTotal = selectedItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+                            const selectedIds = selectedItems.map(i => i.id!).filter(Boolean);
+                            const noSelection = itemsConId.length > 0 && selectedIds.length === 0;
+                            if (noSelection) return;
+                            const isPartial = selectedIds.length > 0 && selectedIds.length < (c.items?.length || 0);
                             const y = Number(pagoInputs.yape) || 0;
                             const e = Number(pagoInputs.efectivo) || 0;
-                            const efectivoCobrado = Math.max(0, t - y);
+                            const efectivoCobrado = Math.max(0, selectedTotal - y);
                             let metodo: any = 'Efectivo';
                             if (y > 0 && e > 0) {
                               metodo = `Mixto (Yape: S/${y.toFixed(2)}, Efe: S/${efectivoCobrado.toFixed(2)})`;
                             } else if (y > 0) {
                               metodo = 'Yape';
                             }
-                            confirmarCobro(c.id, metodo);
+                            if (isPartial) {
+                              confirmarCobro(c.id, metodo, selectedIds);
+                            } else {
+                              confirmarCobro(c.id, metodo);
+                            }
                           }}
                           className="flex-1 py-3.5 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-2xl transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-md">
                           Confirmar
@@ -821,6 +1530,80 @@ export default function MozoHistorialPage() {
       )}
 
 
+
+      {/* ── Modal de éxito: Pago Parcial ──────────────────────────────── */}
+      {partialPaymentSuccess && (
+        <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200">
+          <div
+            className="bg-white w-full max-w-sm rounded-3xl shadow-2xl p-6 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex justify-between items-center mb-3">
+              <h3 className="text-lg font-bold text-gray-900">💰 Pago Parcial</h3>
+              <button
+                onClick={() => setPartialPaymentSuccess(null)}
+                className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+              >
+                <X size={18} className="text-gray-400" />
+              </button>
+            </div>
+
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4">
+              <p className="text-sm font-bold text-amber-800">
+                ✓ Se cobraron {partialPaymentSuccess.items.length} item(s) de {partialPaymentSuccess.mesa}
+              </p>
+              <p className="text-xs text-amber-600 mt-0.5">
+                Método: {partialPaymentSuccess.metodo}
+              </p>
+            </div>
+
+            <div className="mb-4 border border-gray-200 rounded-xl overflow-hidden">
+              <div className="bg-gray-50 px-3 py-2 border-b border-gray-200">
+                <span className="text-[10px] font-bold uppercase text-gray-500 tracking-wider">Items Pagados</span>
+              </div>
+              <div className="divide-y divide-gray-100">
+                {partialPaymentSuccess.items.map((item, idx) => (
+                  <div key={idx} className="flex justify-between px-3 py-2">
+                    <span className="text-sm text-gray-900">{item.cantidad}× {item.item}</span>
+                    <span className="text-sm font-semibold text-gray-700">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                  </div>
+                ))}
+              </div>
+              <div className="bg-gray-50 px-3 py-2 border-t border-gray-200 flex justify-between">
+                <span className="text-sm font-bold text-gray-900">Total cobrado</span>
+                <span className="text-sm font-bold text-amber-600">S/ {partialPaymentSuccess.total.toFixed(2)}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-3">
+              <button
+                onClick={() => setPartialPaymentSuccess(null)}
+                className="flex-1 py-3 bg-gray-100 text-gray-600 font-bold hover:bg-gray-200 rounded-2xl transition-colors text-sm"
+              >
+                Cerrar
+              </button>
+              <button
+                onClick={() => {
+                  const data = partialPaymentSuccess;
+                  setPartialPaymentSuccess(null);
+                  setBoletaData({
+                    mesa: data.mesa,
+                    mozoNombre: data.mozoNombre,
+                    fecha: data.fecha,
+                    hora: data.hora,
+                    items: data.items,
+                    clienteNombre: '',
+                    clienteDocumento: '',
+                  });
+                }}
+                className="flex-1 py-3 bg-blue-600 text-white font-bold hover:bg-blue-700 rounded-2xl transition-colors shadow-md text-sm flex items-center justify-center gap-2"
+              >
+                🧾 Boleta (solo pagados)
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast */}
       {toastHist && (

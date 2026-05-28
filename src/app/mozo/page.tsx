@@ -129,10 +129,12 @@ function getLocalDateString() {
 
 export default function MozoPage() {
   const [activeMesa, setActiveMesa] = useState<MesaConfig | null>(null);
-  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean; notas?: string }[]>([]);
+  const [cart, setCart] = useState<{ name: string; price: number; qty: number; category: string; esCortesia?: boolean; notas?: string; persona?: number }[]>([]);
   const [cartItemNote, setCartItemNote] = useState<string | null>(null);
+  const [currentPersona, setCurrentPersona] = useState(1);
+  const [maxPersonas, setMaxPersonas] = useState(1);
   const [success, setSuccess] = useState(false);
-  const [lastOrder, setLastOrder] = useState<{ mesa: string; items: { nombre: string; cantidad: number; categoria?: string }[]; fecha: string; hora: string; mozoNombre: string } | null>(null);
+  const [lastOrder, setLastOrder] = useState<{ mesa: string; items: { nombre: string; cantidad: number; categoria?: string }[]; fecha: string; hora: string; mozoNombre: string; personaOrders?: { mesa: string; items: { nombre: string; cantidad: number; categoria?: string; notas?: string }[] }[] } | null>(null);
   const [mesasOcupadas, setMesasOcupadas] = useState<Set<string>>(new Set());
   const [tapers, setTapers] = useState<InventarioItem[]>([]);
   const [comidaDinamica, setComidaDinamica] = useState<InventarioItem[]>([]);
@@ -145,7 +147,8 @@ export default function MozoPage() {
   
   const [isConfigMode, setIsConfigMode] = useState(false);
   const [mesas, setMesas] = useState<MesaConfig[]>([]);
-  const [mergeTarget, setMergeTarget] = useState<string | null>(null);
+  const [selectedForMerge, setSelectedForMerge] = useState<Set<string>>(new Set());
+  const mergeSelectCount = selectedForMerge.size;
   const [editingSillas, setEditingSillas] = useState<string | null>(null);
   const [turnoInfo, setTurnoInfo] = useState<{ activo: boolean; mensaje: string }>({ activo: true, mensaje: '' });
   const [showHorarioModal, setShowHorarioModal] = useState(false);
@@ -158,6 +161,7 @@ export default function MozoPage() {
   const [errorAsistencia, setErrorAsistencia] = useState('');
   const [activeComidaCat, setActiveComidaCat] = useState<string>('Todos');
   const [activeBebidaCat, setActiveBebidaCat] = useState<string>('Todos');
+  const [enviarError, setEnviarError] = useState<string | null>(null);
   const [comandaPrintData, setComandaPrintData] = useState<{
     mesa: string;
     mozoNombre: string;
@@ -340,7 +344,7 @@ export default function MozoPage() {
         if (newQty <= 0) return prev.filter(c => c.name !== item.name);
         return prev.map(c => c.name === item.name ? { ...c, qty: newQty } : c);
       }
-      if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category, notas: '' }];
+      if (delta > 0) return [...prev, { name: item.name, price: item.price, qty: 1, category: item.category, notas: '', persona: currentPersona }];
       return prev;
     });
   };
@@ -443,45 +447,92 @@ export default function MozoPage() {
       if (session?.nombre) { mozoId = session.id || null; mozoNombre = session.nombre; }
     } catch {}
 
-    const items = cart.map(c => {
-      const formattedName = c.name.includes('||') ? `${c.name.split('||')[0]} (${c.name.split('||')[1]})` : c.name;
-      return {
-      nombre: c.esCortesia ? `🎁 ${formattedName}` : formattedName,
-      cantidad: c.qty,
-      precio: c.esCortesia ? 0 : c.price,
-      categoria: c.category,
-      notas: c.esCortesia 
-        ? '🎁 Cortesía de la Casa' 
-        : (c.notas && c.notas.trim() ? c.notas.trim() : null),
-    };});
+    // ❌ clear error
+    setEnviarError(null);
+    
+    // Group items by persona
+    const personaGroups = Array.from({ length: maxPersonas }, (_, i) => i + 1)
+      .map(p => ({
+        persona: p,
+        items: cart.filter(c => c.persona === p),
+      }))
+      .filter(g => g.items.length > 0);
 
-    try {
-      await fetch('/api/pedidos', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
-      });
+    let successCount = 0;
+    let lastError: string | null = null;
+    const allSentItems: { nombre: string; cantidad: number; categoria?: string }[] = [];
+    const personaOrders: { mesa: string; items: { nombre: string; cantidad: number; categoria?: string }[] }[] = [];
+
+    for (const group of personaGroups) {
+      const personaLabel = personaGroups.length > 1 ? ` · Persona ${group.persona}` : '';
+      const fullMesaName = `${mesaName}${personaLabel}`;
       
-    } catch {
-      addToSyncQueue('POST', '/api/pedidos', {
-        mesa_nombre: mesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
-      });
-      const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
-      const nuevos = cart.map(c => {
+      const items = group.items.map(c => {
         const formattedName = c.name.includes('||') ? `${c.name.split('||')[0]} (${c.name.split('||')[1]})` : c.name;
         return {
-        id: Date.now() + Math.random(), item: c.esCortesia ? `🎁 ${formattedName}` : formattedName, cantidad: c.qty,
-        mesa: mesaName, precio: c.esCortesia ? 0 : c.price, estado: 'Pendiente', hora,
-        notas: c.esCortesia ? '🎁 Cortesía de la Casa' : '', category: c.category, fecha, mozoId, mozoNombre,
-      };});
-      localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
+          nombre: c.esCortesia ? `🎁 ${formattedName}` : formattedName,
+          cantidad: c.qty,
+          precio: c.esCortesia ? 0 : c.price,
+          categoria: c.category,
+    notas: c.esCortesia 
+      ? '🎁 Cortesía de la Casa' 
+      : (c.notas && c.notas.trim() ? c.notas.trim() : undefined),
+        };
+      });
+      
+      allSentItems.push(...items);
+      personaOrders.push({ mesa: fullMesaName, items });
+
+      try {
+        const res = await fetch('/api/pedidos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ mesa_nombre: fullMesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora }),
+        });
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          lastError = errData.error || `Error ${res.status}`;
+        } else {
+          successCount++;
+        }
+      } catch {
+        // Fallback a localStorage + sync queue
+        addToSyncQueue('POST', '/api/pedidos', {
+          mesa_nombre: fullMesaName, mozo_id: mozoId, mozo_nombre: mozoNombre, items, fecha, hora
+        });
+        const existing = JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]');
+        const nuevos = items.map((i: any) => ({
+          id: Date.now() + Math.random(), item: i.nombre, cantidad: i.cantidad,
+          mesa: fullMesaName, precio: i.precio, estado: 'Pendiente', hora,
+          notas: i.notas || '', category: i.categoria, fecha, mozoId, mozoNombre,
+        }));
+        localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
+        successCount++;
+      }
     }
+
+    if (personaGroups.length === 0) return;
 
     setCart([]);
     setActiveMesa(null);
+    setCurrentPersona(1);
+    setMaxPersonas(1);
+    
+    if (lastError && successCount < personaGroups.length) {
+      setEnviarError(`Error al enviar ${personaGroups.length - successCount} de ${personaGroups.length} comanda(s): ${lastError}`);
+      setTimeout(() => setEnviarError(null), 5000);
+    }
+    
+    const fullLabel = personaGroups.length > 1 
+      ? `${mesaName} (${personaGroups.length} personas)` 
+      : mesaName;
     setSuccess(true);
-    setLastOrder({ mesa: mesaName, items, fecha, hora, mozoNombre });
-    setMesasOcupadas(prev => { const next = new Set(prev); next.add(mesaName); return next; });
+    setLastOrder({ mesa: fullLabel, items: allSentItems, fecha, hora, mozoNombre, personaOrders: personaGroups.length > 1 ? personaOrders : undefined });
+    setMesasOcupadas(prev => {
+      const next = new Set(prev);
+      next.add(mesaName);
+      return next;
+    });
     window.dispatchEvent(new Event('storage'));
     setTimeout(() => setSuccess(false), 3000);
   };
@@ -499,25 +550,21 @@ export default function MozoPage() {
     return mesas.find(x => x.id === allIds[0]) || m;
   };
 
-  const handleMerge = (mesa2Id: string) => {
-    if (!mergeTarget || mergeTarget === mesa2Id) {
-      setMergeTarget(null);
-      return;
-    }
-    const m1 = mesas.find(x => x.id === mergeTarget);
-    const m2 = mesas.find(x => x.id === mesa2Id);
-    if (!m1 || !m2) return;
-
+  const handleMergeMultiple = () => {
+    const ids = Array.from(selectedForMerge);
+    if (ids.length < 2) return;
+    
+    const selectedMesas = ids.map(id => mesas.find(m => m.id === id)).filter(Boolean) as MesaConfig[];
+    const allIds = [...new Set(selectedMesas.flatMap(m => [m.id, ...m.unidaCon]))];
+    
     const newMesas = mesas.map(m => {
-      if (m.id === m1.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m2.id, ...m2.unidaCon])] };
-      if (m.id === m2.id) return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, ...m1.unidaCon])] };
-      if (m1.unidaCon.includes(m.id) || m2.unidaCon.includes(m.id)) {
-         return { ...m, unidaCon: [...new Set([...m.unidaCon, m1.id, m2.id, ...m1.unidaCon, ...m2.unidaCon].filter(id => id !== m.id))] };
+      if (allIds.includes(m.id)) {
+        return { ...m, unidaCon: allIds.filter(id => id !== m.id) };
       }
       return m;
     });
     saveMesas(newMesas);
-    setMergeTarget(null);
+    setSelectedForMerge(new Set());
   };
 
   const handleUnmerge = (mesaId: string) => {
@@ -625,29 +672,80 @@ export default function MozoPage() {
         </div>
 
       {success && lastOrder && (
-        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg flex items-center justify-between">
-          <p className="text-xs font-medium text-green-700">✅ Pedido enviado correctamente a {lastOrder.mesa}</p>
-          <button
-            onClick={() => {
-              setComandaPrintData({
-                mesa: lastOrder.mesa,
-                mozoNombre: lastOrder.mozoNombre,
-                fecha: lastOrder.fecha,
-                hora: lastOrder.hora,
-                items: lastOrder.items,
-              });
-              setSuccess(false);
-            }}
-            className="text-xs font-bold bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-1"
-          >
-            🍳 Imprimir Comanda
-          </button>
+        <div className="mb-4 px-4 py-3 bg-green-50 border border-green-100 rounded-lg">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-green-700">✅ Pedido enviado correctamente a {lastOrder.mesa}</p>
+              {lastOrder.personaOrders && lastOrder.personaOrders.length > 0 && (
+                <div className="flex flex-wrap items-center gap-2 mt-2">
+                  {/* Botón imprimir todo combinado */}
+                  <button
+                    onClick={() => {
+                      setComandaPrintData({
+                        mesa: lastOrder.mesa,
+                        mozoNombre: lastOrder.mozoNombre,
+                        fecha: lastOrder.fecha,
+                        hora: lastOrder.hora,
+                        items: lastOrder.items,
+                      });
+                      setSuccess(false);
+                    }}
+                    className="text-[11px] font-bold bg-orange-100 text-orange-700 px-2.5 py-1.5 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-1"
+                  >
+                     Todo ({lastOrder.personaOrders.length} personas)
+                  </button>
+                  {/* Botones por persona */}
+                  {lastOrder.personaOrders.map((po, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => {
+                        setComandaPrintData({
+                          mesa: po.mesa,
+                          mozoNombre: lastOrder.mozoNombre,
+                          fecha: lastOrder.fecha,
+                          hora: lastOrder.hora,
+                          items: po.items,
+                        });
+                        setSuccess(false);
+                      }}
+                      className="text-[11px] font-bold bg-blue-100 text-blue-700 px-2.5 py-1.5 rounded-lg hover:bg-blue-200 transition-colors flex items-center gap-1"
+                    >
+                       Persona {idx + 1}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            {!lastOrder.personaOrders && (
+              <button
+                onClick={() => {
+                  setComandaPrintData({
+                    mesa: lastOrder.mesa,
+                    mozoNombre: lastOrder.mozoNombre,
+                    fecha: lastOrder.fecha,
+                    hora: lastOrder.hora,
+                    items: lastOrder.items,
+                  });
+                  setSuccess(false);
+                }}
+                className="text-xs font-bold bg-orange-100 text-orange-700 px-3 py-1.5 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-1 shrink-0"
+              >
+                 Imprimir Comanda
+              </button>
+            )}
+          </div>
         </div>
       )}
 
       {errorAsistencia && (
         <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
           <p className="text-xs font-medium text-red-700">{errorAsistencia}</p>
+        </div>
+      )}
+
+      {enviarError && (
+        <div className="mb-4 px-4 py-3 bg-red-50 border border-red-100 rounded-lg">
+          <p className="text-xs font-medium text-red-700">⚠️ {enviarError}</p>
         </div>
       )}
 
@@ -691,11 +789,11 @@ export default function MozoPage() {
       {/* Grid de mesas */}
       {!activeMesa && (
         <div>
-          {isConfigMode && mergeTarget && (
+          {isConfigMode && selectedForMerge.size >= 2 && (
             <div className="mb-4 px-4 py-3 bg-blue-50 border border-blue-100 rounded-lg">
               <p className="text-xs font-medium text-blue-700 flex items-center justify-between">
-                <span>Selecciona otra mesa para unir con <b>{mesas.find(x => x.id === mergeTarget)?.nombre}</b></span>
-                <button onClick={() => setMergeTarget(null)} className="ml-2"><X size={14}/></button>
+                <span><b>{mergeSelectCount} mesas seleccionadas</b> — Presiona <b>"Unir"</b> para agruparlas</span>
+                <button onClick={() => setSelectedForMerge(new Set())} className="ml-2"><X size={14}/></button>
               </p>
             </div>
           )}
@@ -704,15 +802,19 @@ export default function MozoPage() {
             {(isConfigMode ? mesas : displayMesas).map(mesa => {
               const dName = isConfigMode ? mesa.nombre : getDisplayName(mesa);
               const ocupada = !isConfigMode && mesasOcupadas.has(dName);
-              const isMergeTarget = isConfigMode && mergeTarget === mesa.id;
+              const isSelected = isConfigMode && selectedForMerge.has(mesa.id);
               
               return (
                 <div key={mesa.id} className="relative">
                   <button
                     onClick={() => { 
                       if (isConfigMode) {
-                        if (mergeTarget) handleMerge(mesa.id);
-                        else setMergeTarget(mesa.id);
+                        setSelectedForMerge(prev => {
+                          const next = new Set(prev);
+                          if (next.has(mesa.id)) next.delete(mesa.id);
+                          else next.add(mesa.id);
+                          return next;
+                        });
                       } else {
                         if (mozoSession.turno && !turnoInfo.activo) {
                           alert(`${turnoInfo.mensaje} — No puedes registrar pedidos ahora.`);
@@ -721,13 +823,15 @@ export default function MozoPage() {
                         setActiveMesa(mesa); 
                         setCart([]); 
                         setCartItemNote(null);
+                        setCurrentPersona(1);
+                        setMaxPersonas(1);
                       }
                     }}
                     className={`w-full text-left rounded-xl border-2 transition-all ${
-                      isMergeTarget
+                      isSelected
                         ? 'bg-blue-50 border-blue-400 shadow-md'
                         : isConfigMode
-                          ? 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-md shadow-sm'
+                          ? 'bg-white border-gray-100 hover:border-blue-200 hover:shadow-md shadow-sm cursor-pointer'
                           : ocupada
                             ? 'bg-white border-red-200 hover:border-red-300 hover:shadow-md shadow-sm'
                             : 'bg-white border-gray-100 hover:border-blue-300 hover:shadow-lg hover:-translate-y-0.5 shadow-sm'
@@ -777,7 +881,12 @@ export default function MozoPage() {
                       </div>
                     )}
                   </button>
-                  {isConfigMode && mesa.unidaCon.length > 0 && !isMergeTarget && (
+                  {isConfigMode && isSelected && (
+                    <div className="absolute -top-2 -right-2 w-6 h-6 bg-blue-500 text-white rounded-full flex items-center justify-center border-2 border-white shadow-sm">
+                      <span className="text-[10px] font-bold">{Array.from(selectedForMerge).indexOf(mesa.id) + 1}</span>
+                    </div>
+                  )}
+                  {isConfigMode && !isSelected && mesa.unidaCon.length > 0 && (
                     <div className="absolute -top-1.5 -right-1.5 bg-blue-50 text-blue-500 rounded-full p-1 border border-blue-100">
                       <LinkIcon size={11} />
                     </div>
@@ -786,6 +895,35 @@ export default function MozoPage() {
               );
             })}
           </div>
+
+          {/* Floating action bar — unir mesas */}
+          {isConfigMode && selectedForMerge.size >= 2 && (
+            <div className="mt-4 flex items-center justify-center gap-3 animate-in zoom-in-95 duration-200">
+              <button
+                onClick={handleMergeMultiple}
+                className="flex items-center gap-2 px-6 py-3 bg-blue-600 text-white text-sm font-medium rounded-xl hover:bg-blue-700 active:scale-[0.97] transition-all shadow-lg shadow-blue-200/50"
+              >
+                <LinkIcon size={16} />
+                Unir {mergeSelectCount} mesas
+              </button>
+              <button
+                onClick={() => setSelectedForMerge(new Set())}
+                className="flex items-center gap-2 px-4 py-3 bg-gray-100 text-gray-600 text-sm font-medium rounded-xl hover:bg-gray-200 active:scale-[0.97] transition-all"
+              >
+                <X size={16} />
+                Cancelar
+              </button>
+            </div>
+          )}
+
+          {/* Hint cuando hay 1 seleccionada */}
+          {isConfigMode && selectedForMerge.size === 1 && (
+            <div className="mt-4 text-center">
+              <p className="text-xs text-blue-500 font-medium animate-in fade-in duration-200">
+                Selecciona más mesas para unir (mínimo 2)
+              </p>
+            </div>
+          )}
         </div>
       )}
 
@@ -793,12 +931,59 @@ export default function MozoPage() {
       {activeMesa && (
         <div className="fixed inset-0 bg-white z-50 flex flex-col animate-in slide-in-from-right duration-200">
           {/* Header */}
-          <div className="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-            <div>
+          <div className="flex items-start justify-between px-5 py-4 border-b border-gray-100">
+            <div className="flex-1 min-w-0">
               <h2 className="text-base font-medium text-gray-900">{getDisplayName(activeMesa)}</h2>
-              <p className="text-[11px] text-gray-400">Selecciona los productos</p>
+              <p className="text-[11px] text-gray-400 mb-3">Selecciona los productos</p>
+              {/* Personas tabs */}
+              <div className="flex items-center gap-1.5">
+                {Array.from({ length: maxPersonas }, (_, i) => i + 1).map(p => (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPersona(p)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                      p === currentPersona
+                        ? 'bg-blue-600 text-white shadow-sm'
+                        : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                    }`}
+                  >
+                    👤 Persona {p}
+                    {cart.filter(c => c.persona === p).length > 0 && (
+                      <span className={`ml-1.5 ${p === currentPersona ? 'bg-white/25' : 'bg-blue-100 text-blue-600'} px-1.5 py-0.5 rounded-full text-[9px]`}>
+                        {cart.filter(c => c.persona === p).reduce((s, c) => s + c.qty, 0)}
+                      </span>
+                    )}
+                  </button>
+                ))}
+                {maxPersonas < 6 && (
+                  <button
+                    onClick={() => {
+                      setMaxPersonas(prev => prev + 1);
+                      setCurrentPersona(maxPersonas + 1);
+                    }}
+                    className="px-2 py-1.5 rounded-lg text-xs font-bold bg-gray-50 text-gray-400 hover:bg-gray-100 hover:text-gray-600 border border-dashed border-gray-200 transition-all"
+                    title="Agregar persona"
+                  >
+                    + Persona
+                  </button>
+                )}
+                {maxPersonas > 1 && (
+                  <button
+                    onClick={() => {
+                      // Mover items de la última persona a la primera y eliminar la última
+                      if (maxPersonas === currentPersona) setCurrentPersona(maxPersonas - 1);
+                      setCart(prev => prev.filter(c => c.persona !== maxPersonas));
+                      setMaxPersonas(prev => prev - 1);
+                    }}
+                    className="px-2 py-1.5 rounded-lg text-xs font-medium text-gray-300 hover:text-red-400 hover:bg-red-50 transition-all"
+                    title="Quitar última persona"
+                  >
+                    <X size={13} />
+                  </button>
+                )}
+              </div>
             </div>
-            <button onClick={() => { setActiveMesa(null); setCart([]); setCartItemNote(null); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors">
+            <button onClick={() => { setActiveMesa(null); setCart([]); setCartItemNote(null); setCurrentPersona(1); setMaxPersonas(1); }} className="w-8 h-8 rounded-lg hover:bg-gray-100 flex items-center justify-center transition-colors shrink-0 ml-3">
               <X size={16} className="text-gray-400" />
             </button>
           </div>
@@ -1004,47 +1189,65 @@ export default function MozoPage() {
             {/* Lista del carrito con notas */}
             {cart.length > 0 && (
               <div className="mb-3 max-h-52 overflow-y-auto space-y-1.5">
-                {cart.map(c => (
-                  <div key={c.name} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0 flex-1">
-                        <span className="text-xs font-bold text-gray-900 shrink-0">x{c.qty}</span>
-                        <span className="text-xs text-gray-700 truncate">
-                          {c.esCortesia && <span className="mr-0.5">🎁</span>}
-                          {c.name}
-                        </span>
-                      </div>
-                      <div className="flex items-center gap-1 shrink-0">
-                        {!c.esCortesia && (
-                          <button
-                            onClick={() => setCartItemNote(cartItemNote === c.name ? null : c.name)}
-                            className={`p-1 rounded-md transition-colors ${
-                              c.notas && c.notas.trim() 
-                                ? 'bg-amber-100 text-amber-700' 
-                                : 'text-gray-400 hover:bg-gray-200'
-                            }`}
-                            title="Agregar nota para cocina"
-                          >
-                            <span className="text-xs">📝</span>
-                          </button>
-                        )}
+                {Array.from({ length: maxPersonas }, (_, i) => i + 1).map(p => {
+                  const personaItems = cart.filter(c => c.persona === p);
+                  if (personaItems.length === 0) return null;
+                  return (
+                    <div key={p}>
+                      {maxPersonas > 1 && (
+                        <div className="flex items-center gap-1.5 mb-1 px-1">
+                          <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-full">
+                            👤 Persona {p}
+                          </span>
+                          <span className="text-[10px] text-gray-300">S/ {personaItems.reduce((s, c) => c.esCortesia ? s : s + c.price * c.qty, 0).toFixed(2)}</span>
+                        </div>
+                      )}
+                      <div className="space-y-1.5">
+                        {personaItems.map(c => (
+                          <div key={`${c.name}-p${c.persona || 1}`} className="bg-gray-50 rounded-lg p-2 border border-gray-100">
+                            <div className="flex items-center justify-between gap-2">
+                              <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                                <span className="text-xs font-bold text-gray-900 shrink-0">x{c.qty}</span>
+                                <span className="text-xs text-gray-700 truncate">
+                                  {c.esCortesia && <span className="mr-0.5">🎁</span>}
+                                  {c.name}
+                                </span>
+                              </div>
+                              <div className="flex items-center gap-1 shrink-0">
+                                {!c.esCortesia && (
+                                  <button
+                                    onClick={() => setCartItemNote(cartItemNote === c.name ? null : c.name)}
+                                    className={`p-1 rounded-md transition-colors ${
+                                      c.notas && c.notas.trim() 
+                                        ? 'bg-amber-100 text-amber-700' 
+                                        : 'text-gray-400 hover:bg-gray-200'
+                                    }`}
+                                    title="Agregar nota para cocina"
+                                  >
+                                    <span className="text-xs">📝</span>
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                            {/* Input de nota expandible */}
+                            {cartItemNote === c.name && (
+                              <div className="mt-1.5 pl-4">
+                                <input
+                                  type="text"
+                                  placeholder="Ej: sin cebolla, poco picante..."
+                                  value={c.notas || ''}
+                                  onChange={e => updateItemNota(c.name, e.target.value)}
+                                  className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-400 placeholder-gray-300"
+                                  autoFocus
+                                />
+                              </div>
+                            )}
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    {/* Input de nota expandible */}
-                    {cartItemNote === c.name && (
-                      <div className="mt-1.5 pl-4">
-                        <input
-                          type="text"
-                          placeholder="Ej: sin cebolla, poco picante..."
-                          value={c.notas || ''}
-                          onChange={e => updateItemNota(c.name, e.target.value)}
-                          className="w-full text-xs px-2.5 py-1.5 rounded-lg border border-gray-200 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 focus:border-amber-400 placeholder-gray-300"
-                          autoFocus
-                        />
-                      </div>
-                    )}
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
             <div className="flex justify-between items-center mb-3">

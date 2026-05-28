@@ -46,7 +46,8 @@ import {
   X,
   MessageSquare,
   Tag,
-  Banknote
+  Banknote,
+  HandCoins
 } from 'lucide-react';
 
 type TabType = 'activos' | 'historial' | 'ventas_mozo' | 'reportes';
@@ -179,6 +180,9 @@ export default function DashboardPage() {
   const [selectedDateForHistory, setSelectedDateForHistory] = useState('2026-05-19');
   const [calendarMonth, setCalendarMonth] = useState<Date>(new Date(2026, 4, 19)); // May 2026
   const [searchQuery, setSearchQuery] = useState('');
+  // Partial payment tracking
+  const [partialComandaIds, setPartialComandaIds] = useState<Set<string | number>>(new Set());
+  const [showPartialOnly, setShowPartialOnly] = useState(false);
 
   // Date Formatting helper
   const formatDate = (dateStr: string) => {
@@ -333,6 +337,20 @@ export default function DashboardPage() {
           }))
         );
         setPedidos(normalized);
+
+        // Detectar pagos parciales: comandas donde algunos items están Entregado pero no todos
+        const partialIds = new Set<string | number>();
+        data.forEach((c: Comanda & { items?: (ComandaItem & { estado?: string })[] }) => {
+          if (!c.items || c.items.length === 0) return;
+          const itemEstados = c.items.map(i => (i as any).estado || 'Pendiente');
+          const someEntregado = itemEstados.some((e: string) => e === 'Entregado');
+          const allEntregado = itemEstados.every((e: string) => e === 'Entregado');
+          // Pago parcial: al menos un item pagado pero NO todos, y la comanda no está completamente pagada
+          if (someEntregado && !allEntregado) {
+            partialIds.add(c.id);
+          }
+        });
+        setPartialComandaIds(partialIds);
       }
     } catch {
       try { setPedidos(JSON.parse(localStorage.getItem('puerto_habana_pedidos') || '[]')); } catch {}
@@ -925,6 +943,11 @@ export default function DashboardPage() {
     const inRange = isDateInRange(p.fecha);
     if (!inRange) return false;
 
+    // Filtro de pagos parciales: mostrar solo items de comandas con pago parcial
+    if (showPartialOnly && p.comandaId) {
+      if (!partialComandaIds.has(p.comandaId)) return false;
+    }
+
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       return (
@@ -960,11 +983,18 @@ export default function DashboardPage() {
       const totalTarjeta = filteredHistoryOrders.filter(p => p.metodo_pago === 'Tarjeta').reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
       const margenHist = getMargenHistorial(filteredHistoryOrders);
 
+      // Métricas de pagos parciales (filtradas por rango de fecha)
+      const partialPedidos = pedidos.filter(p => p.comandaId && partialComandaIds.has(p.comandaId) && isDateInRange(p.fecha));
+      const totalPartial = partialPedidos.reduce((sum, p) => sum + (p.precio * p.cantidad), 0);
+      const partialCount = new Set(partialPedidos.map(p => p.comandaId)).size;
+
       return {
         ventasTotal: { title: 'Ventas Totales', value: `S/ ${totalRev.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         yape: { title: 'Total Yape', value: `S/ ${totalYape.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         efectivo: { title: 'Total Efectivo', value: `S/ ${totalEfectivo.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
         tarjeta: { title: 'Total Tarjeta', value: `S/ ${totalTarjeta.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: DollarSign },
+        parciales: { title: 'Pagos Parciales', value: `S/ ${totalPartial.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: HandCoins },
+        parcialesCount: { title: 'Comandas con Parcial', value: `${partialCount} comanda(s)`, icon: HandCoins },
         comidaHist: { title: 'Ventas Comida', value: `S/ ${comidaVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Utensils },
         bebidasHist: { title: 'Ventas Bebidas', value: `S/ ${bebidasVal.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: Wine },
         costoHist: { title: 'Costo de Ventas', value: `S/ ${margenHist.totalCosto.toLocaleString('en-US', { maximumFractionDigits: 2 })}`, icon: TrendingUp },
@@ -1657,18 +1687,36 @@ export default function DashboardPage() {
                 <p className="text-xs text-gray-500 mt-1">Auditoría detallada de comandas en el período seleccionado.</p>
               </div>
               
-              {/* Search bar */}
-              <div className="relative w-full sm:w-64">
-                <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                  type="text"
-                  placeholder="Mesa, mozo o plato..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className={`w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
-                    'border-gray-200 focus:border-black bg-white'
+              <div className="flex items-center gap-3 w-full sm:w-auto">
+                {/* Partial payments filter toggle */}
+                <button
+                  onClick={() => setShowPartialOnly(!showPartialOnly)}
+                  className={`flex items-center gap-1.5 px-3 py-2 text-xs font-semibold rounded-lg border transition-colors shrink-0 ${
+                    showPartialOnly
+                      ? 'bg-amber-50 text-amber-700 border-amber-300 shadow-sm'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-300 hover:text-gray-700'
                   }`}
-                />
+                >
+                  <HandCoins size={14} />
+                  {showPartialOnly ? 'Parciales ✓' : 'Parciales'}
+                  {!showPartialOnly && partialComandaIds.size > 0 && (
+                    <span className="ml-1 w-2 h-2 rounded-full bg-amber-500"></span>
+                  )}
+                </button>
+
+                {/* Search bar */}
+                <div className="relative w-full sm:w-64">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Mesa, mozo o plato..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className={`w-full pl-9 pr-4 py-2 text-xs border rounded-lg focus:outline-none focus:ring-1 focus:ring-black transition-colors ${
+                      'border-gray-200 focus:border-black bg-white'
+                    }`}
+                  />
+                </div>
               </div>
             </div>
 

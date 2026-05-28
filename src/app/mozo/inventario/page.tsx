@@ -24,7 +24,20 @@ export default function MozoInventarioPage() {
   // Detail modal state
   const [detailItem, setDetailItem] = useState<InventarioItem | null>(null);
   const [updatingStock, setUpdatingStock] = useState(false);
+  const [movimientos, setMovimientos] = useState<any[]>([]);
+  const [loadingMov, setLoadingMov] = useState(false);
   const { profile } = useAuth();
+
+  const loadMovimientos = async (inventarioId: string) => {
+    setLoadingMov(true);
+    try {
+      const res = await fetch(`/api/inventario/stock?inventario_id=${inventarioId}&limit=20`);
+      if (res.ok) {
+        setMovimientos(await res.json());
+      }
+    } catch {}
+    setLoadingMov(false);
+  };
 
   const handleUpdateStock = async (id: string, currentQty: number, delta: number) => {
     const newQty = Math.max(0, currentQty + delta);
@@ -47,6 +60,7 @@ export default function MozoInventarioPage() {
       const data = await res.json();
       if (detailItem && detailItem.id === id) {
         setDetailItem({ ...detailItem, cantidad: data.stock_nuevo });
+        loadMovimientos(id);
       }
       setSuccessMsg(`Stock actualizado a ${data.stock_nuevo}`);
       setTimeout(() => setSuccessMsg(''), 3000);
@@ -260,7 +274,7 @@ export default function MozoInventarioPage() {
           {filtered.map((item) => (
             <div
               key={item.id}
-              onClick={() => setDetailItem(item)}
+              onClick={() => { setDetailItem(item); loadMovimientos(item.id); }}
               className="bg-white border border-gray-200 rounded-xl p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
             >
               <div className="flex items-start justify-between mb-2">
@@ -440,6 +454,57 @@ export default function MozoInventarioPage() {
                   </div>
                 </div>
               )}
+
+              {/* Historial de Movimientos */}
+              <div>
+                <h4 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <span>📋</span> Historial de Movimientos
+                </h4>
+                {loadingMov ? (
+                  <div className="text-center py-4">
+                    <p className="text-xs text-gray-400">Cargando historial...</p>
+                  </div>
+                ) : movimientos.length === 0 ? (
+                  <div className="bg-gray-50 border border-gray-100 rounded-xl p-4 text-center">
+                    <p className="text-xs text-gray-400">Sin movimientos registrados aún</p>
+                    <p className="text-[10px] text-gray-300 mt-1">Los movimientos se registran al agregar o consumir stock.</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1.5 max-h-52 overflow-y-auto">
+                    {movimientos.map((mov: any) => (
+                      <div key={mov.id} className="flex items-center gap-2 bg-gray-50 border border-gray-100 rounded-lg p-2.5">
+                        <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${
+                          mov.tipo === 'entrada' ? 'bg-green-100' : 'bg-red-100'
+                        }`}>
+                          {mov.tipo === 'entrada' ? (
+                            <span className="text-green-600 font-bold text-xs">+</span>
+                          ) : (
+                            <span className="text-red-600 font-bold text-xs">−</span>
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs font-bold ${
+                              mov.tipo === 'entrada' ? 'text-green-700' : 'text-red-700'
+                            }`}>
+                              {mov.tipo === 'entrada' ? 'Entrada' : 'Salida'}: {mov.cantidad} {detailItem.unidad || 'unid'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-gray-400">
+                            Stock: {mov.stock_anterior} → {mov.stock_nuevo}
+                            {mov.notas && <span className="ml-1">• {mov.notas}</span>}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-[10px] text-gray-400">
+                            {new Date(mov.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
               {/* Tamaños/Presentaciones */}
               {detailItem.tamanos && detailItem.tamanos.length > 0 && (
