@@ -3,6 +3,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { Wine, Package, Plus, Search, X, DollarSign, Barcode, ScanLine } from 'lucide-react';
 import { subscribeInventario, addInventarioItem, updateInventarioItem, type InventarioItem } from '@/lib/db';
+import { useAuth } from '@/hooks/useAuth';
 import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
 
 type TabType = 'bebidas' | 'tapers';
@@ -23,16 +24,31 @@ export default function MozoInventarioPage() {
   // Detail modal state
   const [detailItem, setDetailItem] = useState<InventarioItem | null>(null);
   const [updatingStock, setUpdatingStock] = useState(false);
+  const { profile } = useAuth();
 
   const handleUpdateStock = async (id: string, currentQty: number, delta: number) => {
     const newQty = Math.max(0, currentQty + delta);
+    if (newQty === currentQty) return; // Nada que cambiar
     setUpdatingStock(true);
     try {
-      await updateInventarioItem(tab, id, { cantidad: newQty });
+      const notasStr = profile?.nombre ? `Actualizado por mozo: ${profile.nombre}` : 'Actualizado por mozo';
+      const res = await fetch('/api/inventario/stock', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          delta: newQty - currentQty,
+          notas: notasStr,
+          referencia: 'app_mozo'
+        }),
+      });
+      if (!res.ok) throw new Error();
+      
+      const data = await res.json();
       if (detailItem && detailItem.id === id) {
-        setDetailItem({ ...detailItem, cantidad: newQty });
+        setDetailItem({ ...detailItem, cantidad: data.stock_nuevo });
       }
-      setSuccessMsg(`Stock actualizado a ${newQty}`);
+      setSuccessMsg(`Stock actualizado a ${data.stock_nuevo}`);
       setTimeout(() => setSuccessMsg(''), 3000);
     } catch {
       alert('Error al actualizar stock');

@@ -4,6 +4,8 @@ import { Printer, X } from 'lucide-react';
 
 interface CierreCajaTicketProps {
   mozoNombre: string;
+  mozoId: string;
+  turno: string;
   fecha: string;
   total: number;
   onClose: () => void;
@@ -13,6 +15,8 @@ interface CierreCajaTicketProps {
 
 export default function CierreCajaTicket({
   mozoNombre,
+  mozoId,
+  turno,
   fecha,
   total,
   onClose,
@@ -120,11 +124,39 @@ export default function CierreCajaTicket({
           <p className="text-4xl font-black text-blue-600 mb-6">S/ {total.toFixed(2)}</p>
           
           <button
-            onClick={handlePrintBrowser}
-            className="w-full flex items-center justify-center gap-2 bg-blue-600 text-white px-4 py-3 rounded-xl hover:bg-blue-700 transition-colors text-sm font-semibold"
+            onClick={async () => {
+              if (!confirm('¿Estás seguro de cerrar la caja de este turno? Esto pondrá en cero el reporte para el próximo turno.')) return;
+              // Llamar a la API para cerrar
+              const detalle = aggregatedItems.length > 0 ? aggregatedItems.map(([name, qty]) => `${name} x${qty}`).join(', ') : 'Sin productos';
+              
+              try {
+                const res = await fetch('/api/pedidos/cierre', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ mozo_id: mozoId, mozo_nombre: mozoNombre, fecha, turno, total, detalle })
+                });
+                if (res.ok) {
+                  handlePrintBrowser();
+                  onClose();
+                  window.location.reload(); // Para refrescar los reportes a 0
+                } else {
+                  alert('Hubo un error al cerrar la caja oficialmente.');
+                }
+              } catch (e) {
+                alert('Error de conexión al cerrar la caja.');
+              }
+            }}
+            className="w-full flex items-center justify-center gap-2 bg-gray-900 text-white px-4 py-3 rounded-xl hover:bg-black transition-colors text-sm font-semibold mb-2"
           >
             <Printer size={16} />
-            Imprimir Cierre (Navegador)
+            Cerrar Caja Oficial e Imprimir
+          </button>
+          
+          <button
+            onClick={handlePrintBrowser}
+            className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 px-4 py-3 rounded-xl hover:bg-blue-100 transition-colors text-sm font-semibold"
+          >
+            Solo Imprimir (Sin cerrar)
           </button>
         </div>
       </div>

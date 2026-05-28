@@ -2682,6 +2682,7 @@ export default function DashboardPage() {
                         {/* Reusing CobrarBoleta to provide SUNAT / WhatsApp features to Admin */}
                         <div className="pt-3 border-t border-gray-100">
                           <CobrarBoleta
+                            readOnly={true}
                             mesaLabel={mesa}
                             mozoNombre={mozoHistoryModal.nombre}
                             fecha={simulatedDate}

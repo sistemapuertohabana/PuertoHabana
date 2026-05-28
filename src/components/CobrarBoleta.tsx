@@ -29,6 +29,7 @@ interface CobrarBoletaProps {
   comandaId?: number;
   onSuccess?: () => void;
   className?: string;
+  readOnly?: boolean; // Si true, oculta la sección de cobro (solo vista admin)
 }
 
 const YAPE_NUMBER_DEFAULT = '942 902 367';
@@ -65,6 +66,7 @@ export default function CobrarBoleta({
   comandaId,
   onSuccess,
   className = '',
+  readOnly = false,
 }: CobrarBoletaProps) {
   const [showBoleta, setShowBoleta] = useState(false);
   const [showYapeQR, setShowYapeQR] = useState(false);
@@ -340,8 +342,8 @@ export default function CobrarBoleta({
         )}
       </div>
 
-      {/* Confirmar Cobro */}
-      {comandaId && !paymentConfirmed && (
+      {/* Confirmar Cobro — solo visible para el Mozo, no en vista Admin */}
+      {!readOnly && comandaId && !paymentConfirmed && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <div className="flex items-center gap-2 mb-3">
             <CreditCard size={16} className="text-green-600" />

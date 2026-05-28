@@ -303,6 +303,8 @@ export default function MozoReportesPage() {
       {showCierreModal && profile && (
         <CierreCajaTicket
           mozoNombre={profile.nombre}
+          mozoId={profile.id}
+          turno={parseInt(new Date().toLocaleTimeString('en-US', { timeZone: 'America/Lima', hour12: false, hour: 'numeric' })) >= 16 ? 'Turno Noche' : 'Turno Mañana'}
           fecha={fechaHoy}
           total={total}
           comandas={comandas}
