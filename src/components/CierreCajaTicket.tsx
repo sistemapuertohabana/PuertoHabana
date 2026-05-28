@@ -59,7 +59,7 @@ export default function CierreCajaTicket({
 
   const aggregatedItems = [...platosVendidos, ...bebidasVendidas, ...tapersVendidos];
   
-  const handlePrintBrowser = () => {
+  const handlePrintBrowser = (onPrinted?: () => void) => {
     const html = `
       <!DOCTYPE html>
       <html>
@@ -148,7 +148,10 @@ export default function CierreCajaTicket({
       iframe.contentWindow?.focus();
       iframe.contentWindow?.print();
       setTimeout(() => {
-        document.body.removeChild(iframe);
+        if (document.body.contains(iframe)) {
+          document.body.removeChild(iframe);
+        }
+        if (onPrinted) onPrinted();
       }, 1000);
     }, 500);
   };
@@ -183,9 +186,10 @@ export default function CierreCajaTicket({
                   body: JSON.stringify({ mozo_id: mozoId, mozo_nombre: mozoNombre, fecha, turno, total, detalle })
                 });
                 if (res.ok) {
-                  handlePrintBrowser();
-                  onClose();
-                  window.location.reload(); // Para refrescar los reportes a 0
+                  handlePrintBrowser(() => {
+                    onClose();
+                    window.location.reload(); // Para refrescar los reportes a 0
+                  });
                 } else {
                   alert('Hubo un error al cerrar la caja oficialmente.');
                 }
