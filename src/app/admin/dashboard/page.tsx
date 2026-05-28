@@ -193,6 +193,14 @@ export default function DashboardPage() {
     items: (ComandaItem & { estado: string })[];
   } | null>(null);
   const [rawPartialComandas, setRawPartialComandas] = useState<Record<string | number, (ComandaItem & { estado: string })[]>>({});
+  const [cierreDetalleModal, setCierreDetalleModal] = useState<{
+    cierreId: number;
+    mozo: string;
+    turno: string;
+    monto: number;
+    fecha: string;
+    contenido: string;
+  } | null>(null);
 
   // Date Formatting helper
   const formatDate = (dateStr: string) => {
@@ -456,136 +464,6 @@ export default function DashboardPage() {
           <div className="h-48 bg-gray-200 rounded-xl"></div>
           <div className="h-48 bg-gray-200 rounded-xl"></div>
         </div>
-      {/* ── Modal: Desglose de pago parcial ── */}
-      {pagoDetalleMesa && (
-        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border bg-white border-gray-200 text-gray-800 max-h-[90vh] flex flex-col">
-            {/* Header */}
-            <div className="px-6 py-4 border-b border-gray-150 flex justify-between items-center shrink-0 bg-gradient-to-r from-amber-50 to-white">
-              <div>
-                <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
-                  <HandCoins size={18} className="text-amber-600" />
-                  Pago Parcial
-                </h2>
-                <p className="text-xs text-gray-500 mt-0.5">
-                  {pagoDetalleMesa.mesa} — {pagoDetalleMesa.mozoNombre} — {pagoDetalleMesa.hora}
-                </p>
-              </div>
-              <button
-                onClick={() => setPagoDetalleMesa(null)}
-                className="text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Body */}
-            <div className="p-6 overflow-y-auto flex-1 space-y-5">
-              {/* Items Pagados */}
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-3 text-green-700">
-                  <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                  Pagados ({pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length})
-                </h3>
-                {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length > 0 ? (
-                  <div className="space-y-2">
-                    {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-green-50 border border-green-100">
-                        <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
-                          <span className="text-white text-[9px] font-bold">✓</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-800 truncate">
-                            {item.cantidad}x {item.nombre}
-                          </p>
-                          {item.notas && (
-                            <p className="text-[10px] text-gray-400 italic truncate">📝 {item.notas}</p>
-                          )}
-                        </div>
-                        <span className="text-xs font-bold text-green-700 shrink-0">
-                          S/ {(item.precio * item.cantidad).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex justify-end pt-1">
-                      <span className="text-xs font-bold text-green-700">
-                        Subtotal Pagado: S/ {pagoDetalleMesa.items
-                          .filter(i => i.estado === 'Entregado')
-                          .reduce((s, i) => s + i.precio * i.cantidad, 0)
-                          .toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic pl-1">Ningún item pagado aún</p>
-                )}
-              </div>
-
-              {/* Items Pendientes */}
-              <div>
-                <h3 className="text-xs font-bold uppercase tracking-wider flex items-center gap-1.5 mb-3 text-amber-700">
-                  <span className="w-2 h-2 rounded-full bg-amber-400"></span>
-                  Pendientes ({pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length})
-                </h3>
-                {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length > 0 ? (
-                  <div className="space-y-2">
-                    {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').map((item, idx) => (
-                      <div key={idx} className="flex items-center gap-3 p-2.5 rounded-lg bg-amber-50 border border-amber-100">
-                        <div className="w-4 h-4 rounded border-2 border-amber-300 bg-white flex items-center justify-center shrink-0">
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold text-gray-800 truncate">
-                            {item.cantidad}x {item.nombre}
-                          </p>
-                          {item.notas && (
-                            <p className="text-[10px] text-gray-400 italic truncate">📝 {item.notas}</p>
-                          )}
-                        </div>
-                        <span className="text-xs font-bold text-amber-700 shrink-0">
-                          S/ {(item.precio * item.cantidad).toFixed(2)}
-                        </span>
-                      </div>
-                    ))}
-                    <div className="flex justify-end pt-1">
-                      <span className="text-xs font-bold text-amber-700">
-                        Subtotal Pendiente: S/ {pagoDetalleMesa.items
-                          .filter(i => i.estado !== 'Entregado')
-                          .reduce((s, i) => s + i.precio * i.cantidad, 0)
-                          .toFixed(2)}
-                      </span>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-xs text-gray-400 italic pl-1">Todos los items han sido pagados</p>
-                )}
-              </div>
-
-              {/* Total General */}
-              <div className="pt-4 border-t border-gray-200">
-                <div className="flex justify-between items-center">
-                  <span className="text-sm font-bold text-gray-900">Total Comanda</span>
-                  <span className="text-lg font-black text-gray-900">
-                    S/ {pagoDetalleMesa.items
-                      .reduce((s, i) => s + i.precio * i.cantidad, 0)
-                      .toFixed(2)}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Footer */}
-            <div className="px-6 py-3 border-t border-gray-150 bg-gray-50 shrink-0 flex justify-end">
-              <button
-                onClick={() => setPagoDetalleMesa(null)}
-                className="px-5 py-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold rounded-lg transition-colors"
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
     </div>
   );
 }
@@ -891,6 +769,33 @@ export default function DashboardPage() {
     getTopDishesData().forEach((d, idx) => {
       csvContent += `${idx + 1};${d.name};${d.qty};S/ ${Number(d.revenue).toFixed(2)}\n`;
     });
+
+    // Pagos Parciales
+    csvContent += "\n=== PAGOS PARCIALES ===\n";
+    if (partialComandaIds.size > 0) {
+      csvContent += "Comanda ID;Mesa;Items Pagados;Items Pendientes;Total Pagado;Total Pendiente;Monto Total\n";
+      const partialPedidos = pedidos.filter(p => p.comandaId && partialComandaIds.has(p.comandaId));
+      const groupedByComanda = new Map<string | number, { mesa: string; items: Pedido[]; comandaId: string | number }>();
+      partialPedidos.forEach(p => {
+        if (!p.comandaId) return;
+        if (!groupedByComanda.has(p.comandaId)) {
+          groupedByComanda.set(p.comandaId, { mesa: p.mesa, items: [], comandaId: p.comandaId });
+        }
+        groupedByComanda.get(p.comandaId)!.items.push(p);
+      });
+      groupedByComanda.forEach((group, comandaId) => {
+        const rawItems = rawPartialComandas[comandaId];
+        if (!rawItems) return;
+        const paidItems = rawItems.filter(i => i.estado === 'Entregado');
+        const unpaidItems = rawItems.filter(i => i.estado !== 'Entregado');
+        const paidTotal = paidItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const unpaidTotal = unpaidItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const grandTotal = paidTotal + unpaidTotal;
+        csvContent += `${comandaId};${group.mesa};${paidItems.length} items (S/ ${paidTotal.toFixed(2)});${unpaidItems.length} items (S/ ${unpaidTotal.toFixed(2)});S/ ${paidTotal.toFixed(2)};S/ ${unpaidTotal.toFixed(2)};S/ ${grandTotal.toFixed(2)}\n`;
+      });
+    } else {
+      csvContent += "No se registraron pagos parciales en este periodo.\n";
+    }
     
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement("a");
@@ -937,7 +842,41 @@ export default function DashboardPage() {
     });
     report += "\n";
     
-    report += "4. MODELO PREDICTIVO Y PRONÓSTICOS DE SALIDA DE PRODUCTOS\n";
+    // Pagos Parciales Section
+    const partialPedidosForReport = pedidos.filter(p => p.comandaId && partialComandaIds.has(p.comandaId) && isDateInRange(p.fecha));
+    if (partialPedidosForReport.length > 0) {
+      const groupedForReport = new Map<string | number, { mesa: string; items: Pedido[] }>();
+      partialPedidosForReport.forEach(p => {
+        if (!p.comandaId) return;
+        if (!groupedForReport.has(p.comandaId)) {
+          groupedForReport.set(p.comandaId, { mesa: p.mesa, items: [] });
+        }
+        groupedForReport.get(p.comandaId)!.items.push(p);
+      });
+      report += "4. DESGLOSE DE PAGOS PARCIALES\n";
+      report += "-------------------------------------------------------------------------\n";
+      let totalPagadoParcial = 0;
+      let totalPendienteParcial = 0;
+      groupedForReport.forEach((group, comandaId) => {
+        const rawItems = rawPartialComandas[comandaId];
+        if (!rawItems) return;
+        const paidItems = rawItems.filter(i => i.estado === 'Entregado');
+        const unpaidItems = rawItems.filter(i => i.estado !== 'Entregado');
+        const paidAmt = paidItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        const unpaidAmt = unpaidItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
+        totalPagadoParcial += paidAmt;
+        totalPendienteParcial += unpaidAmt;
+        report += `   Comanda #${comandaId} - Mesa: ${group.mesa}\n`;
+        report += `     OK Pagados:   ${paidItems.map(i => `${i.cantidad}x ${i.nombre} (S/ ${(i.precio * i.cantidad).toFixed(2)})`).join(', ')}\n`;
+        report += `     XX Pendientes: ${unpaidItems.map(i => `${i.cantidad}x ${i.nombre} (S/ ${(i.precio * i.cantidad).toFixed(2)})`).join(', ')}\n`;
+        report += `     Subtotal: Pagado S/ ${paidAmt.toFixed(2)} | Pendiente S/ ${unpaidAmt.toFixed(2)} | Total S/ ${(paidAmt + unpaidAmt).toFixed(2)}\n\n`;
+      });
+      report += `   TOTAL PAGOS PARCIALES: S/ ${totalPagadoParcial.toFixed(2)} cobrados | S/ ${totalPendienteParcial.toFixed(2)} pendientes\n\n`;
+    }
+    
+    // Renumber MODELO PREDICTIVO from 4 to 5 if partial section was added
+    const modelNumber = partialPedidosForReport.length > 0 ? '5' : '4';
+    report += `${modelNumber}. MODELO PREDICTIVO Y PRONÓSTICOS DE SALIDA DE PRODUCTOS\n`;
     report += "-------------------------------------------------------------------------\n";
     report += "   [Pronóstico Diario]:\n";
     report += "   - Los días lunes a viernes se proyecta mayor rotación del Ceviche de Pescado.\n";
@@ -1463,6 +1402,24 @@ export default function DashboardPage() {
                         </span>
                       </div>
                       <p className="text-2xl font-black text-emerald-600 mt-3">S/ {Number(cierre.monto).toFixed(2)}</p>
+                      <button
+                        onClick={() => {
+                          const cierreMozo = mozo || 'Desconocido';
+                          const cierreFecha = cierre.created_at?.split('T')[0] || '';
+                          setCierreDetalleModal({
+                            cierreId: Number(cierre.id),
+                            mozo: cierreMozo,
+                            turno,
+                            monto: Number(cierre.monto) || 0,
+                            fecha: cierreFecha,
+                            contenido: cierre.contenido,
+                          });
+                        }}
+                        className="mt-3 w-full text-amber-600 hover:text-amber-800 text-[10px] font-semibold bg-amber-50 hover:bg-amber-100 px-2 py-1.5 rounded-lg border border-amber-200 transition-colors flex items-center justify-center gap-1"
+                      >
+                        <HandCoins size={10} />
+                        Ver desglose
+                      </button>
                     </div>
                   </div>
                 );
@@ -3012,6 +2969,169 @@ export default function DashboardPage() {
               })()}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Pago Detalle Mesa Modal */}
+      {pagoDetalleMesa && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border bg-white border-gray-200 text-gray-800">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-150 flex justify-between items-center">
+              <div>
+                <h2 className="text-lg font-semibold tracking-tight flex items-center gap-2">
+                  <HandCoins size={18} className="text-amber-600" />
+                  Desglose de Pago Parcial
+                </h2>
+                <p className="text-xs text-gray-500 mt-1">
+                  {pagoDetalleMesa.mesa} - Mozo: {pagoDetalleMesa.mozoNombre} - {pagoDetalleMesa.hora} hrs
+                </p>
+              </div>
+              <button
+                onClick={() => setPagoDetalleMesa(null)}
+                className="text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 max-h-[60vh] overflow-y-auto space-y-6">
+              {/* Pagados */}
+              <div>
+                <h3 className="text-sm font-bold text-green-700 mb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-green-100 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                  </span>
+                  Pagados ({pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length})
+                </h3>
+                {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').length > 0 ? (
+                  <div className="space-y-2">
+                    {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').map(item => (
+                      <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-green-50 border border-green-200">
+                        <div className="w-4 h-4 rounded border-2 border-green-500 bg-green-500 flex items-center justify-center shrink-0">
+                          <svg className="w-2.5 h-2.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" /></svg>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{item.cantidad}x {item.nombre}</p>
+                          {item.notas && <p className="text-[10px] text-gray-500 italic truncate">Notas: {item.notas}</p>}
+                        </div>
+                        <span className="text-sm font-semibold text-green-700 shrink-0">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end pt-1">
+                      <span className="text-sm font-bold text-green-700">
+                        Subtotal: S/ {pagoDetalleMesa.items.filter(i => i.estado === 'Entregado').reduce((s, i) => s + i.precio * i.cantidad, 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic pl-2">Ningun item pagado aun</p>
+                )}
+              </div>
+
+              {/* Pendientes */}
+              <div>
+                <h3 className="text-sm font-bold text-amber-700 mb-3 flex items-center gap-2">
+                  <span className="w-5 h-5 rounded-full bg-amber-100 flex items-center justify-center">
+                    <svg className="w-3 h-3 text-amber-600" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M12 5v14M5 12h14" /></svg>
+                  </span>
+                  Pendientes ({pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length})
+                </h3>
+                {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').length > 0 ? (
+                  <div className="space-y-2">
+                    {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').map(item => (
+                      <div key={item.id} className="flex items-center gap-3 p-2.5 rounded-lg bg-amber-50 border border-amber-200">
+                        <div className="w-4 h-4 rounded border-2 border-amber-400 flex items-center justify-center shrink-0"></div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium text-gray-800 truncate">{item.cantidad}x {item.nombre}</p>
+                          {item.notas && <p className="text-[10px] text-gray-500 italic truncate">Notas: {item.notas}</p>}
+                        </div>
+                        <span className="text-sm font-semibold text-amber-700 shrink-0">S/ {(item.precio * item.cantidad).toFixed(2)}</span>
+                      </div>
+                    ))}
+                    <div className="flex justify-end pt-1">
+                      <span className="text-sm font-bold text-amber-700">
+                        Subtotal: S/ {pagoDetalleMesa.items.filter(i => i.estado !== 'Entregado').reduce((s, i) => s + i.precio * i.cantidad, 0).toFixed(2)}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-gray-400 italic pl-2">Todos los items han sido pagados</p>
+                )}
+              </div>
+            </div>
+
+            {/* Footer: Total Comanda */}
+            <div className="p-5 border-t border-gray-150 bg-gray-50 flex justify-between items-center">
+              <span className="text-sm font-medium text-gray-600">Total Comanda</span>
+              <span className="text-lg font-black text-gray-900">
+                S/ {pagoDetalleMesa.items.reduce((s, i) => s + i.precio * i.cantidad, 0).toFixed(2)}
+              </span>
+            </div>
+
+            {/* Close button */}
+            <div className="px-5 pb-4">
+              <button
+                onClick={() => setPagoDetalleMesa(null)}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+
+      {/* Cierre Detalle Modal */}
+      {cierreDetalleModal && (
+        <div className="fixed inset-0 bg-black/45 backdrop-blur-xs flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+          <div className="w-full max-w-lg rounded-2xl shadow-xl overflow-hidden border bg-white border-gray-200 text-gray-800 max-h-[85vh] flex flex-col">
+            {/* Header */}
+            <div className="p-5 border-b border-gray-150 flex justify-between items-center shrink-0">
+              <div>
+                <h2 className="text-base font-semibold tracking-tight">Desglose de Cierre</h2>
+                <p className="text-xs text-gray-500 mt-1">{cierreDetalleModal.turno} — Mozo: {cierreDetalleModal.mozo}</p>
+              </div>
+              <button
+                onClick={() => setCierreDetalleModal(null)}
+                className="text-xs p-1.5 rounded-md hover:bg-gray-100 transition-colors"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="p-5 overflow-y-auto space-y-2 flex-1">
+              <div className="flex justify-between items-center mb-3">
+                <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resumen</span>
+                <span className="text-2xl font-black text-emerald-600">S/ {cierreDetalleModal.monto.toFixed(2)}</span>
+              </div>
+              <div className="bg-gray-50 rounded-xl p-4 border border-gray-100">
+                <pre className="text-xs text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
+                  {cierreDetalleModal.contenido.split('\n').map((line, i) => {
+                    const isHeader = line.startsWith('═') || line.startsWith('===');
+                    const isLabel = /^[A-Za-zÁÉÍÓÚÑáéíóúñ\s]+:/.test(line.trim());
+                    return (
+                      <span key={i} className={`block ${isHeader ? 'font-bold text-gray-900 text-center my-1' : ''} ${isLabel ? 'font-semibold text-gray-800' : ''}`}>
+                        {line}
+                      </span>
+                    );
+                  })}
+                </pre>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-5 border-t border-gray-150 shrink-0">
+              <button
+                onClick={() => setCierreDetalleModal(null)}
+                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
         </div>
       )}
 
