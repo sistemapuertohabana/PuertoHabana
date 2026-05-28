@@ -35,7 +35,7 @@ export async function POST(request: Request) {
     // Auth mocked for now (Supabase removed)
     // In production, add your custom auth logic here
 
-    const body = (await request.json()) as BoletaPayload & { esComanda?: boolean };
+    const body = (await request.json()) as BoletaPayload & { esComanda?: boolean; totalAcumuladoTurno?: number };
     if (!body?.mesa || !body?.items?.length) {
       return NextResponse.json({ error: 'Datos de boleta incompletos' }, { status: 400 });
     }
@@ -64,6 +64,7 @@ export async function POST(request: Request) {
           notas: i.notas,
         })),
         negocioNombre: body.negocioNombre ?? process.env.NEXT_PUBLIC_NEGOCIO_NOMBRE ?? 'PUERTO HABANA',
+        totalAcumuladoTurno: body.totalAcumuladoTurno,
       });
     } else {
       ticket = buildEscPosTicket({

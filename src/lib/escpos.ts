@@ -24,10 +24,11 @@ export interface ComandaPayload {
   hora: string;
   items: { nombre: string; cantidad: number; notas?: string; categoria?: string }[];
   negocioNombre?: string;
+  totalAcumuladoTurno?: number; // contador global de platos del turno
 }
 
 export function buildEscPosComanda(payload: ComandaPayload): string {
-  const { mesa, mozoNombre, fecha, hora, items } = payload;
+  const { mesa, mozoNombre, fecha, hora, items, totalAcumuladoTurno } = payload;
 
   const formatFecha = (dateStr: string) => {
     const parts = dateStr.split('-');
@@ -35,12 +36,15 @@ export function buildEscPosComanda(payload: ComandaPayload): string {
     return dateStr;
   };
 
+  // Solo platos (sin bebidas)
+  const foodItems = items.filter(i => i.categoria !== 'bebidas');
+  const totalEstePedido = foodItems.reduce((s, i) => s + i.cantidad, 0);
+
   const LINE = '='.repeat(29) + '\n';
 
   let ticket = '';
   ticket += '\x1B\x40';                     // Reset
   ticket += '\x1B\x61\x01';                 // Center align
-  // ── Encabezado tipo logo (texto grande) ──
   ticket += '\x1B\x21\x30';                 // Double height + bold
   ticket += 'P U E R T O\n';
   ticket += 'H A B A N A\n';
@@ -48,20 +52,30 @@ export function buildEscPosComanda(payload: ComandaPayload): string {
   ticket += '\x1B\x61\x01';                 // Center
   ticket += '='.repeat(29) + '\n';
   ticket += '\x1B\x21\x20';                 // Double width + bold
-  ticket += '\xF0\x9F\x8D\xB3 C O M A N D A\n';  // 🍳 C O M A N D A
+  ticket += 'C O M A N D A\n';
   ticket += '\x1B\x21\x00';                 // Normal
+
+  // ── Contador de platos ──────────────────────────────────────────────────
+  ticket += '\x1B\x21\x10';                 // Bold
+  ticket += `PLATOS PEDIDO: ${totalEstePedido}`;
+  if (totalAcumuladoTurno !== undefined) {
+    ticket += `   PLATOS-TOTAL: ${totalAcumuladoTurno}`;
+  }
+  ticket += '\n';
+  ticket += '\x1B\x21\x00';                 // Normal
+  // ────────────────────────────────────────────────────────────────────────
+
   ticket += '='.repeat(29) + '\n';
   ticket += '\x1B\x61\x00';                 // Left align
-  ticket += `\x1B\x21\x10`;                 // Bold
+  ticket += '\x1B\x21\x10';                 // Bold
   ticket += `Mesa: ${mesa}\n`;
   ticket += '\x1B\x21\x00';                 // Normal
   ticket += `Mozo: ${mozoNombre}\n`;
   ticket += `Hora: ${formatFecha(fecha)} ${hora}\n`;
   ticket += LINE;
 
-  items.forEach((i) => {
-    const icono = i.categoria === 'bebidas' ? '🥤 ' : '';
-    ticket += `${i.cantidad}x ${icono}${i.nombre}\n`;
+  foodItems.forEach((i) => {
+    ticket += `${i.cantidad}x ${i.nombre}\n`;
     if (i.notas) {
       ticket += `   * ${i.notas}\n`;
     }

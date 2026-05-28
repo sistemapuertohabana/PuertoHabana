@@ -42,6 +42,9 @@ export default function ComandaTicket({
     return dateStr;
   };
 
+  const foodItems = items.filter(item => item.categoria !== 'bebidas');
+  const totalItems = foodItems.reduce((s, i) => s + i.cantidad, 0);
+
   const handlePrintBrowser = () => {
     const foodItems = items.filter(item => item.categoria !== 'bebidas');
     const totalItems = foodItems.reduce((s, i) => s + i.cantidad, 0);
@@ -139,6 +142,7 @@ export default function ComandaTicket({
             notas: i.notas,
           })),
           esComanda: true,
+          totalAcumuladoTurno,
         }),
       });
       const data = await res.json();
@@ -162,7 +166,7 @@ export default function ComandaTicket({
         throw new Error('Tu navegador no soporta conexión USB/COM (Usa Chrome en PC o Android).');
       }
 
-      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre });
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre, totalAcumuladoTurno });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -190,7 +194,7 @@ export default function ComandaTicket({
         throw new Error('Bluetooth directo no soportado en este navegador.');
       }
 
-      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre });
+      const ticketText = buildEscPosComanda({ mesa, mozoNombre, fecha, hora, items: foodItems, negocioNombre, totalAcumuladoTurno });
       const buffer = new Uint8Array(ticketText.length);
       for (let i = 0; i < ticketText.length; i++) buffer[i] = ticketText.charCodeAt(i) & 0xFF;
 
@@ -234,9 +238,6 @@ export default function ComandaTicket({
       if (!msg.includes('cancelled')) setPrintError(msg);
     } finally { setPrinting(false); }
   };
-
-  const foodItems = items.filter(item => item.categoria !== 'bebidas');
-  const totalItems = foodItems.reduce((s, i) => s + i.cantidad, 0);
 
   return (
     <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 animate-in fade-in duration-300">
