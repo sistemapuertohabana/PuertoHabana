@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { Wine, Package, Plus, Search, X, DollarSign, Barcode, ScanLine } from 'lucide-react';
-import { subscribeInventario, addInventarioItem, type InventarioItem } from '@/lib/db';
+import { subscribeInventario, addInventarioItem, updateInventarioItem, type InventarioItem } from '@/lib/db';
 import InventoryBarcodeScanner from '@/components/InventoryBarcodeScanner';
 
 type TabType = 'bebidas' | 'tapers';
@@ -22,6 +22,23 @@ export default function MozoInventarioPage() {
 
   // Detail modal state
   const [detailItem, setDetailItem] = useState<InventarioItem | null>(null);
+  const [updatingStock, setUpdatingStock] = useState(false);
+
+  const handleUpdateStock = async (id: string, currentQty: number, delta: number) => {
+    const newQty = Math.max(0, currentQty + delta);
+    setUpdatingStock(true);
+    try {
+      await updateInventarioItem(tab, id, { cantidad: newQty });
+      if (detailItem && detailItem.id === id) {
+        setDetailItem({ ...detailItem, cantidad: newQty });
+      }
+      setSuccessMsg(`Stock actualizado a ${newQty}`);
+      setTimeout(() => setSuccessMsg(''), 3000);
+    } catch {
+      alert('Error al actualizar stock');
+    }
+    setUpdatingStock(false);
+  };
 
   useEffect(() => {
     const unsubBebidas = subscribeInventario('bebidas', (data) => setBebidas(data));
@@ -326,13 +343,29 @@ export default function MozoInventarioPage() {
                       ? 'text-red-500'
                       : 'text-green-500'
                   }">Stock</p>
-                  <p className={`text-2xl font-bold mt-1 ${
-                    detailItem.cantidad <= (detailItem.minimo || 3)
-                      ? 'text-red-700'
-                      : 'text-green-700'
-                  }`}>
-                    {detailItem.cantidad} <span className="text-sm font-medium">{detailItem.unidad || 'unid'}</span>
-                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <button
+                      onClick={() => handleUpdateStock(detailItem.id, detailItem.cantidad, -1)}
+                      disabled={updatingStock || detailItem.cantidad <= 0}
+                      className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 font-bold"
+                    >
+                      -
+                    </button>
+                    <p className={`text-2xl font-bold ${
+                      detailItem.cantidad <= (detailItem.minimo || 3)
+                        ? 'text-red-700'
+                        : 'text-green-700'
+                    }`}>
+                      {detailItem.cantidad} <span className="text-sm font-medium">{detailItem.unidad || 'unid'}</span>
+                    </p>
+                    <button
+                      onClick={() => handleUpdateStock(detailItem.id, detailItem.cantidad, 1)}
+                      disabled={updatingStock}
+                      className="w-8 h-8 rounded-full bg-white border border-gray-200 flex items-center justify-center text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-colors disabled:opacity-50 font-bold"
+                    >
+                      +
+                    </button>
+                  </div>
                 </div>
               </div>
 
