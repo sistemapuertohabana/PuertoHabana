@@ -106,6 +106,7 @@ export default function InventarioPage() {
   const [adiciones, setAdiciones] = useState<any[]>([]);
   const [loadingAdditions, setLoadingAdditions] = useState(false);
   const [adicionesSearch, setAdicionesSearch] = useState('');
+  const [historialSearch, setHistorialSearch] = useState('');
 
   // Cargar movimientos y alertas
   useEffect(() => {
@@ -776,41 +777,86 @@ export default function InventarioPage() {
         ) : activeSection === 'historial' ? (
           /* Vista de historial de movimientos */
           <div>
-            <div className="flex items-center justify-between mb-4">
-              <h4 className="text-base font-medium text-gray-900">Historial de Movimientos de Inventario</h4>
-              {movimientos.length > 0 && (
-                <button
-                  onClick={async () => {
-                    if (!confirm('¿Estás seguro de eliminar todo el historial de movimientos? Esta acción no se puede deshacer.')) return;
-                    try {
-                      const res = await fetch('/api/inventario/stock', { method: 'DELETE' });
-                      if (res.ok) {
-                        setMovimientos([]);
-                        alert('Historial de movimientos eliminado correctamente.');
-                      } else {
-                        const err = await res.json();
-                        alert('Error: ' + (err.error || 'No se pudo eliminar el historial'));
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+              <h4 className="text-base font-medium text-gray-900 shrink-0">Historial de Movimientos</h4>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <div className="relative flex-1 sm:w-64">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                  </span>
+                  <input
+                    type="text"
+                    placeholder="Buscar producto, nota, ref..."
+                    value={historialSearch}
+                    onChange={(e) => setHistorialSearch(e.target.value)}
+                    className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-xl focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-100 bg-gray-50 transition-all"
+                  />
+                  {historialSearch && (
+                    <button onClick={() => setHistorialSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600">
+                      <XIcon size={14} />
+                    </button>
+                  )}
+                </div>
+                {movimientos.length > 0 && (
+                  <button
+                    onClick={async () => {
+                      if (!confirm('¿Estás seguro de eliminar todo el historial de movimientos? Esta acción no se puede deshacer.')) return;
+                      try {
+                        const res = await fetch('/api/inventario/stock', { method: 'DELETE' });
+                        if (res.ok) {
+                          setMovimientos([]);
+                          alert('Historial de movimientos eliminado correctamente.');
+                        } else {
+                          const err = await res.json();
+                          alert('Error: ' + (err.error || 'No se pudo eliminar el historial'));
+                        }
+                      } catch {
+                        alert('Error de conexión al intentar eliminar el historial.');
                       }
-                    } catch {
-                      alert('Error de conexión al intentar eliminar el historial.');
-                    }
-                  }}
-                  className="flex items-center gap-2 px-4 py-2 bg-red-600 text-white text-xs font-semibold rounded-lg hover:bg-red-700 transition-colors"
-                >
-                  <Trash2 size={14} />
-                  Limpiar Historial
-                </button>
-              )}
-            </div>
-            {movimientos.length === 0 ? (
-              <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-                <History size={32} className="mx-auto text-gray-300 mb-2" />
-                <p className="text-sm text-gray-500">No hay movimientos registrados aún</p>
-                <p className="text-xs text-gray-400 mt-1">Los movimientos se registran automáticamente al crear pedidos o ajustar stock.</p>
+                    }}
+                    className="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-3 sm:py-2 bg-red-50 text-red-600 border border-red-100 text-xs font-semibold rounded-xl hover:bg-red-100 transition-colors shrink-0"
+                    title="Limpiar todo el historial"
+                  >
+                    <Trash2 size={16} />
+                    <span className="hidden sm:inline ml-1.5">Limpiar</span>
+                  </button>
+                )}
               </div>
-            ) : (
-              <div className="space-y-3">
-                {movimientos.map((mov: any) => (
+            </div>
+
+            {(() => {
+              const term = historialSearch.toLowerCase().trim();
+              const filteredMovs = movimientos.filter(m => 
+                !term || 
+                (m.inventario?.nombre || '').toLowerCase().includes(term) ||
+                (m.inventario?.seccion || '').toLowerCase().includes(term) ||
+                (m.notas || '').toLowerCase().includes(term) ||
+                (m.referencia || '').toLowerCase().includes(term) ||
+                (m.tipo || '').toLowerCase().includes(term)
+              );
+
+              return filteredMovs.length === 0 ? (
+                <div className="text-center py-12 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">
+                  {historialSearch ? (
+                    <>
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-3">
+                        <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+                      </div>
+                      <p className="text-sm font-medium text-gray-900">No hay resultados para "{historialSearch}"</p>
+                      <p className="text-xs text-gray-500 mt-1">Prueba buscando por otro nombre o referencia.</p>
+                      <button onClick={() => setHistorialSearch('')} className="mt-3 text-sm text-blue-600 hover:underline font-medium">Borrar búsqueda</button>
+                    </>
+                  ) : (
+                    <>
+                      <History size={32} className="mx-auto text-gray-300 mb-2" />
+                      <p className="text-sm font-medium text-gray-900">No hay movimientos registrados aún</p>
+                      <p className="text-xs text-gray-500 mt-1">Los movimientos se registran automáticamente al crear pedidos o ajustar stock.</p>
+                    </>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredMovs.map((mov: any) => (
                   <div key={mov.id} className="flex items-center gap-3 p-4 bg-white border border-gray-200 rounded-lg">
                     <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                       mov.tipo === 'entrada' ? 'bg-green-100' : mov.tipo === 'salida' ? 'bg-red-100' : 'bg-yellow-100'
@@ -870,7 +916,8 @@ export default function InventarioPage() {
                   </div>
                 ))}
               </div>
-            )}
+            );
+          })()}
           </div>
         ) : activeSection === 'alertas' ? (
           /* Vista de alertas de stock */
