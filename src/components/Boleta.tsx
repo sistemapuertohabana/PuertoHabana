@@ -51,11 +51,6 @@ export default function Boleta({
 
   const handlePrintBrowser = () => {
     const origin = window.location.origin;
-    const ventana = window.open('', '_blank', 'width=320,height=600');
-    if (!ventana) {
-      alert('Por favor permite las ventanas emergentes (pop-ups) para imprimir.');
-      return;
-    }
 
     let itemsHtml = '';
     items.forEach(item => {
@@ -136,18 +131,30 @@ export default function Boleta({
           </div>
           <div class="dashed-line"></div>
           <div class="text-center" style="margin-top: 8px;">¡Gracias por su visita!</div>
-          <script>
-            setTimeout(() => {
-              window.print();
-            }, 500);
-          </script>
         </body>
       </html>
     `;
 
-    ventana.document.open();
-    ventana.document.write(html);
-    ventana.document.close();
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    iframe.contentWindow?.document.open();
+    iframe.contentWindow?.document.write(html);
+    iframe.contentWindow?.document.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
   };
 
   const handlePrintNetwork = async () => {
