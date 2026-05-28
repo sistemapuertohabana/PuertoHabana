@@ -562,6 +562,24 @@ export default function DashboardPage() {
     setStaffPayments(prev => prev.filter((p: StaffPayment) => String(p.id) !== String(id)));
   };
 
+  const handleDeleteComanda = async (comandaId: string) => {
+    if (!confirm('¿Estás seguro de eliminar esta mesa/comanda? Esta acción no se puede deshacer.')) return;
+    try {
+      const res = await fetch(`/api/pedidos/${comandaId}`, { method: 'DELETE' });
+      if (res.ok) {
+        setPedidos(prev => prev.filter(p => p.comandaId !== comandaId));
+        setToastMessage('Comanda eliminada correctamente.');
+        setTimeout(() => setToastMessage(null), 3000);
+      } else {
+        setToastMessage('Error al eliminar la comanda.');
+        setTimeout(() => setToastMessage(null), 3000);
+      }
+    } catch (e) {
+      setToastMessage('Error de red al eliminar la comanda.');
+      setTimeout(() => setToastMessage(null), 3000);
+    }
+  };
+
   // ── Cálculo de margen de ganancia real basado en costo del inventario ──
   const getMargenData = () => {
     // Crear un mapa de nombre -> costo desde inventario
@@ -2627,6 +2645,15 @@ export default function DashboardPage() {
                             {estado}
                           </span>
                           <span className="font-bold text-green-600 text-sm">S/ {cTotal.toFixed(2)}</span>
+                          {comandaId && (
+                            <button
+                              onClick={() => handleDeleteComanda(String(comandaId))}
+                              className="text-red-500 hover:text-red-700 p-1.5 rounded-lg hover:bg-red-50 transition-colors ml-2"
+                              title="Eliminar Pedido"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
                         </div>
                       </div>
                       <div className="p-4 bg-white">
