@@ -435,7 +435,7 @@ export default function MozoPage() {
       notas: c.esCortesia 
         ? '🎁 Cortesía de la Casa' 
         : (c.notas && c.notas.trim() ? c.notas.trim() : null),
-    }));
+    };});
 
     try {
       await fetch('/api/pedidos', {
@@ -455,7 +455,7 @@ export default function MozoPage() {
         id: Date.now() + Math.random(), item: c.esCortesia ? `🎁 ${formattedName}` : formattedName, cantidad: c.qty,
         mesa: mesaName, precio: c.esCortesia ? 0 : c.price, estado: 'Pendiente', hora,
         notas: c.esCortesia ? '🎁 Cortesía de la Casa' : '', category: c.category, fecha, mozoId, mozoNombre,
-      }));
+      };});
       localStorage.setItem('puerto_habana_pedidos', JSON.stringify([...nuevos, ...existing]));
     }
 
