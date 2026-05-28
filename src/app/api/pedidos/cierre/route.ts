@@ -36,7 +36,8 @@ export async function POST(request: Request) {
 
     if (notaErr) {
       console.error('Error creando nota de cierre:', notaErr.message);
-      return NextResponse.json({ error: notaErr.message }, { status: 500 });
+      // No devolvemos 500 aquí para que el cierre de caja no falle
+      // si el admin aún no ha creado la tabla notas.
     }
 
     return NextResponse.json({ success: true });

@@ -10,6 +10,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const fecha  = searchParams.get('fecha');
   const estado = searchParams.get('estado');
+  const mozo_id = searchParams.get('mozo_id');
 
   let query = sb
     .from('comandas')
@@ -18,6 +19,7 @@ export async function GET(request: Request) {
 
   if (fecha)  query = query.eq('fecha', fecha);
   if (estado) query = query.eq('estado', estado);
+  if (mozo_id) query = query.eq('mozo_id', mozo_id);
 
   const { data, error } = await query;
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
