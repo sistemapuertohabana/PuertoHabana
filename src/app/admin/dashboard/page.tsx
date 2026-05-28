@@ -337,6 +337,92 @@ export default function DashboardPage() {
 
   }, []);
 
+  const handlePrintCierreAdmin = () => {
+    if (!cierreDetalleModal) return;
+    
+    const lineas = cierreDetalleModal.contenido.split('\n');
+    let detalleHTML = '';
+    
+    const detalleIndex = lineas.findIndex(l => l.includes('Detalle:'));
+    if (detalleIndex !== -1) {
+      const itemsStr = lineas.slice(detalleIndex + 1).join(' ').trim();
+      if (itemsStr && itemsStr !== 'Sin productos') {
+        const items = itemsStr.split(',').map(i => i.trim());
+        detalleHTML = items.map(item => {
+          const parts = item.split(' x');
+          const name = parts[0];
+          const qty = parts[1] || '1';
+          return `
+            <div style="display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 2px;">
+              <span style="flex: 1; padding-right: 5px;">${name}</span>
+              <span style="white-space: nowrap;">(${qty})</span>
+            </div>
+          `;
+        }).join('');
+      } else {
+        detalleHTML = '<div style="font-size: 12px; text-align: center;">Sin productos</div>';
+      }
+    }
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+          <title>Cierre de Caja - ${cierreDetalleModal.mozo}</title>
+          <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { font-family: 'Courier New', monospace; font-size: 14px; width: 100%; max-width: 58mm; padding: 3mm; color: #000; margin: 0 auto; }
+            .line { border-top: 1px dashed #000; margin: 8px 0; }
+            .text-center { text-align: center; }
+            .font-bold { font-weight: bold; }
+            @media print { 
+              body { width: 58mm; padding: 0; margin: 0; } 
+              @page { margin: 0; size: 58mm auto; } 
+            }
+          </style>
+        </head>
+        <body>
+          <div class="text-center font-bold" style="font-size: 20px; margin-bottom: 4px;">REPORTE DE CAJA</div>
+          <div class="line"></div>
+          <div style="font-size: 14px;"><span class="font-bold">Mozo:</span> ${cierreDetalleModal.mozo}</div>
+          <div style="font-size: 14px;"><span class="font-bold">Fecha:</span> ${cierreDetalleModal.fecha}</div>
+          <div style="font-size: 14px;"><span class="font-bold">Turno:</span> ${cierreDetalleModal.turno}</div>
+          <div class="line"></div>
+          <div class="text-center font-bold" style="font-size: 16px; margin: 10px 0;">TOTAL VENDIDO</div>
+          <div class="text-center font-bold" style="font-size: 24px; margin-bottom: 10px;">S/ ${cierreDetalleModal.monto.toFixed(2)}</div>
+          <div class="line"></div>
+          <div style="font-size: 14px; margin-top: 5px; margin-bottom: 5px;" class="font-bold">DETALLE:</div>
+          ${detalleHTML}
+          <div class="line"></div>
+          <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">Cierre de Turno</div>
+        </body>
+      </html>
+    `;
+
+    const iframe = document.createElement('iframe');
+    iframe.style.position = 'fixed';
+    iframe.style.right = '0';
+    iframe.style.bottom = '0';
+    iframe.style.width = '0';
+    iframe.style.height = '0';
+    iframe.style.border = 'none';
+    document.body.appendChild(iframe);
+
+    iframe.contentWindow?.document.open();
+    iframe.contentWindow?.document.write(html);
+    iframe.contentWindow?.document.close();
+
+    setTimeout(() => {
+      iframe.contentWindow?.focus();
+      iframe.contentWindow?.print();
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+      }, 1000);
+    }, 500);
+  };
+
   // ── Cargar pedidos desde API (usado para polling) ──
   const loadPedidos = async () => {
     try {
@@ -3196,12 +3282,19 @@ export default function DashboardPage() {
             </div>
 
             {/* Footer */}
-            <div className="p-5 border-t border-gray-150 shrink-0">
+            <div className="p-5 border-t border-gray-150 shrink-0 flex gap-3">
               <button
                 onClick={() => setCierreDetalleModal(null)}
-                className="w-full py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
+                className="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm font-semibold text-gray-600 hover:bg-gray-50 hover:border-gray-300 transition-all"
               >
                 Cerrar
+              </button>
+              <button
+                onClick={handlePrintCierreAdmin}
+                className="flex-1 py-2.5 rounded-xl bg-gray-900 text-white text-sm font-semibold hover:bg-black transition-all flex items-center justify-center gap-2"
+              >
+                <Printer size={16} />
+                Imprimir
               </button>
             </div>
           </div>
