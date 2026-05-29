@@ -353,15 +353,10 @@ export default function MozoHistorialPage() {
     const groups: Map<string, { baseMesa: string; comandas: Comanda[] }> = new Map();
     comandas.forEach(c => {
       const baseMesa = getBaseMesa(c.mesa);
-      const esPorPersona = getPersonaNum(c.mesa) !== null;
-      if (esPorPersona) {
-        const horaH = parseInt((c.hora || '00:00').split(':')[0], 10);
-        const groupKey = `${baseMesa}__${horaH}`;
-        if (!groups.has(groupKey)) groups.set(groupKey, { baseMesa, comandas: [] });
-        groups.get(groupKey)!.comandas.push(c);
-      } else {
-        groups.set(`__single__${c.id}`, { baseMesa: c.mesa, comandas: [c] });
-      }
+      const horaH = parseInt((c.hora || '00:00').split(':')[0], 10);
+      const groupKey = `${baseMesa}__${horaH}`;
+      if (!groups.has(groupKey)) groups.set(groupKey, { baseMesa, comandas: [] });
+      groups.get(groupKey)!.comandas.push(c);
     });
     return Array.from(groups.values());
   })();
@@ -462,31 +457,32 @@ export default function MozoHistorialPage() {
           <div className="space-y-4">
             {comandaGroups.map(group => {
               const { baseMesa, comandas: gComandas } = group;
-              const isPorPersona = gComandas.length > 1 || getPersonaNum(gComandas[0].mesa) !== null;
+              const hasPersonas = gComandas.some(c => getPersonaNum(c.mesa) !== null);
+              const isMulti = gComandas.length > 1;
               const isAllEntregado = gComandas.every(c => c.estado === 'Entregado' || c.estado === 'Cerrado');
               const totalGrupo = gComandas.reduce((s, c) => s + Number(c.total), 0);
               const firstComanda = gComandas[0];
-              const groupKey = isPorPersona ? `${baseMesa}__${firstComanda.hora}` : `single_${firstComanda.id}`;
+              const groupKey = isMulti ? `${baseMesa}__${firstComanda.hora}` : `single_${firstComanda.id}`;
               const c = firstComanda; // alias para compatibilidad con el JSX que usa 'c'
 
               return (
               <div key={groupKey} className="bg-white rounded-2xl p-5 border border-gray-100 shadow-sm hover:shadow-md transition-shadow">
 
                 {/* === Card Header === */}
-                <div onClick={() => !isPorPersona && setDetailModal(firstComanda)} className={isPorPersona ? '' : 'cursor-pointer'}>
+                <div onClick={() => !isMulti && setDetailModal(firstComanda)} className={isMulti ? '' : 'cursor-pointer'}>
                   <div className="flex items-start justify-between mb-3">
                     <div>
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-bold text-lg text-gray-900">{baseMesa}</span>
-                        {isPorPersona && (
+                        {isMulti && (
                           <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-700">
-                            👥 {gComandas.length} personas
+                            {hasPersonas ? `👥 ${gComandas.length} personas` : `📋 ${gComandas.length} pedidos`}
                           </span>
                         )}
                         <span className="flex items-center gap-1 text-xs text-gray-400">
                           <Clock size={12} /> {firstComanda.hora}
                         </span>
-                        {!isPorPersona && (
+                        {!isMulti && (
                           <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase tracking-wider ${
                             firstComanda.estado === 'Pendiente'  ? 'bg-orange-100 text-orange-600' :
                             firstComanda.estado === 'Preparando'? 'bg-blue-100 text-blue-600'     :
@@ -501,16 +497,17 @@ export default function MozoHistorialPage() {
                   </div>
 
                   {/* === Vistas de personas o items normales === */}
-                  {isPorPersona ? (
+                  {isMulti ? (
                     <div className="space-y-2 mb-3">
-                      {gComandas.map(pc => {
-                        const personaNum = pc.mesa.match(/·\s*Persona\s*(\d+)/i)?.[1] || '?';
+                      {gComandas.map((pc, idx) => {
+                        const personaNum = pc.mesa.match(/·\s*Persona\s*(\d+)/i)?.[1];
+                        const label = personaNum ? `Persona ${personaNum}` : `Pedido ${idx + 1}`;
                         const personaEntregada = pc.estado === 'Entregado' || pc.estado === 'Cerrado';
                         return (
                           <div key={pc.id} className={`rounded-xl border p-3 ${personaEntregada ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'}`}>
                             <div className="flex items-center justify-between mb-1.5">
                               <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${personaEntregada ? 'bg-green-100 text-green-700' : 'bg-blue-100 text-blue-700'}`}>
-                                👤 Persona {personaNum} {personaEntregada ? '· ✓ Cobrado' : ''}
+                                {personaNum ? '👤' : '📋'} {label} {personaEntregada ? '· ✓ Cobrado' : ''}
                               </span>
                               <span className="text-xs font-bold text-gray-800">S/ {Number(pc.total).toFixed(2)}</span>
                             </div>
@@ -525,13 +522,13 @@ export default function MozoHistorialPage() {
                                 ))}
                               </ul>
                             )}
-                            {/* Btn Cobrar por persona */}
+                            {/* Btn Cobrar por persona/pedido */}
                             {!personaEntregada && Number(pc.total) > 0 && (
                               <button
                                 onClick={e => { e.stopPropagation(); handlePagoModalOpen(pc); }}
                                 className="mt-2 w-full bg-gray-900 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-black transition-colors flex items-center justify-center gap-1"
                               >
-                                <CheckCircle2 size={11} /> Cobrar Persona {personaNum}
+                                <CheckCircle2 size={11} /> Cobrar {label}
                               </button>
                             )}
                             {!personaEntregada && Number(pc.total) === 0 && (
@@ -539,7 +536,7 @@ export default function MozoHistorialPage() {
                                 onClick={e => { e.stopPropagation(); confirmarCobro(pc.id, 'Cortesía'); }}
                                 className="mt-2 w-full bg-amber-500 text-white text-[10px] font-bold py-1.5 rounded-lg hover:bg-amber-600 transition-colors flex items-center justify-center gap-1"
                               >
-                                🎁 Cortesía Persona {personaNum}
+                                🎁 Cortesía {label}
                               </button>
                             )}
                           </div>
@@ -629,7 +626,7 @@ export default function MozoHistorialPage() {
                       )}
 
                       {/* Agregar items — solo si es comanda normal y está pendiente */}
-                      {!isPorPersona && anyPending && (
+                      {!isMulti && anyPending && (
                         <button onClick={() => { setAddItemsModal(c); setAddItemsCart([]); setAddItemsSuccess(false); }}
                           className="flex-1 bg-blue-50 text-blue-600 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-blue-100 transition-colors text-[11px] whitespace-nowrap">
                           <Plus size={12} /> Agregar
@@ -637,7 +634,7 @@ export default function MozoHistorialPage() {
                       )}
 
                       {/* Dividir — solo si es comanda normal */}
-                      {!isPorPersona && anyPending && c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').length > 1 && (
+                      {!isMulti && anyPending && c.items && c.items.filter(i => i.id && i.estado !== 'Entregado').length > 1 && (
                         <button onClick={() => { setSplitModalData(c); setSplitSelectedIds(new Set()); setSplitSuccess(null); }}
                           className="flex-1 bg-violet-50 text-violet-700 px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-violet-100 transition-colors text-[11px] whitespace-nowrap">
                           ✂️ Dividir
@@ -645,13 +642,13 @@ export default function MozoHistorialPage() {
                       )}
 
                       {/* Cobrar todo — solo si es comanda normal o si se quiere cobrar todas las personas juntas */}
-                      {!isPorPersona && anyPending && Number(totalGrupo) > 0 && (
+                      {!isMulti && anyPending && Number(totalGrupo) > 0 && (
                         <button onClick={() => handlePagoModalOpen(c)}
                           className="flex-1 bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap">
                           <CheckCircle2 size={12} /> Cobrar
                         </button>
                       )}
-                      {!isPorPersona && anyPending && Number(totalGrupo) === 0 && (
+                      {!isMulti && anyPending && Number(totalGrupo) === 0 && (
                         <button onClick={() => confirmarCobro(c.id, 'Cortesía')}
                           className="flex-1 bg-amber-500 text-white px-2.5 py-1.5 rounded-lg font-medium flex items-center justify-center gap-1 hover:bg-amber-600 transition-colors text-[11px] whitespace-nowrap">
                           🎁 Cortesía
@@ -659,9 +656,11 @@ export default function MozoHistorialPage() {
                       )}
 
                       {/* Cobrar todas las personas juntas */}
-                      {isPorPersona && allPending && Number(totalGrupo) > 0 && (
-                        <button onClick={() => handlePagoModalOpen(gComandas[0])}
-                          className="w-full bg-gray-900 text-white px-2.5 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1 hover:bg-black transition-colors text-[11px] whitespace-nowrap mt-1">
+                      {isMulti && allPending && Number(totalGrupo) > 0 && (
+                        <button onClick={() => {
+                          alert("Para cobrar múltiples pedidos a la vez, cobre uno por uno o fusione las comandas en el sistema.");
+                        }}
+                          className="w-full bg-gray-300 text-gray-600 px-2.5 py-1.5 rounded-lg font-bold flex items-center justify-center gap-1 text-[11px] whitespace-nowrap mt-1 cursor-not-allowed" title="Cobro múltiple en desarrollo">
                           <CheckCircle2 size={12} /> Cobrar Mesa Completa
                         </button>
                       )}
