@@ -204,7 +204,7 @@ export default function CierreCajaTicket({
           </button>
           
           <button
-            onClick={handlePrintBrowser}
+            onClick={() => handlePrintBrowser()}
             className="w-full flex items-center justify-center gap-2 bg-blue-50 text-blue-600 px-4 py-3 rounded-xl hover:bg-blue-100 transition-colors text-sm font-semibold"
           >
             Solo Imprimir (Sin cerrar)
