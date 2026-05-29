@@ -366,6 +366,64 @@ export default function NotasPage() {
                     {/* Acciones */}
                     <div className="flex gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
+                        onClick={() => {
+                          const html = `
+                            <!DOCTYPE html>
+                            <html>
+                              <head>
+                                <meta charset="utf-8" />
+                                <title>Impresión de Nota</title>
+                                <style>
+                                  * { margin: 0; padding: 0; box-sizing: border-box; }
+                                  body { font-family: 'Courier New', monospace; font-size: 14px; width: 100%; max-width: 58mm; padding: 3mm; color: #000; margin: 0 auto; white-space: pre-wrap; }
+                                  .line { border-top: 1px dashed #000; margin: 8px 0; }
+                                  .text-center { text-align: center; }
+                                  .font-bold { font-weight: bold; }
+                                  @media print { 
+                                    body { width: 58mm; padding: 0; margin: 0; } 
+                                    @page { margin: 0; size: 58mm auto; } 
+                                  }
+                                </style>
+                              </head>
+                              <body>
+                                <div class="text-center font-bold" style="font-size: 18px; margin-bottom: 4px;">REPORTE DE SISTEMA</div>
+                                <div class="line"></div>
+                                <div>${nota.contenido.replace(/\n/g, '<br/>')}</div>
+                                <div class="line"></div>
+                                <div class="text-center" style="margin-top: 8px; font-size: 12px; color: #666;">Puerto Habana</div>
+                              </body>
+                            </html>
+                          `;
+
+                          const iframe = document.createElement('iframe');
+                          iframe.style.position = 'fixed';
+                          iframe.style.right = '0';
+                          iframe.style.bottom = '0';
+                          iframe.style.width = '0';
+                          iframe.style.height = '0';
+                          iframe.style.border = 'none';
+                          document.body.appendChild(iframe);
+
+                          iframe.contentWindow?.document.open();
+                          iframe.contentWindow?.document.write(html);
+                          iframe.contentWindow?.document.close();
+
+                          setTimeout(() => {
+                            iframe.contentWindow?.focus();
+                            iframe.contentWindow?.print();
+                            setTimeout(() => {
+                              if (document.body.contains(iframe)) {
+                                document.body.removeChild(iframe);
+                              }
+                            }, 1000);
+                          }, 500);
+                        }}
+                        className="p-1.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors"
+                        title="Imprimir Ticket"
+                      >
+                        <Printer size={14} />
+                      </button>
+                      <button
                         onClick={() => handleEdit(nota)}
                         className="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="Editar"

@@ -177,13 +177,27 @@ export default function CierreCajaTicket({
             onClick={async () => {
               if (!confirm('¿Estás seguro de cerrar la caja de este turno? Esto pondrá en cero el reporte para el próximo turno.')) return;
               // Llamar a la API para cerrar
-              const detalle = aggregatedItems.length > 0 ? aggregatedItems.map(([name, qty]) => `${name} x${qty}`).join(', ') : 'Sin productos';
+              const detalleBreakdown = `
+Efectivo: S/ ${totalEfectivo.toFixed(2)}
+Yape: S/ ${totalYape.toFixed(2)}
+Tarjeta: S/ ${totalTarjeta.toFixed(2)}
+
+=== PLATOS VENDIDOS ===
+${platosVendidos.length > 0 ? platosVendidos.map(([name, qty]) => `${name} x${qty}`).join('\\n') : '0'}
+
+=== BEBIDAS VENDIDAS ===
+${bebidasVendidas.length > 0 ? bebidasVendidas.map(([name, qty]) => `${name} x${qty}`).join('\\n') : '0'}
+
+=== TAPERS/OTROS ===
+${tapersVendidos.length > 0 ? tapersVendidos.map(([name, qty]) => `${name} x${qty}`).join('\\n') : '0'}
+`.trim();
+
               
               try {
                 const res = await fetch('/api/pedidos/cierre', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({ mozo_id: mozoId, mozo_nombre: mozoNombre, fecha, turno, total, detalle })
+                  body: JSON.stringify({ mozo_id: mozoId, mozo_nombre: mozoNombre, fecha, turno, total, detalle: detalleBreakdown })
                 });
                 if (res.ok) {
                   handlePrintBrowser(() => {
