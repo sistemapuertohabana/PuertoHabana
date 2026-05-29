@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Plus, Trash2, Edit3, MessageSquare, ChefHat, Beer, Package, DollarSign, StickyNote, X, Clock, Loader2, Send } from 'lucide-react';
+import { Plus, Trash2, Edit3, MessageSquare, ChefHat, Beer, Package, DollarSign, StickyNote, X, Clock, Loader2, Send, Printer } from 'lucide-react';
 
 interface Nota {
   id: string;
